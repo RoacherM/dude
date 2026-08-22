@@ -4,8 +4,8 @@
 # half — the DeepBuddy frame, which is this distribution's shell — rides the
 # same row through dsh.client.
 #
-# This layer applies after @deepseek-ai/dsh-web-app's, so the disable below
-# lands on the roster row that bundle inserted. Removing this plugin from the
+# This layer applies after @deepseek-ai/dsh-web-app's, so the disables below
+# land on the roster rows that bundle inserted. Removing this plugin from the
 # profile restores the official frame: no official package is forked or
 # edited (deepbuddy-design-current/ARCHITECTURE.md §4).
 
@@ -13,10 +13,26 @@
 # child slots ('sidebar' / 'conversation' / 'details' / 'shell.overlay').
 # ui-slots admits exactly one declarer per slot, so deepbuddy-frame can only
 # take over that contract with the official row out of the graph — this is
-# not a preference, it is the mechanism (R2「影子继承合同」). deepbuddy
-# re-declares all four and renders them, so every seat the official frame
-# offered stays open.
+# not a preference, it is the mechanism (R2「影子继承合同」): the frame's
+# declared slots are inherited because the declarer is disabled, and
+# deepbuddy re-declares all four and renders them, so every seat the
+# official frame offered stays open.
 - id: ui-layout
+  disabled: true
+
+# ui-sidebar and ui-conversation inject the `layout` service, which the
+# disabled ui-layout row used to provide. With ui-layout out of the graph
+# they could never activate, and DeepBuddy renders the sidebar / conversation
+# columns itself — the official rows are dead weight reserved for services
+# that never arrive. Disabling them removes the boot-time "pending" noise and
+# drops them from the client manifest entirely (processOne skips disabled
+# rows). The other official UI plugins that list these packages as module
+# dependencies (dsh.client.inject) only use them for load ordering; an absent
+# row is a no-op there.
+- id: ui-sidebar
+  disabled: true
+
+- id: ui-conversation
   disabled: true
 
 - insert:

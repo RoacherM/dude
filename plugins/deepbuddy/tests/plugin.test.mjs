@@ -72,18 +72,18 @@ test('client bundle keeps only platform modules external', async () => {
   }
 })
 
-test('the bundle patch disables the official layout row and nothing else', async () => {
+test('the bundle patch disables the frame and column rows it replaces', async () => {
   const patch = await readFile(join(root, 'cordis.patch.yml'), 'utf8')
-  // R1「换行不改包」: the takeover is a disabled row in our own patch layer,
+  // R1「换行不改包」: the takeover is disabled rows in our own patch layer,
   // never an edit to @deepseek-ai/dsh-web-app. Slot declaration admits one
   // declarer, so leaving ui-layout on would make the frame re-declaration throw.
   assert.match(patch, /^- id: ui-layout\n {2}disabled: true$/m)
+  // ui-sidebar / ui-conversation inject `layout`, which lived in the disabled
+  // ui-layout row — they could never activate, so they are disabled too.
+  assert.match(patch, /^- id: ui-sidebar\n {2}disabled: true$/m)
+  assert.match(patch, /^- id: ui-conversation\n {2}disabled: true$/m)
   // The plugin's own row still rides the same patch.
   assert.match(patch, /- insert:\n {4}- id: deepbuddy\n {6}name: dsh-plugin-deepbuddy/)
-  // P4b / P4c, not P4a: the official column plugins keep their rows and their
-  // registrations — DeepBuddy outranks them per-slot instead (see below).
-  assert.doesNotMatch(patch, /id: ui-sidebar/)
-  assert.doesNotMatch(patch, /id: ui-conversation/)
 })
 
 test('client bundle takes over the frame contract and renders all four seats', async () => {
@@ -112,15 +112,15 @@ test('client bundle takes over the frame contract and renders all four seats', a
   assert.match(bundle, /\.dbdy-overlay \{[^}]*pointer-events: none;/)
 })
 
-test('client bundle seats DeepBuddy\'s own columns as shadow occupants', async () => {
+test('client bundle seats its own columns without a shadow priority', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // Single slots render the LOWEST priority: the official ui-sidebar /
-  // ui-conversation occupants stay registered at the default 0 (their services
-  // alive, their surfaces unrendered) — the reserved-surface behavior the
-  // charter defines, not a disabled plugin.
-  assert.match(bundle, /OCCUPANT_SHADOW_PRIORITY = -1;/)
-  assert.match(bundle, /name: "sidebar",\s*\n\s*priority: OCCUPANT_SHADOW_PRIORITY/)
-  assert.match(bundle, /name: "conversation",\s*\n\s*priority: OCCUPANT_SHADOW_PRIORITY/)
+  // ui-sidebar / ui-conversation are disabled rows, so the sidebar and
+  // conversation seats are occupied only by DeepBuddy's columns — no shadow
+  // rank is needed. Single slots render the LOWEST priority, but with the
+  // official occupants gone the default 0 is the only occupant.
+  assert.doesNotMatch(bundle, /OCCUPANT_SHADOW_PRIORITY/)
+  assert.match(bundle, /name: "sidebar"\s*\n\s*\}, DeepBuddySidebar/)
+  assert.match(bundle, /name: "conversation"\s*\n\s*\}, DeepBuddyMain/)
 })
 
 test('client bundle composes first-party surfaces from the static catalogs', async () => {
@@ -177,9 +177,9 @@ test('the list row is the kit\'s fact, not each surface\'s', async () => {
 
 test('client bundle carries the services the disabled layout row used to own', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // ui-sidebar injects `layout`; with ui-layout gone, an unprovided face means
-  // the official plugins' apply worlds never resolve.
-  assert.match(bundle, /reflect\.provide\("layout"/)
+  // ui-sidebar / ui-conversation are disabled, so `ctx.layout` has no cordis
+  // consumer left — the adapter no longer provides a layout face.
+  assert.doesNotMatch(bundle, /reflect\.provide\("layout"/)
   // Theme projection: without a presenter every --dsw-* consumer in an open
   // seat reads the light base palette forever.
   assert.match(bundle, /theme\.getTheme\(\)/)
@@ -310,4 +310,95 @@ test('geometry: the dock opens at 30% and drags between 30% and 70%', async () =
   assert.equal(g.dockFits(1440, 269), true)
   assert.equal(g.dockFits(1100, 269), false)
   assert.equal(g.dockFits(1145, 269), true)
+})
+
+test('models: the wire folds provider list errors into a result', async () => {
+  const m = await import(join(root, 'src/client/dsh/models.ts'))
+  // `createModelsWire` is runtime-clean after type stripping: every import is
+  // type-only, so a plain object satisfies the api face.
+  const wire = m.createModelsWire({
+    llm: { providers: async () => ({ result: { ok: true, value: { providers: [] } } }) },
+  })
+  const r = await wire.listProviders()
+  assert.deepEqual(r, { ok: true, value: [] })
+})
+
+test('models: the wire carries llm.models groups and failures', async () => {
+  const m = await import(join(root, 'src/client/dsh/models.ts'))
+  const wire = m.createModelsWire({
+    llm: { models: async () => ({ result: { ok: true, value: { groups: [], failures: [{ id: 'x', message: 'boom' }] } } }) },
+  })
+  const r = await wire.listModels()
+  assert.equal(r.ok, true)
+  if (r.ok) assert.deepEqual(r.value.failures, [{ id: 'x', message: 'boom' }])
+})
+
+test('models: default model read writes through the settings namespace', async () => {
+  const m = await import(join(root, 'src/client/dsh/models.ts'))
+  let replacedWith = null
+  const wire = m.createModelsWire({
+    settings: {
+      describe: async () => ({ result: { ok: true, value: { writable: true, hasDocument: false, namespaces: [
+        { ns: 'agent-default-model', schema: {}, value: { provider: 'deepseek-official', model: 'deepseek-v4-pro', reasoningEffort: 'max' }, base: {}, user: {}, applies: 'live', secrets: [], revision: 1 },
+      ] } } }),
+      replace: async (req) => { replacedWith = req; return { result: { ok: true, value: {} } } },
+    },
+  })
+  const def = await wire.defaultModel()
+  assert.deepEqual(def, { ok: true, value: { provider: 'deepseek-official', model: 'deepseek-v4-pro', reasoningEffort: 'max' } })
+  const saved = await wire.setDefaultModel({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+  assert.equal(saved.ok, true)
+  assert.deepEqual(replacedWith, { ns: 'agent-default-model', section: { provider: 'deepseek-official', model: 'deepseek-v4-flash' } })
+})
+
+test('models: credentials describe is existence-only and never echoes the value', async () => {
+  const m = await import(join(root, 'src/client/dsh/models.ts'))
+  const wire = m.createModelsWire({
+    credentials: {
+      describe: async () => ({ result: { ok: true, value: { credentials: { DEEPSEEK_API_KEY: { configured: true, source: 'file', writable: true } } } } }),
+      set: async (req) => { assert.equal(req.value, 'sk-secret'); return { result: { ok: true, value: {} } } },
+    },
+  })
+  const described = await wire.describeCredential('DEEPSEEK_API_KEY')
+  assert.deepEqual(described, { ok: true, value: { configured: true, source: 'file', writable: true } })
+  const set = await wire.setCredential('DEEPSEEK_API_KEY', 'sk-secret')
+  assert.equal(set.ok, true)
+})
+
+test('models: session model directory and selection route by session', async () => {
+  const m = await import(join(root, 'src/client/dsh/models.ts'))
+  let selected = null
+  const wire = m.createModelsWire({
+    sessions: {
+      models: async (req) => ({ result: { ok: true, value: { current: { provider: 'deepseek-official', model: 'deepseek-v4-pro' }, routable: true, groups: [], failures: [] } } }),
+      selectModel: async (req) => { selected = req; return { result: { ok: true, value: { selected: { provider: req.provider, model: req.model } } } } },
+    },
+  })
+  const dir = await wire.sessionModels('s-1')
+  assert.equal(dir.ok, true)
+  if (dir.ok) assert.equal(dir.value.current.model, 'deepseek-v4-pro')
+  const sel = await wire.selectSessionModel('s-1', { provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+  assert.equal(sel.ok, true)
+  assert.deepEqual(selected, { sessionId: 's-1', provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+})
+
+test('settings: the Models page is first in the rail and reads the models wire', async () => {
+  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
+  // The Models page leads the settings rail (模型 above 模式/插件), per the
+  // official settings-models ordering.
+  assert.match(bundle, /{ id: "harness\/models", label: "\\u6A21\\u578B", Component: ModelsPage }/)
+  assert.match(bundle, /{ id: "harness\/modes", label: "\\u6A21\\u5F0F", Component: ModesPage }/)
+  // The page reads through the shared models plane, which folds the wire.
+  assert.match(bundle, /models\.load\(\)/)
+  assert.match(bundle, /createModelsWire\(connection\.api\)/)
+})
+
+test('composer: the model chip selects through the session selection wire', async () => {
+  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
+  // ModelChip routes through `models.selectSession`, which calls the host's
+  // `sessions.selectModel` — the surface that applies the selection to the
+  // live session (mid-session included).
+  assert.match(bundle, /models\.selectSession\(/)
+  assert.match(bundle, /api\.sessions\.selectModel\(/)
+  assert.match(bundle, /jsx\)\(ModelChip, \{ store, models \}\)/)
 })

@@ -13,6 +13,7 @@ import { KIT } from '../../ui/kit.tsx'
 import { METRICS } from '../../ui/tokens.ts'
 import { Close } from '../../ui/icons.tsx'
 import { ModesPage } from './ModesPage.tsx'
+import { ModelsPage } from './ModelsPage.tsx'
 import { PluginsPage } from './PluginsPage.tsx'
 
 /** Settings rail groups, in display order; the id prefix selects one. */
@@ -20,8 +21,8 @@ export const SETTINGS_GROUPS = [
   { prefix: 'harness', label: 'Harness' },
   { prefix: 'workspace', label: '工作空间' },
 ] as const
-/** The settings pages, in rail order — a tuple so the first page is definite. */
 export const SETTINGS_PAGES = [
+  { id: 'harness/models', label: '模型', Component: ModelsPage },
   { id: 'harness/modes', label: '模式', Component: ModesPage },
   { id: 'harness/plugins', label: '插件', Component: PluginsPage },
 ] as const satisfies readonly { id: string; label: string; Component: ComponentType }[]

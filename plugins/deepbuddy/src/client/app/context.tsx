@@ -11,6 +11,7 @@ import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import type { Dsh } from '../dsh/adapter.ts'
 import type { PresetPlane } from '../dsh/presets.ts'
+import type { ModelsPlane } from '../dsh/models.ts'
 import type { LayoutStore } from '../shell/layout-store.ts'
 import type { ConversationStore } from '../features/conversation/index.ts'
 import type { FilesStore } from '../features/files/index.ts'
@@ -26,6 +27,8 @@ export interface AppDeps {
   presets: PresetPlane
   /** Conversation's data plane. */
   conversation: ConversationStore
+  /** The provider/model plane (adapter). */
+  models: ModelsPlane
   /** Files' data plane. */
   files: FilesStore
   /** Settings' data plane. */

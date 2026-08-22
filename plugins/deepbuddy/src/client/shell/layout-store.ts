@@ -17,8 +17,6 @@
  * the browser already keeps it.
  */
 import { createRef, useSyncExternalStore } from 'react'
-// Type-only: the ctx.layout contract this store serves in ui-layout's place.
-import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
 import {
   DOCK_BREAKPOINT, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
   clampDock, clampSidebar, dockDefault, dockFits,
@@ -89,8 +87,9 @@ export class LayoutStore {
 
   /**
    * The official frame contract's right details column. Kept OFF
-   * {@link LayoutState} because nothing but `ctx.layout.openDetails` moves it
-   * and no column of ours needs to know.
+   * {@link LayoutState}: the frame renders its width, but nothing in the
+   * distribution opens it (the former `ctx.layout.openDetails` consumer is
+   * disabled), so it stays closed.
    */
   detailsOpen = false
 
@@ -351,21 +350,6 @@ export class LayoutStore {
     if (el !== null) this.writeDockWidth(el, dockDefault(window.innerWidth, this.sideWidth()))
   }
 
-  // ── the official face ─────────────────────────────────────────────────────
-
-  /**
-   * The `ctx.layout` face DeepBuddy serves in the disabled ui-layout row's
-   * place. Three methods, no store: the official controller forwards to a
-   * slot store because its geometry lives there, while ours lives right here.
-   * @returns the ILayout implementation to provide.
-   */
-  layoutFace(): ILayout {
-    return {
-      toggleSidebar: () => { this.toggleSidebar() },
-      openDetails: () => { this.detailsOpen = true; this.bump() },
-      closeDetails: () => { this.detailsOpen = false; this.bump() },
-    }
-  }
 }
 
 // ── render-side helpers ─────────────────────────────────────────────────────

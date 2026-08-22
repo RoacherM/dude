@@ -16,16 +16,18 @@
  */
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-// Type-only: ui-layout's Context merge declares `ctx.layout`, and its SlotMap
-// merge names the four frame child slots re-declared below. Erased at build
+// Type-only: ui-layout's SlotMap merge names the four frame child slots
+// re-declared below. Its Context merge (`ctx.layout`) is no longer consumed by
+// any live row, so only the SlotMap merge is pulled in here. Erased at build
 // time — cross-plugin VALUE imports are a bundle-purity error.
-import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { LayoutStore } from '../shell/layout-store.ts'
 import { createFilesWire } from './files.ts'
 import type { WorkspaceFilesWire } from './files.ts'
 import { createPluginsWire, createPresetsWire } from './presets.ts'
 import type { PluginsWire, PresetsWire } from './presets.ts'
+import { createModelsWire } from './models.ts'
+import type { ModelsWire } from './models.ts'
 import { installStyles } from '../ui/tokens.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 
@@ -65,6 +67,8 @@ export interface Dsh {
   files: WorkspaceFilesWire | null
   /** Agent-preset roster and authoring (see dsh/presets.ts). */
   presets: PresetsWire
+  /** Provider / model wire (see dsh/models.ts). */
+  models: ModelsWire
   /**
    * Loader inventory. Mutable and initially null: the typed Remote namespace
    * mounts asynchronously, and gating the frame's root registration on it
@@ -106,6 +110,7 @@ export function createDsh(ctx: ClientContext, connection: ConnectionHandle): Dsh
   const dsh: DshInternal = {
     sessions: ctx.sessions,
     workspaces: ctx.workspaces,
+    models: createModelsWire(connection.api),
     files: createFilesWire(connection.rpc),
     presets: createPresetsWire(connection.api),
     plugins: null,
@@ -163,36 +168,21 @@ export const FRAME_SLOT_MAP = {
  */
 export const ROOT_PRIORITY = -1
 
-/**
- * Shadow rank under the official column occupants' default 0. ui-sidebar and
- * ui-conversation still register; the lowest priority renders, so DeepBuddy's
- * columns win while every service behind the official ones stays alive.
- */
-export const OCCUPANT_SHADOW_PRIORITY = -1
 
 /** The settings namespace whose document motion the roster follows. */
 const PRESET_SETTINGS_NS = 'agent-presets'
 
 /**
  * Mount every DSH-facing service this distribution owns, each riding its own
- * effect at PLUGIN scope. The layout face, the theme presenter and the styles
- * are the disabled ui-layout row's former duties; the Remote plane rides
- * sub-scopes so a deployment without api-remotes still gets a UI.
+ * effect at PLUGIN scope. The theme presenter and the styles are the disabled
+ * ui-layout row's former duties; the layout face (`ctx.layout`) no longer has
+ * a cordis consumer once ui-sidebar / ui-conversation are disabled, so it is
+ * dropped with them. The Remote plane rides sub-scopes so a deployment
+ * without api-remotes still gets a UI.
  * @param ctx - the client root context.
  * @param dsh - the fiber's wire bundle (its roster listeners are fired here).
- * @param layout - the fiber's layout store, whose face serves `ctx.layout`.
  */
 export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: LayoutStore): void {
-  // `ctx.layout` before the registrations: ui-sidebar injects it, and the
-  // official occupants' apply worlds must find a face where ui-layout's used
-  // to be. Provided from the plugin body, so it is live before any entry
-  // renders — no store to attach, no wiring hook to wait for.
-  ctx.effect(() => {
-    const disposeService = ctx.reflect.provide('layout', layout.layoutFace() as ILayout)
-    // provide()'s disposer settles asynchronously; teardown is synchronous
-    // fire-and-forget, as in the official plugin.
-    return () => { void disposeService() }
-  }, 'deepbuddy: layout service')
 
   // Theme presentation: pure DOM writes from resolved snapshots — initial
   // state through the getter once, then event-driven only.

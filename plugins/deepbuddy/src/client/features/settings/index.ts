@@ -5,5 +5,6 @@ import { SettingsApp, SettingsDialog } from './SettingsApp.tsx'
 
 export { SettingsApp, SettingsDialog }
 export { ModesPage } from './ModesPage.tsx'
+export { ModelsPage } from './ModelsPage.tsx'
 export { PluginsPage } from './PluginsPage.tsx'
 export { SettingsStore } from './store.ts'

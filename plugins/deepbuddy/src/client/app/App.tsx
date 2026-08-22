@@ -12,8 +12,9 @@
  */
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, OCCUPANT_SHADOW_PRIORITY, ROOT_PRIORITY } from '../dsh/adapter.ts'
+import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY } from '../dsh/adapter.ts'
 import { PresetPlane } from '../dsh/presets.ts'
+import { ModelsPlane } from '../dsh/models.ts'
 import { LayoutStore } from '../shell/layout-store.ts'
 import { DeepBuddyMain, DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
 import { ConversationStore } from '../features/conversation/index.ts'
@@ -51,7 +52,8 @@ export function apply(ctx: ClientContext): void {
   const conversation = new ConversationStore(dsh)
   const files = new FilesStore(dsh)
   const settings = new SettingsStore(dsh, presets)
-  const deps: AppDeps = { dsh, layout, presets, conversation, files, settings }
+  const models = new ModelsPlane(dsh)
+  const deps: AppDeps = { dsh, layout, presets, conversation, models, files, settings }
 
   // The DSH-facing services and the layout store's own lifecycle: the
   // `ctx.layout` face, the theme presenter, the stylesheet, the Remote-plane
@@ -76,9 +78,9 @@ export function apply(ctx: ClientContext): void {
   // ── the containers ────────────────────────────────────────────────────────
   //
   // The root registration re-declares the official frame slots from
-  // dsh/adapter.ts; the sidebar and main columns shadow the official
-  // occupants per-slot (lowest priority renders) so every service behind the
-  // official surfaces stays alive.
+  // dsh/adapter.ts. ui-sidebar and ui-conversation are disabled (their rows
+  // injected the now-absent layout service), so these are the only sidebar /
+  // conversation occupants — no shadow priority is needed.
 
   ctx.effect(
     () => ctx.slots.register({
@@ -92,7 +94,6 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => ctx.slots.register({
       name: 'sidebar',
-      priority: OCCUPANT_SHADOW_PRIORITY,
     }, DeepBuddySidebar),
     'deepbuddy: sidebar column',
   )
@@ -100,8 +101,8 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => ctx.slots.register({
       name: 'conversation',
-      priority: OCCUPANT_SHADOW_PRIORITY,
     }, DeepBuddyMain),
     'deepbuddy: main column',
   )
 }
+

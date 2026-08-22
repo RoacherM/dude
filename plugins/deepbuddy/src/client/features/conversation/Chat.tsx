@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PresetPlane } from '../../dsh/presets.ts'
+import type { ModelsPlane } from '../../dsh/models.ts'
 import type {
   AssistantNode, ChatNode, Conversation, ConversationNode, RunningToolCall, ToolResultNode, WorkspaceView, WorkspaceId,
 } from '../../dsh/adapter.ts'
@@ -602,6 +603,52 @@ function ModeChip({ store, plane }: { store: ConversationStore; plane: PresetPla
   )
 }
 
+/*
+ * The composer's model chip. Reads the session's model directory through the
+ * shared models plane and submits through `selectSession`, which the host
+ * applies to the session's live selection (mid-session included — the API
+ * resolves the route and sets `selectionFor(agent).current` directly), so the
+ * chip is editable whether the session is blank or already started.
+ */
+function ModelChip({ store, models }: { store: ConversationStore; models: ModelsPlane }): ReactNode {
+  const sessionId = store.state.list?.current
+  useEffect(() => {
+    if (sessionId === undefined) return
+    void models.loadSession(sessionId)
+  }, [models, sessionId])
+  useStore(models)
+  const dir = sessionId === undefined ? undefined : models.sessionState(sessionId)
+  const current = dir?.current ?? null
+  if (dir === undefined || current === null) {
+    return dir !== undefined && dir.status === 'loading'
+      ? <KIT.StatusPill tone="neutral" title="模型选择加载中">模型</KIT.StatusPill>
+      : null
+  }
+  const group = dir.groups.find(g => g.id === current.provider) ?? { id: current.provider, name: current.provider, models: [] }
+  const modelOptions = group.models.map(m => ({ id: m.id, label: m.name }))
+  const modelMeta = group.models.find(m => m.id === current.model)
+  const effortOptions = (modelMeta?.reasoning?.efforts ?? []).map(e => ({ id: e.id, label: e.name }))
+  const busy = dir.selecting
+  return (
+    <KIT.Select
+      value={current.model}
+      options={modelOptions.length > 0 ? modelOptions : [{ id: current.model, label: current.model }]}
+      disabled={busy}
+      title={`模型 · ${current.provider}`}
+      placeholder="选择模型"
+      onChange={(model) => {
+        if (sessionId === undefined) return
+        const effort = effortOptions.find(e => e.id === current.reasoningEffort)?.id
+        void models.selectSession(sessionId, {
+          provider: current.provider,
+          model,
+          ...effort === undefined ? {} : { reasoningEffort: effort },
+        })
+      }}
+    />
+  )
+}
+
 function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -688,7 +735,7 @@ function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
   )
 }
 
-function Composer({ store, plane, dockOpen }: { store: ConversationStore; plane: PresetPlane; dockOpen: boolean }): ReactNode {
+function Composer({ store, plane, models, dockOpen }: { store: ConversationStore; plane: PresetPlane; models: ModelsPlane; dockOpen: boolean }): ReactNode {
   const s = store.state
   const running = s.conv?.running === true
   const errorText = s.sendError
@@ -719,6 +766,7 @@ function Composer({ store, plane, dockOpen }: { store: ConversationStore; plane:
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
           <WorkspaceChip store={store} />
+          <ModelChip store={store} models={models} />
           <ModeChip store={store} plane={plane} />
           <span style={{ marginLeft: 'auto' }} />
           {running && (
@@ -762,7 +810,7 @@ function Hero({ store, plane, dockOpen }: { store: ConversationStore; plane: Pre
  * an effect, never in the body: setTitle writes layout state.
  */
 export function ChatView(): ReactNode {
-  const { conversation, layout, presets } = useAppDeps()
+  const { conversation, layout, presets, models } = useAppDeps()
   useStore(conversation)
   useLayoutStore(layout)
   const summary = conversation.currentSummary
@@ -799,7 +847,7 @@ export function ChatView(): ReactNode {
         <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
           <Hero store={conversation} plane={presets} dockOpen={dockOpen} />
           <div style={{ marginTop: 28 }}>
-            <Composer store={conversation} plane={presets} dockOpen={dockOpen} />
+            <Composer store={conversation} plane={presets} models={models} dockOpen={dockOpen} />
           </div>
         </div>
       </div>
@@ -819,7 +867,7 @@ export function ChatView(): ReactNode {
         <Stream store={conversation} dockOpen={dockOpen} />
       </div>
       <div style={{ flex: '0 0 auto', padding: '0 32px' }}>
-        <Composer store={conversation} plane={presets} dockOpen={dockOpen} />
+        <Composer store={conversation} plane={presets} models={models} dockOpen={dockOpen} />
       </div>
     </div>
   )
