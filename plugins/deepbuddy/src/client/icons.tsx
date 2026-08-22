@@ -53,14 +53,6 @@ export const PanelLeft = (p: IconProps): ReactNode =>
 export const PanelRight = (p: IconProps): ReactNode =>
   svg(<><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M14.5 4v16" /></>, p)
 
-/** Grow a panel to the full window. */
-export const Expand = (p: IconProps): ReactNode =>
-  svg(<><path d="M14 4h6v6" /><path d="M10 20H4v-6" /><path d="M20 4l-7 7" /><path d="M4 20l7-7" /></>, p)
-
-/** Return a maximized panel to its share. */
-export const Collapse = (p: IconProps): ReactNode =>
-  svg(<><path d="M20 10h-6V4" /><path d="M4 14h6v6" /><path d="M14 10l6-6" /><path d="M10 14l-6 6" /></>, p)
-
 // ── navigation ──────────────────────────────────────────────────────────────
 
 /** New thread. */

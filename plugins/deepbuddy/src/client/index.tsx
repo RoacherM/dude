@@ -8,7 +8,7 @@
  * child slots, the `ctx.layout` service and the theme presenter. Slot
  * declaration admits exactly one declarer, which is why the takeover is
  * all-or-nothing — and why those four seats are re-declared with the official
- * names, kinds and scopes, and actually rendered (design/LAW.md COMPAT-1). That is
+ * names, kinds and scopes, and actually rendered (deepbuddy-design-current/ARCHITECTURE.md §4). That is
  * what keeps `shell.overlay` (and the official workspace drawer that lands in
  * it) lit.
  *
@@ -177,10 +177,9 @@ export function apply(ctx: ClientContext): void {
         'conversation': { kind: 'single', scope: 'session-maybe' },
         'details': { kind: 'single', scope: 'session' },
         'shell.overlay': { kind: 'list', scope: 'root' },
-        // DeepBuddy's two root-level seats — both drawn by the chrome itself,
-        // and both open to the application ring.
+        // DeepBuddy's root-level dock seat, drawn by the chrome itself and
+        // open to the application ring.
         'dbdy.dock.pane': { kind: 'list', scope: 'root', inject: frame.dockPaneFace },
-        'dbdy.settings.page': { kind: 'list', scope: 'root', inject: frame.seatFace },
       },
     }, createChrome(frame, slots)),
     'deepbuddy: root chrome',
@@ -204,6 +203,7 @@ export function apply(ctx: ClientContext): void {
       priority: OCCUPANT_SHADOW_PRIORITY,
       children: {
         'dbdy.main.view': { kind: 'list', scope: 'session-maybe', inject: frame.seatFace },
+        'dbdy.settings.page': { kind: 'list', scope: 'session-maybe', inject: frame.seatFace },
       },
     }, createMain(frame, slots)),
     'deepbuddy: main container',

@@ -50,6 +50,7 @@ test('host half registers the file service and its two endpoints', async () => {
 test('client bundle self-registers under the package name', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   assert.ok(bundle.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-deepbuddy"'))
+  assert.doesNotMatch(bundle, /\bmaximized\b/, 'obsolete dock-maximized state is absent')
   // The factory footer sits ahead of esbuild's trailing sourcemap comment.
   const tail = bundle.replace(/\/\/# sourceMappingURL=\S*\s*$/, '').trimEnd()
   assert.ok(tail.endsWith('return module.exports; } });'))
@@ -127,7 +128,7 @@ test('client bundle declares the dbdy.* seat contract at its renderers', async (
   // have to DRAW a title — which lives in the list `label` or nowhere.
   const SEATS = {
     'dbdy.dock.pane': 'list", scope: "root", inject: frame.dockPaneFace',
-    'dbdy.settings.page': 'list", scope: "root", inject: frame.seatFace',
+    'dbdy.settings.page': 'list", scope: "session-maybe", inject: frame.seatFace',
     'dbdy.sidebar.nav': 'list", scope: "root", inject: frame.seatFace',
     'dbdy.sidebar.section': 'list", scope: "root", inject: frame.seatFace',
     'dbdy.main.view': 'list", scope: "session-maybe", inject: frame.seatFace',
@@ -145,7 +146,7 @@ test('client bundle declares the dbdy.* seat contract at its renderers', async (
   // must actually carry it.
   assert.match(bundle, /seatFace = Object\.freeze\(\{\s*\n?\s*ui: KIT/)
   // ...and it must carry verbs only. A geometry setter here would make the
-  // layout-sovereignty rule (design/LAW.md LAYOUT-1) unenforceable.
+  // layout-sovereignty rule (deepbuddy-design-current/DEVELOPMENT_RULES.md §4) unenforceable.
   // (`\b` matters: the kernel's own resetDockWidth is not a seat verb.)
   assert.doesNotMatch(bundle, /\bsetDockWidth|\bsetSidebarWidth|\bsetColumnWidth/)
 })

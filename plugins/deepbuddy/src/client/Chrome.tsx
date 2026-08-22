@@ -1,6 +1,6 @@
 /**
  * The layout kernel's rendered surfaces: the window box, the two drag handles,
- * the dock column, and the full-window settings shell.
+ * the dock column.
  *
  * Everything here draws frame — grounds, columns, top bars, seams — and
  * dispatches into a `dbdy.*` seat for the content. There is no business data
@@ -9,17 +9,16 @@
  *
  * The official frame contract (sidebar / conversation / details / shell.overlay)
  * is rendered here too, because the root registration re-declares it in the
- * disabled ui-layout row's place (design/LAW.md COMPAT-1).
+ * disabled ui-layout row's place (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
 import type { CSSProperties, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
-import type { LayoutController, SeatEntry, SlotReader } from './frame.ts'
+import type { LayoutController, SlotReader } from './frame.ts'
 import { pickEntry, useFrame, useSeatEntries } from './frame.ts'
-import { SETTINGS_GROUPS } from './seats.ts'
 import { KIT } from './kit.tsx'
 import { METRICS } from './styles.ts'
-import { ArrowLeft, Close, Collapse, Expand, Explorer, Globe, PanelRight, Terminal } from './icons.tsx'
+import { Close, Explorer, Globe, PanelRight, Terminal } from './icons.tsx'
 
 /** Details column width when `ctx.layout` opens it (ui-layout's DETAILS_DEFAULT). */
 const DETAILS_WIDTH = 480
@@ -135,11 +134,6 @@ function Dock({ frame, slots, renderSlot }: {
       }}
     >
       <TopBar pad={10}>
-        {s.maximized && (
-          <div style={{ ...NO_DRAG, display: 'flex', alignItems: 'center', paddingRight: 6 }}>
-            <TrafficLights />
-          </div>
-        )}
         {/* A segmented control with one segment is a label wearing a choice's
             clothes. Below two panes the dock states which pane it is. */}
         {panes.length > 1
@@ -162,15 +156,9 @@ function Dock({ frame, slots, renderSlot }: {
               {PANE_ICON[active.id]?.({ size: 14 })}
               {active.label ?? active.id}
             </span>
-          )}
+        )}
         <span style={{ marginLeft: 'auto' }} />
         <div style={{ ...NO_DRAG, display: 'flex', gap: 2 }}>
-          <KIT.IconButton
-            title={s.maximized ? '还原停靠栏' : '最大化停靠栏'}
-            onClick={frame.toggleMax}
-          >
-            {s.maximized ? <Collapse size={15} /> : <Expand size={15} />}
-          </KIT.IconButton>
           <KIT.IconButton title="关闭停靠栏" onClick={frame.closeDock}>
             <PanelRight size={15} />
           </KIT.IconButton>
@@ -247,110 +235,11 @@ function Dock({ frame, slots, renderSlot }: {
   )
 }
 
-// ── settings ────────────────────────────────────────────────────────────────
-
-/** Group one settings page id by its `<group>/<page>` prefix. */
-function groupOf(id: string): string {
-  const at = id.indexOf('/')
-  return at < 0 ? '' : id.slice(0, at)
-}
-
-/**
- * The settings shell: a full-window surface over the app, 268px rail plus an
- * 820px content column.
- *
- * Full-window rather than a dialog because settings is a place, not a
- * confirmation — the handoff reserves the centered modal for destructive
- * confirmations, and a settings dialog would be the one modal users keep open.
- */
-function Settings({ frame, slots, renderSlot }: {
-  frame: LayoutController
-  slots: SlotReader
-  renderSlot: PropsRenderSlots<'dbdy.settings.page'>['renderSlot']
-}): ReactNode {
-  const pages = useSeatEntries(slots, 'dbdy.settings.page')
-  const active = pickEntry(pages, frame.state.settings)
-  const groups = SETTINGS_GROUPS
-    .map(g => ({ ...g, rows: pages.filter(p => groupOf(p.id) === g.prefix) }))
-    .filter(g => g.rows.length > 0)
-  // A page whose id carries no known prefix still has to be reachable.
-  const loose = pages.filter(p => !SETTINGS_GROUPS.some(g => g.prefix === groupOf(p.id)))
-  return (
-    <div
-      className="dbdy-fade"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        zIndex: 55,
-        display: 'flex',
-        background: 'var(--db-window)',
-      }}
-    >
-      <aside style={{
-        flex: `0 0 ${METRICS.sidebar}px`,
-        width: METRICS.sidebar,
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--db-rail)',
-        borderRight: '1px solid var(--db-line)',
-      }}
-      >
-        <TopBar pad={12}>
-          <div style={{ ...NO_DRAG, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrafficLights />
-            <KIT.IconButton title="返回" onClick={frame.closeSettings}>
-              <ArrowLeft size={16} />
-            </KIT.IconButton>
-          </div>
-          <span style={{ fontSize: 13.5, color: 'var(--db-text)' }}>设置</span>
-        </TopBar>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', padding: '10px 10px 16px' }}>
-          {groups.map(g => (
-            <div key={g.prefix} style={{ paddingBottom: 10 }}>
-              <KIT.GroupLabel>{g.label}</KIT.GroupLabel>
-              {g.rows.map(row => <RailRow key={row.id} frame={frame} row={row} active={row.id === active?.id} />)}
-            </div>
-          ))}
-          {loose.map(row => <RailRow key={row.id} frame={frame} row={row} active={row.id === active?.id} />)}
-        </div>
-      </aside>
-
-      <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        <TopBar pad={16}>
-          <span style={{ fontSize: 13.5, color: 'var(--db-text)' }}>{active?.label ?? ''}</span>
-          <span style={{ marginLeft: 'auto' }} />
-          <div style={NO_DRAG}>
-            <KIT.IconButton title="关闭设置" onClick={frame.closeSettings}>
-              <Close size={15} />
-            </KIT.IconButton>
-          </div>
-        </TopBar>
-        <div style={{ flex: '1 1 auto', overflowY: 'auto', userSelect: 'text' }}>
-          <div style={{ maxWidth: METRICS.settingsColumn, padding: '28px 32px 48px' }}>
-            {renderSlot('dbdy.settings.page', {}, {
-              ...active === undefined ? {} : { only: active.id },
-              fallback: <KIT.EmptyState>没有装配任何设置页。</KIT.EmptyState>,
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function RailRow({ frame, row, active }: { frame: LayoutController; row: SeatEntry; active: boolean }): ReactNode {
-  return (
-    <KIT.Row current={active} onClick={() => { frame.openSettings(row.id) }}>
-      {row.label ?? row.id}
-    </KIT.Row>
-  )
-}
-
 // ── the root occupant ───────────────────────────────────────────────────────
 
-/** The root chrome's render share: the official four plus our two root seats. */
+/** The root chrome's render share: the official four plus the dock seat. */
 type ChromeProps = PropsRenderSlots<
-  'sidebar' | 'conversation' | 'details' | 'shell.overlay' | 'dbdy.dock.pane' | 'dbdy.settings.page'
+  'sidebar' | 'conversation' | 'details' | 'shell.overlay' | 'dbdy.dock.pane'
 >
 
 /**
@@ -363,9 +252,6 @@ export function createChrome(frame: LayoutController, slots: SlotReader): (props
   return function DeepBuddyChrome({ renderSlot }: ChromeProps): ReactNode {
     useFrame(frame)
     const s = frame.state
-    // A maximized dock takes the window: the other columns unmount rather than
-    // being squeezed, and the dock grows its own traffic-light strip.
-    const framed = !(s.dock && s.maximized)
     return (
       <div
         className="dbdy"
@@ -382,7 +268,7 @@ export function createChrome(frame: LayoutController, slots: SlotReader): (props
           userSelect: 'none',
         }}
       >
-        {framed && s.sidebar && (
+        {s.sidebar && (
           <>
             {/* DeepBuddy unmounts the column instead of keeping the official
                 compact rail, so `collapsed` is false wherever this runs.
@@ -392,12 +278,10 @@ export function createChrome(frame: LayoutController, slots: SlotReader): (props
             <Handle onDown={frame.startSideDrag} onReset={frame.resetSideWidth} title="拖拽调整侧栏宽度 · 双击重置" />
           </>
         )}
-        {framed && renderSlot('conversation', {})}
+        {renderSlot('conversation', {})}
         {s.dock && (
           <>
-            {!s.maximized && (
-              <Handle onDown={frame.startDockDrag} onReset={frame.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />
-            )}
+            <Handle onDown={frame.startDockDrag} onReset={frame.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />
             <Dock frame={frame} slots={slots} renderSlot={renderSlot} />
           </>
         )}
@@ -415,7 +299,6 @@ export function createChrome(frame: LayoutController, slots: SlotReader): (props
         </div>
         {/* Frame-wide floating layer: click-through, entries opt back in. */}
         <div className="dbdy-overlay">{renderSlot('shell.overlay', {})}</div>
-        {s.settings !== null && <Settings frame={frame} slots={slots} renderSlot={renderSlot} />}
       </div>
     )
   }

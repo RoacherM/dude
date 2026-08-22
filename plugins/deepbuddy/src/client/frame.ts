@@ -37,7 +37,6 @@ export class LayoutController {
     sidebar: true,
     dock: false,
     pane: null,
-    maximized: false,
     settings: null,
     title: null,
     tabs: {},
@@ -60,8 +59,6 @@ export class LayoutController {
 
   /** A hand-closed dock stays closed when the window grows back. */
   private userClosedDock = false
-  /** Dock width remembered across a maximize round trip. */
-  private savedDockWidth = ''
 
   // ── store plumbing ────────────────────────────────────────────────────────
 
@@ -112,7 +109,7 @@ export class LayoutController {
   private onResize = (): void => {
     const vw = window.innerWidth
     if (this.state.dock && (vw < DOCK_BREAKPOINT || !dockFits(vw, this.sideWidth()))) {
-      this.patch({ dock: false, maximized: false })
+      this.patch({ dock: false })
     }
     if (vw < SIDEBAR_BREAKPOINT && this.state.sidebar) this.patch({ sidebar: false })
     this.clampDockWidth()
@@ -151,7 +148,7 @@ export class LayoutController {
   /** Hold the dock inside its range after the window changed size. */
   private clampDockWidth(): void {
     const el = this.dockRef.current
-    if (el === null || !this.state.dock || this.state.maximized) return
+    if (el === null || !this.state.dock) return
     const now = el.getBoundingClientRect().width
     const next = clampDock(now, window.innerWidth, this.sideWidth())
     if (Math.abs(next - now) > 0.5) this.writeDockWidth(el, next)
@@ -196,7 +193,7 @@ export class LayoutController {
 
   closeDock = (): void => {
     this.userClosedDock = true
-    this.patch({ dock: false, maximized: false })
+    this.patch({ dock: false })
   }
 
   /** The kernel's own dock button; `fallback` is the first registered pane. */
@@ -207,23 +204,6 @@ export class LayoutController {
     }
     const pane = this.state.pane ?? fallback
     if (pane !== undefined) this.openDock(pane)
-  }
-
-  toggleMax = (): void => {
-    const el = this.dockRef.current
-    const goingMax = !this.state.maximized
-    if (el !== null) {
-      if (goingMax) {
-        this.savedDockWidth = el.style.width
-        el.style.flex = '1 1 auto'
-        el.style.width = 'auto'
-      }
-      else {
-        const restored = Number.parseFloat(this.savedDockWidth)
-        this.writeDockWidth(el, Number.isFinite(restored) ? restored : dockDefault(window.innerWidth, this.sideWidth()))
-      }
-    }
-    this.patch({ maximized: goingMax })
   }
 
   /** `null` opens whatever page the rail resolves first. */

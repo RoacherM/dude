@@ -17,7 +17,7 @@
  *
  * Verbs, never geometry. A seat may ASK for the dock to open; it cannot learn
  * or set how wide the dock is, which side it lives on, or what covers what.
- * Layout sovereignty (design/LAW.md LAYOUT-1) stops being a rule people remember
+ * Layout sovereignty (deepbuddy-design-current/DEVELOPMENT_RULES.md §4) stops being a rule people remember
  * and becomes a type error — which is the only form of it that survives a
  * plugin written by a model at 3am.
  *
@@ -54,8 +54,6 @@ export interface LayoutState {
   dock: boolean
   /** Active dock pane key; null while the dock is closed. */
   pane: DockPaneId | null
-  /** Whether the dock covers the whole window. */
-  maximized: boolean
   /** Current settings page key, or null when settings is closed. */
   settings: SettingsPageId | null
   /**
@@ -86,7 +84,7 @@ export interface LayoutVerbs {
   /** Open the dock on one pane (opens the dock when it is closed). */
   openDock(pane: DockPaneId): void
   closeDock(): void
-  /** Open settings on one registered page (settings takes the whole window). */
+  /** Open one registered settings page in the main column. */
   openSettings(page: SettingsPageId): void
   closeSettings(): void
   /**
@@ -332,7 +330,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'dbdy.settings.page': {
       kind: 'list'
-      scope: 'root'
+      scope: 'session-maybe'
       inject: SeatFace
     }
   }

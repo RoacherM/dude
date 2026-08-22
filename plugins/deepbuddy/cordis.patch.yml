@@ -7,7 +7,7 @@
 # This layer applies after @deepseek-ai/dsh-web-app's, so the disable below
 # lands on the roster row that bundle inserted. Removing this plugin from the
 # profile restores the official frame: no official package is forked or
-# edited (design/LAW.md COMPAT-1「换行不改包」).
+# edited (deepbuddy-design-current/ARCHITECTURE.md §4).
 
 # The official layout plugin owns the 'root' slot and DECLARES the four frame
 # child slots ('sidebar' / 'conversation' / 'details' / 'shell.overlay').

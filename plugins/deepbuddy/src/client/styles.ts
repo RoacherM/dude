@@ -32,8 +32,6 @@ export const METRICS = {
   topbar: 52,
   /** macOS traffic-light reservation at the window's left edge. */
   traffic: 88,
-  /** The window strip a maximized dock inserts to keep left edges aligned. */
-  windowStrip: 44,
   /** Sidebar width; it collapses to 0 rather than to an icon rail. */
   sidebar: 268,
   /** Conversation content column — left-aligned, never centered. */
