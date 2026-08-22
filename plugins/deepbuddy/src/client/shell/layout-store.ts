@@ -44,8 +44,6 @@ export interface LayoutState {
   dock: boolean
   /** Active inspector view-type key; null while the dock is closed. */
   pane: string | null
-  /** Whether the settings dialog overlay is open. */
-  settingsOpen: boolean
   /**
    * Whether a non-blank (started) session is the conversation's subject.
    * Contributed by the conversation view (the only workbench app) so the shell
@@ -79,9 +77,8 @@ export class LayoutStore {
     sidebar: true,
     dock: false,
     pane: null,
-    settingsOpen: false,
-    sessionStarted: false,
     title: null,
+    sessionStarted: false,
     tabs: {},
   }
 
@@ -153,18 +150,14 @@ export class LayoutStore {
 
   private onKeyDown = (e: KeyboardEvent): void => {
     if (!(e.metaKey || e.ctrlKey)) return
-    // ⌘J toggles the dock; ⌘, opens settings. The handoff's other shortcuts
-    // (⌘K, ⌘N, ⌘T) belong to surfaces the store does not own. Esc is handled
-    // by the floating layers themselves (DESIGN_INTENT §12: Popover first,
-    // then Dialog) — the shell never swallows it.
+    // ⌘J toggles the dock. The handoff's other shortcuts (⌘K, ⌘N, ⌘T, ⌘,)
+    // belong to surfaces the store does not own — settings is now the
+    // official slot's own trigger. Esc is handled by the floating layers
+    // themselves (DESIGN_INTENT §12: Popover first, then Dialog) — the shell
+    // never swallows it.
     if (e.key === 'j') {
       e.preventDefault()
       this.toggleDock()
-    }
-    else if (e.key === ',') {
-      e.preventDefault()
-      if (this.state.settingsOpen) this.closeSettings()
-      else this.openSettings()
     }
   }
 
@@ -200,7 +193,7 @@ export class LayoutStore {
     // own (or falls back to its catalog title). The started-session fact also
     // belongs to the conversation view, so clearing it here keeps the dock
     // rule from leaking across apps.
-    this.patch({ view, settingsOpen: false, sessionStarted: false, title: null })
+    this.patch({ view, sessionStarted: false, title: null })
   }
 
   /** Contribute the main top bar's title. Call it from an effect, never from
@@ -245,15 +238,6 @@ export class LayoutStore {
     if (pane !== undefined) this.openDock(pane)
   }
 
-  /** Open the settings dialog overlay. The main column keeps its current
-   *  surface — settings is never a workbench page (wave 4 §5). */
-  openSettings = (): void => {
-    this.patch({ settingsOpen: true })
-  }
-
-  closeSettings = (): void => {
-    this.patch({ settingsOpen: false })
-  }
 
   /**
    * Contribute whether the conversation's subject is a started (non-blank)

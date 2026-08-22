@@ -111,6 +111,9 @@ export const Close = (p: IconProps): ReactNode =>
 export const Check = (p: IconProps): ReactNode =>
   svg(<path d="M5.5 12.5l4.2 4.2 8.8-9.4" />, p)
 
+export const Shield = (p: IconProps): ReactNode =>
+  svg(<><path d="M12 3.4l7 2.4v5.4c0 4.5-3 8.4-7 9.4-4-1-7-4.9-7-9.4V5.8z" /><path d="M9.2 11.8l2 2 3.6-4" /></>, p)
+
 export const ArrowUp = (p: IconProps): ReactNode =>
   svg(<path d="M12 19V5.6M6 11.4l6-6 6 6" />, p)
 

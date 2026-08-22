@@ -14,6 +14,7 @@
  * here derives from `ClientContext` instead of naming runtime exports, which
  * keeps the plugin compiling across harness release drift.
  */
+import type { ReactNode } from 'react'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: ui-layout's SlotMap merge names the four frame child slots
@@ -26,8 +27,6 @@ import { createFilesWire } from './files.ts'
 import type { WorkspaceFilesWire } from './files.ts'
 import { createPluginsWire, createPresetsWire } from './presets.ts'
 import type { PluginsWire, PresetsWire } from './presets.ts'
-import { createModelsWire } from './models.ts'
-import type { ModelsWire } from './models.ts'
 import { installStyles } from '../ui/tokens.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 
@@ -67,8 +66,6 @@ export interface Dsh {
   files: WorkspaceFilesWire | null
   /** Agent-preset roster and authoring (see dsh/presets.ts). */
   presets: PresetsWire
-  /** Provider / model wire (see dsh/models.ts). */
-  models: ModelsWire
   /**
    * Loader inventory. Mutable and initially null: the typed Remote namespace
    * mounts asynchronously, and gating the frame's root registration on it
@@ -110,7 +107,6 @@ export function createDsh(ctx: ClientContext, connection: ConnectionHandle): Dsh
   const dsh: DshInternal = {
     sessions: ctx.sessions,
     workspaces: ctx.workspaces,
-    models: createModelsWire(connection.api),
     files: createFilesWire(connection.rpc),
     presets: createPresetsWire(connection.api),
     plugins: null,
@@ -160,6 +156,45 @@ export const FRAME_SLOT_MAP = {
   'details': { kind: 'single', scope: 'session' },
   'shell.overlay': { kind: 'list', scope: 'root' },
 } as const
+
+/**
+ * The child slots DeepBuddy's own column occupants declare, re-declared
+ * verbatim from the disabled `ui-sidebar` / `ui-conversation` rows. The two
+ * disabled rows were the declarers of these slots; with them gone, the
+ * official ecosystem registrants (settings-general, model-selection,
+ * attachment) park on `slots.inject` until a declarer appears — so DeepBuddy
+ * must declare them and render them, exactly like the frame contract above.
+ *
+ * Declaring a slot here is the exclusive render authority for it; any seat
+ * the official column used to open stays open across the takeover.
+ */
+export const SIDEBAR_SLOT_MAP = {
+  'sidebar.settings': { kind: 'single', scope: 'root' },
+} as const
+
+/**
+ * The conversation input slots DeepBuddy's composer declares so the official
+ * composer seats (model, attachments, plan) can mount. `conversation.input.*`
+ * was declared by the disabled ui-conversation row; each registrant's inject
+ * factory resolves the per-session directory and the owner share passes only
+ * the seat-lock truth.
+ */
+export const CONVERSATION_INPUT_SLOT_MAP = {
+  'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
+  'conversation.input.plan': { kind: 'single', scope: 'session' },
+  'conversation.input.model': { kind: 'single', scope: 'session' },
+} as const
+
+/** The conversation input slot keys DeepBuddy's composer declares and renders. */
+export type ConversationInputSlotKey = keyof typeof CONVERSATION_INPUT_SLOT_MAP
+
+/**
+ * The runtime render-slot face DeepBuddy's column occupants receive for their
+ * declared child slots. Untyped per-key (the SlotMap type-merge for the
+ * disabled `conversation.input.*` seats is not in this bundle's type graph),
+ * but the owner object is whatever the official registrant's slot declares.
+ */
+export type RenderSlot = (key: string, owner: Record<string, unknown>) => ReactNode
 
 /**
  * Root rank. The official frame's row is disabled, so nothing contests this

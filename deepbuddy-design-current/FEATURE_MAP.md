@@ -32,10 +32,12 @@
 └── 左列开关
 
 功能区
-├── 对话入口 + 新建 Session
-├── Session List
-├── Workspace / Space（有真实需求再加入）
-└── Settings
+├── 「新建任务」全宽主按钮（边框卡片，替换原「对话」行）
+├── 「工作空间」区：区头（搜索 + 添加工作空间）、按会话分组的空间行（可折叠）
+│   ├── 默认每组最多 5 条会话
+│   ├── 多出的收进「显示更多会话」展开行
+│   └── 无所属空间的会话归入「未分组」
+└── Settings（官方 `sidebar.settings` 槽触发行）
 ```
 
 ### Session List
@@ -46,16 +48,15 @@
 - 运行状态；
 - 最近更新时间；
 - 点击打开；
-- New Session；
+- 新建任务；
+- 工作空间分组（每空间默认 5 条 + 「显示更多」）；
 - Loading / Empty / Error。
 
 当前不做：
 
 - 动态 Widget 注册；
 - 行级统一 Placement；
-- 搜索 / 筛选工具栏（Session 量真实增长后再加）；
 - 第三方 Sidebar Contribution。
-
 ---
 
 ## 3. Workbench

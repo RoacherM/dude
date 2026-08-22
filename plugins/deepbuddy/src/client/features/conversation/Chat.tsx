@@ -12,19 +12,24 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PresetPlane } from '../../dsh/presets.ts'
-import type { ModelsPlane } from '../../dsh/models.ts'
+import type { RenderSlot } from '../../dsh/adapter.ts'
 import type {
   AssistantNode, ChatNode, Conversation, ConversationNode, RunningToolCall, ToolResultNode, WorkspaceView, WorkspaceId,
 } from '../../dsh/adapter.ts'
 import { basename, textOfParts, workspaceOf } from '../../dsh/adapter.ts'
 import { canSelectPreset, defaultPresetId, presetLabel, selectablePresets } from '../../dsh/presets.ts'
-import { useStore } from '../../dsh/hooks.ts'
+import { useSnapshot, useStore } from '../../dsh/hooks.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { useLayoutStore } from '../../shell/layout-store.ts'
 import { KIT } from '../../ui/kit.tsx'
 import { METRICS } from '../../ui/tokens.ts'
-import { ArrowUp, ChevronDown, ChevronUp, Compose, Folder, Plus, Stop } from '../../ui/icons.tsx'
+import { ArrowUp, Check, ChevronDown, ChevronUp, Compose, Folder, Plus, Shield, Stop } from '../../ui/icons.tsx'
 import type { ConversationStore } from './store.ts'
+
+/** A never-changing no-op observable: the permission chip's hard anchor for
+ *  stable hook order before a session's permission face exists. */
+const EMPTY_SNAPSHOT = { getSnapshot: () => undefined, subscribe: () => () => {} }
+
 
 /** The app's catalog id; the shell resolves it through WORKBENCH_APPS. */
 export const CONVERSATION_APP_ID = 'chat'
@@ -602,53 +607,6 @@ function ModeChip({ store, plane }: { store: ConversationStore; plane: PresetPla
     />
   )
 }
-
-/*
- * The composer's model chip. Reads the session's model directory through the
- * shared models plane and submits through `selectSession`, which the host
- * applies to the session's live selection (mid-session included — the API
- * resolves the route and sets `selectionFor(agent).current` directly), so the
- * chip is editable whether the session is blank or already started.
- */
-function ModelChip({ store, models }: { store: ConversationStore; models: ModelsPlane }): ReactNode {
-  const sessionId = store.state.list?.current
-  useEffect(() => {
-    if (sessionId === undefined) return
-    void models.loadSession(sessionId)
-  }, [models, sessionId])
-  useStore(models)
-  const dir = sessionId === undefined ? undefined : models.sessionState(sessionId)
-  const current = dir?.current ?? null
-  if (dir === undefined || current === null) {
-    return dir !== undefined && dir.status === 'loading'
-      ? <KIT.StatusPill tone="neutral" title="模型选择加载中">模型</KIT.StatusPill>
-      : null
-  }
-  const group = dir.groups.find(g => g.id === current.provider) ?? { id: current.provider, name: current.provider, models: [] }
-  const modelOptions = group.models.map(m => ({ id: m.id, label: m.name }))
-  const modelMeta = group.models.find(m => m.id === current.model)
-  const effortOptions = (modelMeta?.reasoning?.efforts ?? []).map(e => ({ id: e.id, label: e.name }))
-  const busy = dir.selecting
-  return (
-    <KIT.Select
-      value={current.model}
-      options={modelOptions.length > 0 ? modelOptions : [{ id: current.model, label: current.model }]}
-      disabled={busy}
-      title={`模型 · ${current.provider}`}
-      placeholder="选择模型"
-      onChange={(model) => {
-        if (sessionId === undefined) return
-        const effort = effortOptions.find(e => e.id === current.reasoningEffort)?.id
-        void models.selectSession(sessionId, {
-          provider: current.provider,
-          model,
-          ...effort === undefined ? {} : { reasoningEffort: effort },
-        })
-      }}
-    />
-  )
-}
-
 function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -734,10 +692,103 @@ function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
     </KIT.Popover>
   )
 }
-
-function Composer({ store, plane, models, dockOpen }: { store: ConversationStore; plane: PresetPlane; models: ModelsPlane; dockOpen: boolean }): ReactNode {
+/**
+ * The composer's permission chip: the session-level access preset. Reads the
+ * session's `permissions` projection (host-computed from the preset / sandbox
+ * / approval knobs) and applies a switch through the session's `/permission`
+ * command — the exact official mechanism ui-conversation uses. The `custom`
+ * option is display-only, never a target (it means the knobs match no preset).
+ */
+/** Same label rule as official ui-conversation: the full-access preset keeps
+ *  the product label; other machine-name presets are title-cased for display. */
+function permissionLabel(option: { value: string; name: string }): string {
+  if (option.value === 'danger-full-access') return 'Full access'
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(option.name)) return option.name
+  return option.name.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+}
+function PermissionChip({ store }: { store: ConversationStore }): ReactNode {
+  const [open, setOpen] = useState(false)
+  const s = store.state
+  const sessionId = s.list?.current
+  const face = sessionId === undefined ? undefined : store.dsh.sessions.binding(sessionId)?.session
+  const projectionFace = face?.projections.faceOf('permissions')
+  // `faceOf` always returns a face (absence is an undefined snapshot, never a
+  // missing face) once a session exists, but before one does the face is
+  // absent too. To keep hook order stable across that transition, bind a
+  // constant never-changing source when there is no live face.
+  const source = projectionFace ?? EMPTY_SNAPSHOT
+  const rawValue = useSnapshot(source as never) as {
+    options: readonly { value: string; name: string; description?: string }[]
+    currentValue: string
+  } | undefined
+  if (rawValue === undefined || rawValue.options.length === 0) {
+    // No permission service composed — hide the control rather than fake it.
+    return null
+  }
+  const value = rawValue
+  const current = value.options.find(o => o.value === value.currentValue)
+  const options = value.options.filter(o => o.value !== 'custom')
+  return (
+    <KIT.Popover
+      open={open}
+      onClose={() => { setOpen(false) }}
+      anchor={(
+        <button
+          type="button"
+          title="选择会话权限档"
+          onClick={() => { setOpen(!open) }}
+          className="dbdy-hv-outline"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7, height: 32, padding: '0 11px',
+            borderRadius: 16, border: '1px solid var(--db-line-input)', background: 'transparent',
+            color: 'var(--db-text)', fontSize: 13, cursor: 'pointer',
+            transition: 'background var(--db-tint), border-color var(--db-tint)',
+          }}
+        >
+          <Shield size={13} style={{ flex: '0 0 13px', color: 'var(--db-text-3)' }} />
+          <span style={{ whiteSpace: 'nowrap' }}>{current === undefined ? '权限' : permissionLabel(current)}</span>
+          <ChevronDown size={12} style={{ flex: '0 0 12px', color: 'var(--db-text-3)' }} />
+        </button>
+      )}
+    >
+      <div style={{ minWidth: 220 }}>
+        {options.map(option => (
+          <div
+            key={option.value}
+            onClick={() => {
+              if (face !== undefined && option.value !== value.currentValue) {
+                void (async () => { await face.command(`/permission ${option.value}`) })()
+              }
+              setOpen(false)
+            }}
+            className="dbdy-hv-2"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, minHeight: 34, padding: '6px 10px',
+              borderRadius: 'var(--db-r-swatch)', cursor: 'pointer',
+              background: option.value === value.currentValue ? 'var(--db-fill-5)' : 'transparent',
+              transition: 'background var(--db-tint)',
+            }}
+          >
+            <Shield size={13} style={{ flex: '0 0 13px', color: 'var(--db-text-3)' }} />
+            <span style={{ flex: '1 1 auto', minWidth: 0, fontSize: 13 }}>
+              {permissionLabel(option)}
+            </span>
+            {option.value === value.currentValue && <Check size={13} style={{ color: 'var(--db-text)' }} />}
+          </div>
+        ))}
+      </div>
+    </KIT.Popover>
+  )
+}
+function Composer({ store, plane, dockOpen, renderSlot }: {
+  store: ConversationStore
+  plane: PresetPlane
+  dockOpen: boolean
+  renderSlot?: RenderSlot | undefined
+}): ReactNode {
   const s = store.state
   const running = s.conv?.running === true
+  const locked = running
   const errorText = s.sendError
     ?? (s.conv?.promptError
       ? `${s.conv.promptError.op === 'stop' ? '停止失败' : '发送失败'}：${s.conv.promptError.error.message}`
@@ -758,17 +809,28 @@ function Composer({ store, plane, models, dockOpen }: { store: ConversationStore
           value={s.draft}
           onChange={(e) => { store.patch({ draft: e.target.value }) }}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) store.send() }}
-          placeholder={running ? '正在运行 — 发送将插话引导本回合' : '交代一件事，@ 引用文件，/ 调用技能'}
+          placeholder={running ? '正在运行 — 发送将插话引导本回合' : '描述你想做什么'}
           style={{
             width: '100%', border: 0, background: 'transparent', outline: 'none',
             padding: '13px 12px 9px', fontSize: 14, color: 'var(--db-text)',
           }}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-          <WorkspaceChip store={store} />
-          <ModelChip store={store} models={models} />
-          <ModeChip store={store} plane={plane} />
+          {/* Left chrome: the official `+` attachment seat and the plan seat.
+              The attachments owner is empty until the input hub lands (the
+              official rail renders nothing with no draft images). */}
+          {renderSlot !== undefined && renderSlot('conversation.input.attachments', {
+            attachments: [],
+            canAcceptDrop: false,
+            onAddImages: () => {},
+            onRemoveImage: () => {},
+          })}
+          {renderSlot !== undefined && renderSlot('conversation.input.plan', { locked })}
+          <PermissionChip store={store} />
           <span style={{ marginLeft: 'auto' }} />
+          {/* Right chrome: the official model seat reads the session's live
+              model directory; the send button is DeepBuddy's own. */}
+          {renderSlot !== undefined && renderSlot('conversation.input.model', { locked })}
           {running && (
             <KIT.IconButton title="停止本回合" size={30} onClick={store.stop}>
               <Stop size={14} />
@@ -788,13 +850,24 @@ function Composer({ store, plane, models, dockOpen }: { store: ConversationStore
     </div>
   )
 }
-
+/**
+ * The blank/new-session hero: the DeepBuddy brand + a slogans line, then a
+ * centered row of the workspace and mode chips. On the blank page both chips
+ * are selectable; once a session starts they lock (ModeChip/WorkspaceChip
+ * already encode that rule) and this hero gives way to the message stream.
+ */
 function Hero({ store, plane, dockOpen }: { store: ConversationStore; plane: PresetPlane; dockOpen: boolean }): ReactNode {
   return (
-    <div style={{ ...columnStyle(dockOpen) }}>
-      <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-.02em', color: 'var(--db-text)' }}>今天跑点什么？</div>
-      <div style={{ marginTop: 10, fontSize: 13.5, color: 'var(--db-text-3)', lineHeight: 1.65, maxWidth: '52ch' }}>
-        这是一个本地 harness：会话在这里，运行产物在停靠栏里。
+    <div style={{ ...columnStyle(dockOpen), display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      <div style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-.02em', color: 'var(--db-text)' }}>DeepBuddy</div>
+      <div style={{ marginTop: 10, fontSize: 14, color: 'var(--db-text-3)', lineHeight: 1.65, maxWidth: '52ch' }}>
+        向着未知出发，把每一步都变成脚印。
+      </div>
+      {/* The workspace + mode chip row sits between the hero and the composer,
+          outside the composer box (wave 7 §2). */}
+      <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <WorkspaceChip store={store} />
+        <ModeChip store={store} plane={plane} />
       </div>
       {plane.state.presetError !== null && (
         <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--db-await)' }}>{`模式：${plane.state.presetError}`}</div>
@@ -803,14 +876,9 @@ function Hero({ store, plane, dockOpen }: { store: ConversationStore; plane: Pre
   )
 }
 
-/**
- * The workbench's chat view.
- *
- * The shell draws the top bar; the session's name is ours to contribute. In
- * an effect, never in the body: setTitle writes layout state.
- */
-export function ChatView(): ReactNode {
-  const { conversation, layout, presets, models } = useAppDeps()
+
+export function ChatView({ renderSlot }: { renderSlot?: RenderSlot }): ReactNode {
+  const { conversation, layout, presets } = useAppDeps()
   useStore(conversation)
   useLayoutStore(layout)
   const summary = conversation.currentSummary
@@ -847,7 +915,7 @@ export function ChatView(): ReactNode {
         <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
           <Hero store={conversation} plane={presets} dockOpen={dockOpen} />
           <div style={{ marginTop: 28 }}>
-            <Composer store={conversation} plane={presets} models={models} dockOpen={dockOpen} />
+            <Composer store={conversation} plane={presets} dockOpen={dockOpen} renderSlot={renderSlot} />
           </div>
         </div>
       </div>
@@ -867,19 +935,19 @@ export function ChatView(): ReactNode {
         <Stream store={conversation} dockOpen={dockOpen} />
       </div>
       <div style={{ flex: '0 0 auto', padding: '0 32px' }}>
-        <Composer store={conversation} plane={presets} models={models} dockOpen={dockOpen} />
+        <Composer store={conversation} plane={presets} dockOpen={dockOpen} renderSlot={renderSlot} />
       </div>
     </div>
   )
 }
 /**
- * The chat app's own sidebar row. The row ships with the app, so installing
- * one installs the other — the sidebar never lists a destination that might
- * not be there. The whole row is the new-task entry (wave 4 §2): clicking it
+ * The chat app's own sidebar entry: a full-width 「新建任务」 button. The
+ * action ships with the app, so installing one installs the other — the
+ * sidebar never lists a destination that might not be there. Clicking it
  * (or pressing Enter/Space while focused) opens a fresh task and reveals the
- * conversation it lands in. The row is a button semantically so a keyboard
- * user gets the same action.
- * @param current - whether this app is the main column's selection.
+ * conversation it lands in. A bordered card (ref 10's New Session), not a
+ * rail row, so it reads as the primary action.
+ * @param current - unused; the new-task button is never the active selection.
  */
 export function ChatNav({ current }: { current: boolean }): ReactNode {
   const { conversation, layout } = useAppDeps()
@@ -891,14 +959,20 @@ export function ChatNav({ current }: { current: boolean }): ReactNode {
     conversation.newTask()
   }
   return (
-    <KIT.Row
-      current={current}
-      icon={<Compose size={16} />}
+    <button
+      type="button"
       onClick={newTask}
-      title="新建任务"
-      style={{ cursor: 'pointer' }}
+      className="dbdy-hv-1"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+        height: 40, padding: '0 13px', borderRadius: 'var(--db-r-swatch)',
+        border: '1px solid var(--db-line-card)', background: 'var(--db-fill-2)',
+        color: 'var(--db-text)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+        transition: 'background var(--db-tint), border-color var(--db-tint)',
+      }}
     >
-      对话
-    </KIT.Row>
+      <Compose size={16} style={{ flex: '0 0 16px', color: 'var(--db-text-3)' }} />
+      <span>新建任务</span>
+    </button>
   )
 }

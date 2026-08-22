@@ -10,16 +10,16 @@
  * root/frame takeover (dsh/adapter.ts), which is the DSH boundary and stays
  * (deepbuddy-design-current/ARCHITECTURE.md §3/§4).
  */
+import type { ChildrenDecl } from '@deepseek-ai/dsh-client-ui-slots'
+
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY } from '../dsh/adapter.ts'
+import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY, SIDEBAR_SLOT_MAP, CONVERSATION_INPUT_SLOT_MAP } from '../dsh/adapter.ts'
 import { PresetPlane } from '../dsh/presets.ts'
-import { ModelsPlane } from '../dsh/models.ts'
 import { LayoutStore } from '../shell/layout-store.ts'
 import { DeepBuddyMain, DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
 import { ConversationStore } from '../features/conversation/index.ts'
 import { FilesStore } from '../features/files/index.ts'
-import { SettingsStore } from '../features/settings/index.ts'
 import type { AppDeps } from './context.tsx'
 
 /** Entry name; matches the package name the boot graph addresses. */
@@ -51,9 +51,7 @@ export function apply(ctx: ClientContext): void {
   const presets = new PresetPlane(dsh)
   const conversation = new ConversationStore(dsh)
   const files = new FilesStore(dsh)
-  const settings = new SettingsStore(dsh, presets)
-  const models = new ModelsPlane(dsh)
-  const deps: AppDeps = { dsh, layout, presets, conversation, models, files, settings }
+  const deps: AppDeps = { dsh, layout, presets, conversation, files }
 
   // The DSH-facing services and the layout store's own lifecycle: the
   // `ctx.layout` face, the theme presenter, the stylesheet, the Remote-plane
@@ -94,14 +92,16 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(
     () => ctx.slots.register({
       name: 'sidebar',
-    }, DeepBuddySidebar),
+      children: SIDEBAR_SLOT_MAP as unknown as ChildrenDecl,
+    }, DeepBuddySidebar as never),
     'deepbuddy: sidebar column',
   )
 
   ctx.effect(
     () => ctx.slots.register({
       name: 'conversation',
-    }, DeepBuddyMain),
+      children: CONVERSATION_INPUT_SLOT_MAP as unknown as ChildrenDecl,
+    }, DeepBuddyMain as never),
     'deepbuddy: main column',
   )
 }

@@ -20,6 +20,7 @@
  */
 import type { ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+import type { RenderSlot } from '../dsh/adapter.ts'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { INSPECTOR_VIEW_TYPES, SIDEBAR_SECTIONS, WORKBENCH_APPS, pickEntry } from '../app/catalog.ts'
 import type { AppDeps } from '../app/context.tsx'
@@ -30,7 +31,6 @@ import { KIT, ROW_METRICS } from '../ui/kit.tsx'
 import { Close, Gear, Glyph, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
 import { ChatNav, ConversationAppDefinition } from '../features/conversation/index.ts'
-import { SettingsDialog } from '../features/settings/index.ts'
 
 /** Details column width when `ctx.layout` opens it (ui-layout's DETAILS_DEFAULT). */
 const DETAILS_WIDTH = 480
@@ -44,7 +44,7 @@ const DETAILS_WIDTH = 480
  * settings footer. The column draws the container and nothing inside it —
  * each row and section is a feature component from the catalogs.
  */
-export function DeepBuddySidebar(): ReactNode {
+export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlot: RenderSlot }): ReactNode {
   const { layout } = useAppDeps()
   useLayoutStore(layout)
   return (
@@ -75,9 +75,11 @@ export function DeepBuddySidebar(): ReactNode {
         <span style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-.01em', color: 'var(--db-text)' }}>DeepBuddy</span>
       </div>
 
-      {/* The conversation entry is the app's own row — it carries the app's
-          new-task action, so it ships with the app, not with the shell. */}
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: ROW_METRICS.gap, padding: `0 ${ROW_METRICS.gutter}px` }}>
+      {/* The conversation entry is the app's own full-width new-task button —
+          it carries the app's new-task action, so it ships with the app, not
+          with the shell. The 14px below gives the card breathing room before
+          the workspace section. */}
+      <nav style={{ display: 'flex', flexDirection: 'column', padding: `0 ${ROW_METRICS.gutter}px 14px` }}>
          <ChatNav current={layout.state.view === ConversationAppDefinition.id} />
       </nav>
 
@@ -85,11 +87,11 @@ export function DeepBuddySidebar(): ReactNode {
         {SIDEBAR_SECTIONS.map(section => <section.Component key={section.id} />)}
       </div>
 
-      {/* The footer carries no hairline: separation here is the rail's own
-          ground against the row below it, and a rule would be the fourth
-          horizontal line in a 268px column. */}
+      {/* The official settings root rides the revived `sidebar.settings`
+          slot. It owns the settings trigger + overlay dialog; DeepBuddy no
+          longer carries its own settings row or dialog. */}
       <div style={{ flex: '0 0 auto', padding: `6px ${ROW_METRICS.gutter}px 10px` }}>
-        <KIT.Row icon={<Gear size={16} />} onClick={layout.openSettings}>设置</KIT.Row>
+        {renderSlot('sidebar.settings', { wide: true })}
       </div>
     </ColumnFrame>
   )
@@ -104,7 +106,7 @@ export function DeepBuddySidebar(): ReactNode {
  * entry the layout state selects — or settings, which is a workbench page
  * like any other.
  */
-export function DeepBuddyMain(): ReactNode {
+export function DeepBuddyMain({ renderSlot }: { renderSlot: RenderSlot }): ReactNode {
   const { layout } = useAppDeps()
   useLayoutStore(layout)
   const s = layout.state
@@ -157,7 +159,7 @@ export function DeepBuddyMain(): ReactNode {
               <KIT.EmptyState>没有装配任何主视图。</KIT.EmptyState>
             </div>
           )
-        : <active.Component />}
+        : <active.Component renderSlot={renderSlot} />}
     </ColumnFrame>
   )
 }
@@ -369,9 +371,6 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
           </div>
           {/* Frame-wide floating layer: click-through, entries opt back in. */}
           <div className="dbdy-overlay">{renderSlot('shell.overlay', {})}</div>
-          {/* The settings dialog overlay: an in-window modal, not a workbench
-              page. Opening it never changes the main column's surface. */}
-          {s.settingsOpen && <SettingsDialog />}
         </div>
       </AppDepsProvider>
     )

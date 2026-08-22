@@ -37,7 +37,9 @@ DeepBuddy 自绘的三列两区桌面 UI。
 ```
 
 - **官方层零 diff**：core 与全部官方 web UI 插件以 npm 依赖锁版本引入，一行不改。
-  官方 `ui-layout` 行的占用者保持注册、只是不渲染——背后的服务
+  官方 `ui-layout` / `ui-sidebar` / `ui-conversation` 三行被 DeepBuddy 的 patch 层禁用
+  （前者让其 root / frame 槽能被 deepbuddy-frame 接管；后两者注入的 `layout`
+  服务随 ui-layout 一起消失，否则永远 pending）。背后的官方服务
   （sessions / workspaces / agentPresets / interaction / models / trajectory…）全部存活。
 - **DeepBuddy UI 插件**：`ctx.slots.register({ name: 'root', priority: -1 }, DeepBuddyRoot)`。
   `root` 是 single slot，最低 priority 渲染，于是 DeepBuddy 成为唯一界面。

@@ -12,8 +12,8 @@
  * - **No borders on rows.** Cards and popovers carry a hairline; list rows and
  *   settings rows separate with fill and space. The kit simply offers no
  *   bordered row.
- * - **No weight ramp.** Nothing here sets `fontWeight` above 500 except
- *   {@link Dialog}'s title slot. Hierarchy comes from the five text steps.
+ * - **No weight ramp.** Nothing here sets `fontWeight` above 500 except the
+ *   wordmark and the hero line. Hierarchy comes from the five text steps.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
@@ -74,8 +74,6 @@ export interface Kit {
   Card: (p: Common & { onClick?: () => void; children: ReactNode }) => ReactNode
   /** Anchored floating surface; closes on outside click, Esc, or another opening. */
   Popover: (p: Common & { open: boolean; onClose: () => void; anchor: ReactNode; align?: 'left' | 'right'; direction?: 'down' | 'up'; children: ReactNode }) => ReactNode
-  /** Centered modal — destructive confirmations only, per the handoff. */
-  Dialog: (p: Common & { open: boolean; onClose: () => void; width?: number; children: ReactNode }) => ReactNode
   /** Dashed empty state: one sentence about the consequence, no art, no button. */
   EmptyState: (p: Common & { children: ReactNode }) => ReactNode
   /** `underline` for content sections, `segment` for surface switching. Never both at one level. */
@@ -367,13 +365,6 @@ const EmptyState: Kit['EmptyState'] = ({ children, title, style }) => (
     {children}
   </div>
 )
-/**
- * How many Popovers are currently open. DESIGN_INTENT §12 says Esc closes a
- * Popover before the Dialog beneath it; the Kit can't know that ordering
- * from local props alone, so the Popover registers itself and the Dialog's
- * Esc handler defers while any is open.
- */
-let openPopoverCount = 0
 
 /**
  * The shared floating surface. Closes on outside click, on Esc, and — because
@@ -383,12 +374,11 @@ let openPopoverCount = 0
 const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direction = 'down', children, style }) => {
   const box = useRef<HTMLDivElement | null>(null)
   const panel = useRef<HTMLDivElement | null>(null)
+  const [eff, setEff] = useState<'down' | 'up'>(direction)
   // The effective direction after viewport measurement: the caller's preferred
   // direction, flipped when the floating surface would leave the window.
-  const [eff, setEff] = useState<'down' | 'up'>(direction)
   useEffect(() => {
     if (!open) return undefined
-    openPopoverCount += 1
     const onDown = (e: MouseEvent): void => {
       if (box.current && !box.current.contains(e.target as Node)) onClose()
     }
@@ -398,7 +388,6 @@ const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direct
     window.addEventListener('mousedown', onDown, true)
     window.addEventListener('keydown', onKey)
     return () => {
-      openPopoverCount -= 1
       window.removeEventListener('mousedown', onDown, true)
       window.removeEventListener('keydown', onKey)
     }
@@ -445,43 +434,6 @@ const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direct
   )
 }
 
-const Dialog: Kit['Dialog'] = ({ open, onClose, width = 420, children, style }) => {
-  useEffect(() => {
-    if (!open) return undefined
-    // §12: Esc closes the popover first, then the dialog. Defer while a
-    // popover is open so one press never closes both layers at once.
-    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape' && openPopoverCount === 0) onClose() }
-    window.addEventListener('keydown', onKey)
-    return () => { window.removeEventListener('keydown', onKey) }
-  }, [open, onClose])
-  if (!open) return null
-  return (
-    <div
-      onClick={onClose}
-      className="dbdy-fade"
-      style={{
-        position: 'fixed', inset: 0, zIndex: 60, display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: 24,
-        background: 'rgba(0,0,0,.5)',
-      }}
-    >
-      <div
-        onClick={(e) => { e.stopPropagation() }}
-        style={{
-          width, maxWidth: '100%', maxHeight: '82vh', overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
-          background: 'var(--db-dialog)',
-          border: '1px solid var(--db-line-container)',
-          borderRadius: 'var(--db-r-surface)',
-          boxShadow: 'var(--db-shadow-dialog)',
-          ...style,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
 
 // ── composites ──────────────────────────────────────────────────────────────
 
@@ -764,7 +716,6 @@ export const KIT: Kit = Object.freeze({
   StatusPill,
   Card,
   Popover,
-  Dialog,
   EmptyState,
   Tabs: TabsImpl,
   Row: RowImpl,

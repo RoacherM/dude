@@ -148,17 +148,19 @@ v1 Workbench 页面：
 
 - Conversation。
 
-Settings 不再是主列页面，而是覆盖式设置面板（对齐 DSH web 原生 / WorkBuddy）：
+Settings 不再是主列页面，也不再是 DeepBuddy 自研对话框 —— 官方 `settings-general` 的整个
+设置外壳复活：DeepBuddy 声明 `sidebar.settings` 槽并渲染官方 `SettingsRoot`，官方各分区
+（General / Models / Plugins / Agent presets）经 `settings.section` 槽挂载。
 
 ```text
-点击侧栏「设置」
-→ 弹出覆盖式设置面板（模态 Dialog）
+点击侧栏底部「Settings」触发行（官方 TriggerContent）
+→ 弹出官方覆盖式设置面板（模态 Dialog，官方 chrome）
 → 主列保持当前会话不变
-→ 面板左侧竖排导航（模型 / 模式 / 插件），右侧内容区，右上角 × 关闭
+→ 面板左侧竖排导航（官方 section 列表），右侧内容区，右上角 × 关闭
 ```
 
-面板尺寸参照 WorkBuddy：居中、占视口大部（宽 min(1200px, 90vw)、高 min(860px, 90vh)）、
-圆角、遮罩层点击关闭。`Esc` 关闭时先关局部 Popover，再关 Dialog（§12）。
+面板尺寸、圆角、遮罩层点击关闭、`Esc` 顺序全部由官方 SettingsRoot 实现。DeepBuddy 只负责
+声明与渲染槽位，不重写官方面板。
 
 Conversation 切回时读取 DSH Session 数据恢复，不依赖另一个页面主动通知它。
 
@@ -210,23 +212,29 @@ return <><Tabs items={items} /><Body item={active} /></>
 
 ## 9. 当前最小动作集
 
-当前视觉基线保留 9 类图标：
+当前视觉基线保留 10 类图标：
 
 | # | 动作 / 状态 | 位置 |
 |---|---|---|
 | 1 | 开关左列 / 右列 | 两侧状态栏 |
-| 2 | 新建 Session | Sidebar 对话入口 |
-| 3 | 打开 Settings（覆盖式设置面板） | Sidebar 底部 |
+| 2 | 新建任务（全宽主按钮） | Sidebar 品牌行下 |
+| 3 | 打开 Settings（官方覆盖式设置面板） | Sidebar 底部 `sidebar.settings` 槽 |
 | 4 | 复制消息 | 消息局部动作 |
 | 5 | 重试失败或停止的轮次 | 消息局部动作 |
-| 6 | 权限档 | Composer |
-| 7 | 模型 | Composer |
-| 8 | 发送 / 停止 | Composer 主动作 |
-| 9 | 关闭 Inspector Tab | Tab |
+| 6 | 权限档 | Composer 左侧（DeepBuddy 自研 chip） |
+| 7 | 模型 | Composer 右侧（官方 `conversation.input.model` 槽） |
+| 8 | 附件 / 计划 | Composer 工具行（官方 `conversation.input.attachments` / `.plan` 槽） |
+| 9 | 发送 / 停止 | Composer 主动作 |
+| 10 | 搜索 / 添加工作空间 | 「工作空间」区头 |
 
 规则：
 
-- 权限档和模型同时是状态显示器；模型 chip 通过 `sessions.selectModel` 应用到会话（含运行中），并同步写入部署默认模型。
+- 权限档和模型同时是状态显示器。权限档读会话 `permissions` projection、经 `/permission`
+  命令写回（官方机制）；模型选择器是官方 `ModelSelect`（Model → 档位两级面板），经
+  `sessions.selectModel` 应用到会话（含运行中）。
+- 设置与 composer chrome 复活官方实现：`sidebar.settings` 与 `conversation.input.*`
+  槽由 DeepBuddy 声明并渲染，官方 registrant（settings-general / model-selection /
+  attachment）据此挂载。DeepBuddy 只是槽的声明者与渲染者，不重写官方面板。
 - 发送与停止复用同一个位置。
 - 正常完成的消息不显示重试。
 - 复制成功就地短暂反馈，不额外弹 Toast。
@@ -319,7 +327,8 @@ DeepBuddy 当前只承诺统一暗色体验。
 
 Empty State 用一句话说明当前缺少什么，以及用户下一步能做什么。
 
-空白 / 新会话页：问候语 + Composer 作为一组垂直居中于主列（对齐官方 DSH 布局）；
+空白 / 新会话页：DeepBuddy 品牌 + slogan（居中），下方一行工作空间 chip + 模式 chip，
+再下方 Composer（官方槽 + DeepBuddy 权限档）。整组垂直居中于主列（对齐官方 DSH 布局）；
 发出第一条消息后切换为常规布局（消息流 + 底部 Composer）。
 
 Error 不只显示技术错误；在可恢复时给出明确操作。
