@@ -1,0 +1,11 @@
+# dsh-plugin-terminal-probe bundle layer.
+# The row loads the host half (the terminalProbe/exec Remote endpoint); the
+# browser half — the floating terminal panel — rides the same row through
+# dsh.client.
+#
+# This plugin patches nothing and disables nothing: it is an ORDINARY
+# ecosystem plugin, which is the whole point of the probe.
+
+- insert:
+    - id: terminal-probe
+      name: dsh-plugin-terminal-probe

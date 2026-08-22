@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>DeepBuddy · 三列两区与最小交互集</title>
+<style>
+  :root{
+    --window:#0f0f0f; --rail:#0a0a0a; --popover:#181818;
+    --f1:rgba(255,255,255,.022); --f2:rgba(255,255,255,.028); --f4:rgba(255,255,255,.06); --f5:rgba(255,255,255,.07);
+    --t1:#ededed; --t2:#b4b4b4; --t3:#7a7a7a; --t4:#6f6f6f; --t5:#5f5f5f;
+    --line:rgba(255,255,255,.05); --line2:rgba(255,255,255,.09);
+    --run:#10b981; --await:#d97757; --primary:#4d6bfe;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--t1);font-family:var(--font);padding:40px 32px 80px;line-height:1.6}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:22px;font-weight:600;margin-bottom:6px}
+  h2{font-size:15px;font-weight:600;margin:46px 0 14px}
+  .sub{color:var(--t3);font-size:13.5px}
+  .count{display:inline-flex;align-items:center;gap:8px;background:var(--f4);border-radius:999px;padding:4px 12px;font-size:12.5px;color:var(--t2);margin-top:10px}
+  .count b{color:var(--run);font-weight:600}
+
+  /* ── 解剖图 ─────────────────────────────────── */
+  .anat{display:flex;gap:14px;align-items:stretch}
+  .anat .lab{width:74px;flex:0 0 74px;display:flex;flex-direction:column;gap:14px;padding-top:0}
+  .anat .lab i{font-style:normal;font-size:12px;color:var(--t4);display:flex;align-items:center;justify-content:flex-end;text-align:right;line-height:1.35}
+  .anat .lab i:nth-child(1){height:78px}
+  .anat .lab i:nth-child(2){flex:1 1 auto}
+  .anat .cols{flex:1 1 auto;display:flex;gap:14px}
+  .anat .c{flex:1 1 0;display:flex;flex-direction:column;gap:14px}
+  .anat .c.wide{flex:1.6 1 0}
+  .anat .box{border:1px dashed var(--line2);border-radius:10px;padding:12px 14px;background:var(--f1)}
+  .anat .box.top{height:78px;background:rgba(77,107,254,.07);border-color:rgba(77,107,254,.30)}
+  .anat .box.bot{flex:1 1 auto;min-height:118px}
+  .anat .box b{display:block;font-size:12.5px;font-weight:600;color:var(--t1);margin-bottom:3px}
+  .anat .box span{font-size:12px;color:var(--t4);line-height:1.5}
+  .anat .head{font-size:12.5px;color:var(--t3);text-align:center;margin-bottom:10px}
+
+  /* ── 窗口 ─────────────────────────────────────── */
+  .win{background:var(--window);border:1px solid var(--line2);border-radius:14px;overflow:hidden;display:flex;height:560px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .col{display:flex;flex-direction:column;min-width:0}
+  .left{width:268px;background:var(--rail);border-right:1px solid var(--line);flex:0 0 268px}
+  .main{flex:1 1 auto}
+  .right{width:300px;flex:0 0 300px;border-left:1px solid var(--line)}
+  /* 状态栏：每列都有，同高共缝 */
+  .bar{height:52px;flex:0 0 52px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--line)}
+  .body{flex:1 1 auto;overflow:hidden;padding:0 10px;display:flex;flex-direction:column}
+
+  .lights{display:flex;gap:7px;padding-left:2px;margin-right:4px}
+  .lights i{width:11px;height:11px;border-radius:999px;display:block}
+  .lights i:nth-child(1){background:#ff5f57}.lights i:nth-child(2){background:#febc2e}.lights i:nth-child(3){background:#28c840}
+
+  .ico{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--t3);position:relative;flex:0 0 auto}
+  .ico:hover{background:var(--f5);color:var(--t1)}
+  .ico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  .n{position:absolute;top:-7px;right:-7px;width:16px;height:16px;border-radius:999px;background:var(--primary);color:#fff;
+     font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;font-family:var(--mono);z-index:2}
+
+  .ident{font-size:13.5px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .title{font-size:14.5px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stat{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--run);flex:0 0 auto;margin-left:10px}
+  .stat i{width:6px;height:6px;border-radius:999px;background:var(--run);display:block}
+
+  .grp{padding:16px 8px 6px;font-size:11.5px;font-weight:500;color:var(--t5);display:flex;align-items:center;gap:5px}
+  .row{height:31px;border-radius:10px;padding:0 8px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t2)}
+  .row:hover{background:var(--f4)}
+  .row.on{background:var(--f5);color:var(--t1)}
+  .row .dot{width:6px;height:6px;border-radius:999px;background:var(--t5);flex:0 0 auto}
+  .row .dot.run{background:var(--run)}
+  .row .lbl{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .tail{font-size:11.5px;color:var(--t5);flex:0 0 auto}
+  .foot{margin-top:auto;padding:8px 0 12px}
+
+  .chat{padding:6px 22px;font-size:13.5px;color:#dcdcdc;line-height:1.62;height:100%;display:flex;flex-direction:column}
+  .msg-u{align-self:flex-end;background:var(--f5);border-radius:14px;padding:8px 13px;max-width:70%;margin:14px 0 10px}
+  .acts{display:flex;gap:12px;margin:6px 0 14px}
+  .composer{margin-top:auto;border:1px solid var(--line2);border-radius:16px;padding:12px 12px 8px;background:var(--f1)}
+  .ph{color:var(--t4);font-size:13.5px}
+  .crow{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .pill{height:28px;border:1px solid var(--line2);border-radius:999px;padding:0 11px;display:inline-flex;align-items:center;gap:6px;
+        font-size:12.5px;color:var(--t2);position:relative}
+  .send{margin-left:auto;width:30px;height:30px;border-radius:999px;background:var(--f5);display:flex;align-items:center;justify-content:center;position:relative}
+  .send svg{width:15px;height:15px;stroke:var(--t1);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .tabs{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;overflow:hidden}
+  .tab{height:28px;border-radius:8px;padding:0 6px 0 9px;display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--t3);white-space:nowrap}
+  .tab.on{background:var(--f5);color:var(--t1)}
+  .tab .x{width:16px;height:16px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;position:relative}
+  .tab .x:hover{background:var(--f5)}
+  .tab .x svg{width:10px;height:10px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round}
+  .tree{padding:8px 4px;font-size:12.5px}
+  .tr{height:26px;border-radius:8px;display:flex;align-items:center;gap:6px;padding:0 8px;color:var(--t2)}
+  .tr:hover{background:var(--f4)}
+  .tr.mono{font-family:var(--mono);font-size:12px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--t4);font-weight:500;font-size:12.5px}
+  td:first-child{width:38px}
+  .badge{width:18px;height:18px;border-radius:999px;background:var(--primary);color:#fff;font-size:10.5px;font-weight:600;
+         display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono)}
+  .kind{font-size:11.5px;color:var(--t4);white-space:nowrap}
+  code{font-family:var(--mono);font-size:12px;color:var(--t2);background:var(--f2);padding:1px 5px;border-radius:5px}
+
+  .states{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+  .st{width:200px}
+  .st .mini{height:104px;border:1px solid var(--line2);border-radius:9px;display:flex;overflow:hidden;background:var(--window)}
+  .st .mini > div{display:flex;flex-direction:column;font-size:10px;color:var(--t5)}
+  .st .mini .mb{height:20px;flex:0 0 20px;border-bottom:1px solid var(--line);background:rgba(77,107,254,.07)}
+  .st .mini .mc{flex:1 1 auto;display:flex;align-items:center;justify-content:center}
+  .mL{width:46px;background:var(--rail);border-right:1px solid var(--line);flex:0 0 46px}
+  .mM{flex:1 1 auto}
+  .mR{width:58px;border-left:1px solid var(--line);flex:0 0 58px}
+  .st p{font-size:12px;color:var(--t3);margin-top:7px}
+  .st b{color:var(--t2);font-weight:500}
+
+  .cut{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;margin-top:6px}
+  .cut div{font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);color:var(--t3)}
+  .cut s{color:var(--t5)}
+  .cut em{font-style:normal;color:var(--t4);font-size:12px}
+  .note{background:var(--f1);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13.5px;color:var(--t2);margin-top:16px}
+  .note b{color:var(--t1);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>DeepBuddy · 三列两区与最小交互集</h1>
+  <div class="sub">窗口 = 三列；<b style="color:var(--t2)">每列 = 状态栏 + 功能区</b>。图标只留「没有它核心任务就完不成」的那些。</div>
+  <div class="count">从 <b style="color:var(--t4)">30+</b> 砍到 <b>9</b> 个图标，并砍掉 <b>2</b> 个机制</div>
+
+  <h2>一、解剖：每列两个区域</h2>
+  <div class="anat">
+    <div class="lab">
+      <i>状态栏<br>52px</i>
+      <i>功能区</i>
+    </div>
+    <div class="cols">
+      <div class="c">
+        <div class="head">左列</div>
+        <div class="box top"><b>我是谁</b><span>身份 + 折叠开关</span></div>
+        <div class="box bot"><b>导航与清单</b><span>应用入口 · 任务列表 · 空间 · 设置</span></div>
+      </div>
+      <div class="c wide">
+        <div class="head">主列</div>
+        <div class="box top"><b>我在看什么·什么状态</b><span>会话标题 + 运行中/已完成</span></div>
+        <div class="box bot"><b>对话</b><span>消息流 + 输入框</span></div>
+      </div>
+      <div class="c">
+        <div class="head">右列</div>
+        <div class="box top"><b>我打开了什么</b><span>标签条 + 折叠开关</span></div>
+        <div class="box bot"><b>工具正文</b><span>文件树 / 文件内容 / 终端…</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    三条状态栏<b>同高 52px、缝对缝</b>，所以看起来像一整条 header——但它不是独立元素，
+    而是三段各自归属自己那一列。列收起时，它那段状态栏跟着一起消失；
+    <b>窗口级控件（红绿灯、折叠开关）落在最外侧的那条状态栏里</b>。
+  </div>
+
+  <h2>二、主界面（三列全开）</h2>
+
+  <div class="win">
+    <!-- 左列 -->
+    <div class="col left">
+      <div class="bar">
+        <div class="lights"><i></i><i></i><i></i></div>
+        <span class="ident" style="flex:1 1 auto">DeepBuddy</span>
+        <span class="ico"><span class="n">1</span>
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></svg>
+        </span>
+      </div>
+      <div class="body">
+        <div class="row on" style="margin-top:8px">
+          <span style="color:var(--t2);display:flex"><svg style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></span>
+          <span class="lbl">对话</span>
+          <span class="ico" style="width:22px;height:22px"><span class="n">2</span>
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </span>
+        </div>
+
+        <div class="grp">任务
+          <svg style="width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="row"><i class="dot run"></i><span class="lbl">实现 DeepBuddy 终端面板</span><span class="tail" style="color:var(--run)">运行中</span></div>
+        <div class="row"><i class="dot"></i><span class="lbl">重构缓存层</span><span class="tail">2 小时前</span></div>
+        <div class="row"><i class="dot"></i><span class="lbl">分析投放数据</span><span class="tail">昨天</span></div>
+        <div class="row"><i class="dot"></i><span class="lbl">面试准备提纲</span><span class="tail">3 天前</span></div>
+
+        <div class="grp">空间
+          <svg style="width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </div>
+
+        <div class="foot">
+          <div class="row">
+            <span style="display:flex;color:var(--t3)"><svg style="width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.1-2.7l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009 4.6V4a2 2 0 114 0v.1a1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/></svg></span>
+            <span class="lbl">设置</span>
+            <span style="position:relative;width:0"><span class="n" style="right:-14px;top:-8px">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主列 -->
+    <div class="col main">
+      <div class="bar" style="padding:0 18px">
+        <span class="title">实现 DeepBuddy 终端面板</span>
+        <span class="stat"><i></i>运行中 · 33s</span>
+      </div>
+      <div class="body" style="padding:0">
+        <div class="chat">
+          <div class="msg-u">帮我把终端面板接进右列</div>
+          <div>好，我会把它接入现有 Inspector，并让终端进程由独立资源管理器持有。</div>
+          <div class="acts">
+            <span class="ico" style="width:24px;height:24px"><span class="n">4</span>
+              <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg>
+            </span>
+            <span class="ico" style="width:24px;height:24px"><span class="n">5</span>
+              <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+            </span>
+          </div>
+
+          <div class="composer">
+            <div class="ph">交代一件事，@ 引用文件，/ 调用技能</div>
+            <div class="crow">
+              <span class="pill"><span class="n">6</span>
+                <svg style="width:13px;height:13px;stroke:var(--run);fill:none;stroke-width:1.8" viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V7z"/></svg>
+                标准模式
+                <svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </span>
+              <span class="pill"><span class="n">7</span>
+                DeepSeek-V3
+                <svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+              </span>
+              <span class="send"><span class="n">8</span>
+                <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右列 -->
+    <div class="col right">
+      <div class="bar" style="padding:0 10px 0 12px">
+        <div class="tabs">
+          <span class="tab on">文件
+            <span class="x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+          </span>
+          <span class="tab">index.tsx
+            <span class="x"><span class="n">9</span><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+          </span>
+        </div>
+        <span class="ico" style="margin-left:auto"><span class="n" style="background:#3a3a3a">1</span>
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M15 4v16"/></svg>
+        </span>
+      </div>
+      <div class="body" style="padding:0">
+        <div class="tree">
+          <div class="tr"><svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg> src</div>
+          <div class="tr mono" style="padding-left:26px"><svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><path d="M14 3H7v18h10V6z"/></svg> index.tsx</div>
+          <div class="tr mono" style="padding-left:26px"><svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><path d="M14 3H7v18h10V6z"/></svg> frame.ts</div>
+          <div class="tr mono" style="padding-left:26px"><svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><path d="M14 3H7v18h10V6z"/></svg> kit.tsx</div>
+          <div class="tr"><svg style="width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+            <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.7" viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg> tests</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>三、九个图标，点击后发生什么</h2>
+  <table>
+    <tr><th></th><th>名字</th><th>形态</th><th>点了之后</th></tr>
+    <tr><td><span class="badge">1</span></td><td>开关左列 / 开关右列</td><td class="kind">开关</td>
+        <td>列收起或展开（连同它的状态栏）。图标留在最外侧那条状态栏里。<code>⌘B</code> / <code>⌘J</code></td></tr>
+    <tr><td><span class="badge">2</span></td><td>新建任务</td><td class="kind">动作</td>
+        <td>建一个会话 → 主列打开它 → 输入框聚焦。左列列表顶部多一行。<code>⌘N</code></td></tr>
+    <tr><td><span class="badge">3</span></td><td>设置</td><td class="kind">动作</td>
+        <td>主列换成设置（左右两列<b>原样不动</b>）。再点左边任一会话即离开设置。<code>⌘,</code></td></tr>
+    <tr><td><span class="badge">4</span></td><td>复制</td><td class="kind">动作</td>
+        <td>复制这条消息全文；图标就地闪一下 ✓，<b>不弹提示</b></td></tr>
+    <tr><td><span class="badge">5</span></td><td>重试</td><td class="kind">动作</td>
+        <td>重发这一轮。<b>仅在失败或已停止时出现</b>，正常完成的消息上没有</td></tr>
+    <tr><td><span class="badge">6</span></td><td>权限档</td><td class="kind">多选</td>
+        <td>就地下拉，选完即关。同时是<b>状态显示器</b>——不点也能看出当前是什么档</td></tr>
+    <tr><td><span class="badge">7</span></td><td>模型</td><td class="kind">多选</td>
+        <td>同上。影响<b>下一条</b>消息，不影响已发出的</td></tr>
+    <tr><td><span class="badge">8</span></td><td>发送 / 停止</td><td class="kind">动作</td>
+        <td><b>同一个位置两条命令</b>：空闲时是发送 ↑，运行中变成停止 ■。<code>⏎</code> / <code>Esc</code></td></tr>
+    <tr><td><span class="badge">9</span></td><td>关闭标签</td><td class="kind">动作</td>
+        <td>关掉这个标签，焦点给右邻（没有右邻给左邻）。最后一个关掉后右列自动收起</td></tr>
+  </table>
+
+  <div class="note">
+    <b>状态栏里没有图标的东西</b>：左列的「DeepBuddy」、主列的标题与「运行中 · 33s」、右列的标签名——
+    它们是<b>状态显示</b>不是命令，不能点（标签除外，点它是切换）。
+    <br><b>没被算成图标的三样</b>：红绿灯（系统原生）、分组标题旁的折叠箭头（属于标题）、列表行本身（点行即打开）。
+  </div>
+
+  <h2>四、四个布局状态（不再有第五个）</h2>
+  <div class="states">
+    <div class="st">
+      <div class="mini">
+        <div class="mL"><div class="mb"></div><div class="mc">左</div></div>
+        <div class="mM"><div class="mb"></div><div class="mc">主</div></div>
+        <div class="mR"><div class="mb"></div><div class="mc">右</div></div>
+      </div>
+      <p><b>全开</b> · 默认</p>
+    </div>
+    <div class="st">
+      <div class="mini">
+        <div class="mL"><div class="mb"></div><div class="mc">左</div></div>
+        <div class="mM"><div class="mb"></div><div class="mc">主</div></div>
+      </div>
+      <p><b>收右</b> · 只谈事</p>
+    </div>
+    <div class="st">
+      <div class="mini">
+        <div class="mM"><div class="mb"></div><div class="mc">主</div></div>
+        <div class="mR"><div class="mb"></div><div class="mc">右</div></div>
+      </div>
+      <p><b>收左</b> · 边谈边看</p>
+    </div>
+    <div class="st">
+      <div class="mini">
+        <div class="mM"><div class="mb"></div><div class="mc">主</div></div>
+      </div>
+      <p><b>全收</b> · 专注</p>
+    </div>
+  </div>
+  <div class="note">蓝色那条就是状态栏——<b>列在，它就在；列没了，它跟着没</b>。</div>
+
+  <h2>五、砍掉了什么</h2>
+  <div class="cut">
+    <div><s>左列搜索 ⌕ / 筛选 ⌸</s> &nbsp;<em>会话少时不需要，以后 ⌘K 一并覆盖</em></div>
+    <div><s>应用入口选择器</s> &nbsp;<em>只有一个应用时不画选择器</em></div>
+    <div><s>主列顶栏 搜索/分享/历史</s> &nbsp;<em>状态栏只放状态，不放动作</em></div>
+    <div><s>右列「新建标签 +」</s> &nbsp;<em>只有一种工具时不画选择器</em></div>
+    <div><s>输入框 附件 ＋ / 语音 🎤</s> &nbsp;<em>引用文件走 @，够了</em></div>
+    <div><s>消息 赞/踩/朗读/分享/更多</s> &nbsp;<em>只留复制和重试</em></div>
+    <div><s>会话行悬停动作（重命名/删除）</s> &nbsp;<em>v1 先不做</em></div>
+    <div><s>右列铺满 ⤢ <b style="color:var(--await)">（连状态一起砍）</b></s> &nbsp;<em>要大就拖宽</em></div>
+    <div><s>设置的临时态编排 <b style="color:var(--await)">（机制砍掉）</b></s> &nbsp;<em>设置就是主列里的一个应用，别的列不动</em></div>
+    <div><s>「更多 ⋯」菜单</s> &nbsp;<em>没东西可放了</em></div>
+  </div>
+
+  <div class="note" style="margin-top:22px">
+    <b>三条以后一直管用的规则</b>：<br>
+    ① <b>状态栏放状态，功能区放动作</b>——主列状态栏只有标题和运行态，不塞按钮。<br>
+    ② <b>只有一个的时候不画选择器</b>——第二个应用/第二种工具出现时，入口行和标签选择器自己长出来。<br>
+    ③ <b>状态显示器优先于纯按钮</b>——权限档和模型之所以留下，是因为它们不点也在告诉你「现在是什么状态」。
+  </div>
+
+</div>
+</body>
+</html>

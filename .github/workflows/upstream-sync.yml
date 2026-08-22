@@ -1,0 +1,140 @@
+# 官方同步：每周查一次 npm，有新版就 bump + 门禁 + 冒烟，绿了开 PR，红了开 issue。
+#
+# 准绳：兼容官方的所有功能 + 精选 UI + 精选插件——DeepSeek Harness 最好的发行版。
+# 官方包零修改，所以这个 job 只做三件事：bump 版本、跑契约测试、冒烟。
+#
+# ⚠️ 本仓库目前**没有远端**，这个 workflow 推上 GitHub 之后才会生效。
+#    推之前还要补齐两处，否则第一次调度就会红：
+#
+#    1. Secrets：`create-pull-request` 与 `gh issue create` 用的 token 需要
+#       contents:write / pull-requests:write / issues:write，下面 permissions 已声明，
+#       用默认 GITHUB_TOKEN 即可；组织禁用了 Actions 建 PR 的话要换 PAT。
+#    2. 首次跑之前在本机确认 `node scripts/sync-upstream.mjs --smoke` 是绿的——
+#       CI 只是把同一个脚本换个地方跑，本机红的东西 CI 不会变绿。
+#
+# 冒烟第 3 项（sessionPersistence 回退）在 runner 上没有历史会话，脚本会记 SKIP。
+# 这是设计内的：那条回归卡真正的把关点是本机验收清单里的「冷会话文件树」。
+
+name: upstream-sync
+
+on:
+  schedule:
+    # 每周一 09:00 UTC+8 = 01:00 UTC。cron 只认 UTC。
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  # 冒烟端口。runner 上没人占，用脚本默认值即可。
+  SMOKE_PORT: '3082'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出 deepbuddy
+        uses: actions/checkout@v4
+        with:
+          path: deepbuddy
+
+      - name: pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+
+      - name: node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: deepbuddy/pnpm-lock.yaml
+
+      - name: 安装依赖
+        working-directory: deepbuddy
+        run: pnpm install --frozen-lockfile
+
+      # 冒烟要一个装好的 deepbuddy profile。dsh 自己不在 workspace 里，
+      # 用 npx 现装；--apply 的 bump 只动 npm 依赖，不动这个 CLI。
+      - name: 装 dsh CLI 并组装 deepbuddy profile
+        run: |
+          set -euo pipefail
+          npm exec -y dsh@latest -- --version
+          DSH="$(command -v dsh || echo 'npm exec -y dsh@latest --')"
+          echo "DSH=$DSH" >> "$GITHUB_ENV"
+          $DSH plugin --profile deepbuddy add "$PWD/deepbuddy/plugins/deepbuddy"
+          $DSH --profile deepbuddy --dump-config | grep '^# =='
+
+      - name: check
+        id: check
+        working-directory: deepbuddy
+        # exit 1 是「有新版」，不是错误；把它折成一个输出量。
+        run: |
+          if node scripts/sync-upstream.mjs --check; then
+            echo 'behind=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'behind=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: apply（bump + 门禁 + 冒烟）
+        id: apply
+        if: steps.check.outputs.behind == 'true'
+        working-directory: deepbuddy
+        continue-on-error: true
+        run: node scripts/sync-upstream.mjs --apply
+
+      # 报告是 PR body / issue body 的正文，两条分支都要它。
+      - name: 收集报告
+        if: steps.check.outputs.behind == 'true'
+        id: report
+        working-directory: deepbuddy
+        run: |
+          set -euo pipefail
+          path="reports/upstream-sync/$(date -u +%F).md"
+          {
+            echo 'body<<REPORT_EOF'
+            cat "$path"
+            echo 'REPORT_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 绿了 → 开 bump PR
+        if: steps.check.outputs.behind == 'true' && steps.apply.outcome == 'success'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: deepbuddy
+          branch: upstream-sync/bump
+          delete-branch: true
+          commit-message: 'chore: bump @deepseek-ai/* to the latest upstream release'
+          title: '同步官方：bump @deepseek-ai/* 到最新版'
+          body: |
+            自动同步官方最新版。门禁与冒烟已在 CI 通过。
+
+            **合并前必须人工走完 `deepbuddy-design-current/DESIGN_INTENT.md` 第 14 章
+            的视觉验收清单**——
+            契约测试和冒烟验的是端点，验不了界面。
+
+            <details><summary>同步报告</summary>
+
+            ${{ steps.report.outputs.body }}
+
+            </details>
+          labels: upstream-sync
+
+      - name: 红了 → 开 issue
+        if: steps.check.outputs.behind == 'true' && steps.apply.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ steps.report.outputs.body }}
+        run: |
+          set -euo pipefail
+          printf '官方发了新版，但 `--apply` 没过；bump 已自动回滚，仓库仍在旧版本。\n\n处理规矩：先把漂移固化成契约测试，再在自有插件层修，最后记 handoff。\n\n<details><summary>同步报告</summary>\n\n%s\n\n</details>\n' "$REPORT" > /tmp/issue.md
+          gh issue create \
+            --repo '${{ github.repository }}' \
+            --title "同步官方失败：$(date -u +%F)" \
+            --label upstream-sync \
+            --body-file /tmp/issue.md

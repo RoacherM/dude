@@ -1,0 +1,24 @@
+# dsh-plugin-deepbuddy bundle layer.
+# `dsh plugin add` activates this patch automatically because package.json
+# declares dsh.bundle.patch. The row loads the (empty) host half; the browser
+# half — the DeepBuddy frame, which is this distribution's shell — rides the
+# same row through dsh.client.
+#
+# This layer applies after @deepseek-ai/dsh-web-app's, so the disable below
+# lands on the roster row that bundle inserted. Removing this plugin from the
+# profile restores the official frame: no official package is forked or
+# edited (design/LAW.md COMPAT-1「换行不改包」).
+
+# The official layout plugin owns the 'root' slot and DECLARES the four frame
+# child slots ('sidebar' / 'conversation' / 'details' / 'shell.overlay').
+# ui-slots admits exactly one declarer per slot, so deepbuddy-frame can only
+# take over that contract with the official row out of the graph — this is
+# not a preference, it is the mechanism (R2「影子继承合同」). deepbuddy
+# re-declares all four and renders them, so every seat the official frame
+# offered stays open.
+- id: ui-layout
+  disabled: true
+
+- insert:
+    - id: deepbuddy
+      name: dsh-plugin-deepbuddy

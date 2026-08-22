@@ -1,0 +1,549 @@
+/**
+ * The chat view: DeepBuddy's conversation surface, seated in `dbdy.main.view`.
+ *
+ * This is a TEMPORARY in-package occupant. M1's job is to prove the seat
+ * contract carries a real surface — kit through the inject face, tokens
+ * through CSS variables, geometry never crossing the boundary — while the
+ * window stays usable. M2 lifts this file into its own package unchanged;
+ * nothing in it may reach for the kernel except through the seat face.
+ *
+ * The permission chip the old composer carried is gone rather than faked: it
+ * was reading a mock table, and the real plane
+ * (`session.projections.faceOf('permissions')` + `/permission`) arrives with
+ * the approvals work.
+ */
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { SeatProps } from '../seats.ts'
+import type { AppStore } from '../store.ts'
+import type { AssistantNode, ConversationNode, ToolResultNode, WorkspaceView } from '../dsh.ts'
+import { basename, textOfParts, workspaceOf } from '../dsh.ts'
+import { canSelectPreset, defaultPresetId, presetLabel, selectablePresets } from '../presets.ts'
+import { useStore } from './store-hook.ts'
+import { METRICS } from '../styles.ts'
+import { ArrowUp, ChevronDown, ChevronUp, Compose, Folder, Plus, Stop } from '../icons.tsx'
+
+/** The chat column: 720px, left-aligned, never centered (the handoff's rule). */
+const COLUMN = { width: '100%', maxWidth: METRICS.chatColumn } as const
+
+/**
+ * The one-line argument summary the handoff puts beside the tool name
+ * (`read · src/auth/session.ts`).
+ *
+ * The prototype hand-writes that string; here it has to come out of the raw
+ * argument JSON, so the reading is "the argument a human would have named the
+ * call by" — a path, a pattern, a command — and failing that the first string
+ * the object carries. Unparseable input degrades to its first line: the row is
+ * a summary, and a summary that occasionally says less is better than one that
+ * pushes the metric off the end.
+ */
+const SUMMARY_KEYS = ['path', 'file_path', 'filePath', 'pattern', 'command', 'cmd', 'query', 'url', 'name'] as const
+
+function argSummary(raw: string): string {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return clip(raw.split('\n', 1)[0] ?? '')
+  }
+  if (typeof parsed === 'string') return clip(parsed)
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return ''
+  const obj = parsed as Record<string, unknown>
+  for (const key of SUMMARY_KEYS) {
+    const v = obj[key]
+    if (typeof v === 'string' && v !== '') return clip(v)
+  }
+  for (const v of Object.values(obj)) {
+    if (typeof v === 'string' && v !== '') return clip(v)
+  }
+  return ''
+}
+
+function clip(s: string): string {
+  const line = s.replace(/\s+/g, ' ').trim()
+  return line.length > 72 ? `${line.slice(0, 71)}…` : line
+}
+
+/** `time - callTime` as the handoff's `0.4s`-style label. */
+function durationOf(time: number, callTime: number | null): string | null {
+  if (callTime === null) return null
+  return `${Math.max(0, (time - callTime) / 1000).toFixed(1)}s`
+}
+
+/** Whether a node continues the assistant turn group started above it. */
+function inTurnGroup(node: ConversationNode | undefined): boolean {
+  return node !== undefined && (node.kind === 'assistant' || node.kind === 'tool-result')
+}
+
+function ToolBlock({ store, ui, callId, name, argsRaw, result }: {
+  store: AppStore
+  ui: SeatProps['ui']
+  callId: string
+  name: string
+  argsRaw: string
+  /** Settled node, or null while running. */
+  result: ToolResultNode | null
+}): ReactNode {
+  const open = store.state.openCalls[callId] === true
+  const running = result === null
+  const failed = result !== null && result.isError
+  const duration = result === null ? null : durationOf(result.time, result.callTime)
+  const summary = argSummary(argsRaw)
+  return (
+    <div style={{
+      border: '1px solid var(--db-line-card)', background: 'var(--db-fill-1)',
+      borderRadius: 12, overflow: 'hidden', width: '100%',
+    }}
+    >
+      {/* The handoff's header is one mono line: name, then the argument that
+          identifies the call, then the metric flush right. The row reads
+          left-to-right as "what ran · on what · how it went". */}
+      <div
+        onClick={() => { store.toggleCall(callId) }}
+        className="dbdy-hv-1"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px',
+          fontFamily: 'var(--db-mono)', fontSize: 11.5,
+          cursor: 'pointer', transition: 'background var(--db-tint)',
+        }}
+      >
+        <ui.Dot
+          tone={running ? 'run' : failed ? 'await' : 'muted'}
+          size={7}
+          style={running ? { animation: 'dbdy-pulse 1.1s ease-in-out infinite' } : {}}
+        />
+        <span style={{ flex: '0 0 auto', color: 'var(--db-text)' }}>{name}</span>
+        {summary !== '' && (
+          <span
+            title={summary}
+            style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--db-text-4)' }}
+          >
+            {summary}
+          </span>
+        )}
+        {/* The metric is the duration, not a row count: `84 lines` in the
+            prototype is hand-written mock data, and a harness that guessed it
+            from a tool result would be guessing. */}
+        <span style={{ marginLeft: 'auto', flex: '0 0 auto', color: failed ? 'var(--db-await)' : 'var(--db-text-4)' }}>
+          {running ? '运行中' : failed ? '失败' : duration ?? ''}
+        </span>
+        {open
+          ? <ChevronUp size={12} color="var(--db-text-5)" style={{ flex: '0 0 12px' }} />
+          : <ChevronDown size={12} color="var(--db-text-5)" style={{ flex: '0 0 12px' }} />}
+      </div>
+      {open && (
+        <div style={{ padding: '9px 12px', borderTop: '1px solid var(--db-line)', fontFamily: 'var(--db-mono)', fontSize: 11.5, lineHeight: 1.7 }}>
+          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--db-text-5)' }}>{argsRaw}</div>
+          {result !== null && (
+            <div style={{
+              marginTop: 8, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 190, overflowY: 'auto',
+              color: failed ? 'var(--db-await)' : 'var(--db-text-3)',
+            }}
+            >
+              {failed && result.error ? `${result.error.name} (${result.error.code})\n` : ''}
+              {textOfParts(result.content) || (failed ? '' : '（无文本输出）')}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** One assistant node: its blocks, with reasoning set behind a quiet rule. */
+function AssistantTurn({ node }: { node: AssistantNode }): ReactNode {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {node.blocks.map((b, i) => {
+        if (b.kind === 'text') {
+          return <div key={i} style={{ fontSize: 14, lineHeight: 1.62, whiteSpace: 'pre-wrap', color: '#dcdcdc' }}>{b.text}</div>
+        }
+        if (b.kind === 'reasoning') {
+          return (
+            <div
+              key={i}
+              style={{
+                borderLeft: '1px solid var(--db-line-card)', paddingLeft: 12, fontSize: 12.5,
+                lineHeight: 1.7, color: 'var(--db-text-4)', whiteSpace: 'pre-wrap',
+              }}
+            >
+              {b.text}
+            </div>
+          )
+        }
+        if (b.kind === 'image') {
+          return <div key={i} style={{ fontSize: 12, color: 'var(--db-text-4)' }}>图片输出（暂不预览）</div>
+        }
+        return null
+      })}
+      {node.interrupted === true && <div style={{ fontSize: 12, color: 'var(--db-text-4)' }}>已停止</div>}
+    </div>
+  )
+}
+
+function Stream({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+  const conv = store.state.conv
+  if (conv === null) {
+    return <div style={{ ...COLUMN, padding: '24px 0', fontSize: 12.5, color: 'var(--db-text-4)' }}>加载会话…</div>
+  }
+  const partial = conv.partial
+  const partialBlocks = partial === null ? [] : partial.blocks.filter(b => b.kind === 'text' || b.kind === 'reasoning')
+  const thinking = conv.running && partialBlocks.length === 0 && conv.runningCalls.length === 0
+  return (
+    <div style={{ ...COLUMN, display: 'flex', flexDirection: 'column', gap: 26, padding: '24px 0 40px' }}>
+      {conv.hasMore && (
+        <span style={{ alignSelf: 'flex-start' }}>
+          <ui.Button kind="text" onClick={store.loadOlder}>
+            {conv.loadingOlder ? '加载中…' : '加载更早的消息'}
+          </ui.Button>
+        </span>
+      )}
+      {conv.nodes.map((node, i) => {
+        const prev = conv.nodes[i - 1]
+        switch (node.kind) {
+          case 'user':
+          case 'steering':
+            return (
+              <div key={node.seq} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{
+                  maxWidth: '76%', background: 'var(--db-fill-4)', borderRadius: 'var(--db-r-card)',
+                  padding: '10px 14px', lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--db-text)',
+                }}
+                >
+                  {textOfParts(node.content)}
+                </div>
+              </div>
+            )
+          case 'assistant':
+            return (
+              <div key={node.seq} style={inTurnGroup(prev) ? { marginTop: -12 } : undefined}>
+                <AssistantTurn node={node} />
+              </div>
+            )
+          case 'tool-result':
+            return (
+              <ToolBlock
+                key={node.seq}
+                store={store}
+                ui={ui}
+                callId={node.callId}
+                name={node.call?.name ?? node.callId}
+                argsRaw={node.call?.argsRaw ?? ''}
+                result={node}
+              />
+            )
+          case 'turn-error':
+            return (
+              <div
+                key={node.seq}
+                style={{
+                  borderRadius: 'var(--db-r-card)', background: 'var(--db-await-wash)', padding: '10px 14px',
+                  fontSize: 13, color: 'var(--db-await)', lineHeight: 1.6,
+                }}
+              >
+                {`回合失败${node.code === undefined ? '' : ` (${node.code})`}：${node.message}`}
+              </div>
+            )
+          default:
+            return null
+        }
+      })}
+      {conv.runningCalls.map(rc => (
+        <ToolBlock key={rc.callId} store={store} ui={ui} callId={rc.callId} name={rc.name} argsRaw={rc.argsRaw} result={null} />
+      ))}
+      {partialBlocks.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {partialBlocks.map((b, i) => b.kind === 'text'
+            ? <div key={i} style={{ lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>{b.text}</div>
+            : (
+                <div key={i} style={{ borderLeft: '1px solid var(--db-line-card)', paddingLeft: 12, fontSize: 12.5, lineHeight: 1.7, color: 'var(--db-text-4)', whiteSpace: 'pre-wrap' }}>
+                  {b.text}
+                </div>
+              ))}
+        </div>
+      )}
+      {thinking && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--db-text-4)' }}>
+          <ui.Dot tone="run" size={7} style={{ animation: 'dbdy-pulse 1.1s ease-in-out infinite' }} />
+          正在思考…
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Current workspace of the composer: the session's own, else picked, else recent. */
+function currentWorkspace(store: AppStore): WorkspaceView | undefined {
+  const s = store.state
+  const own = workspaceOf(s.wsList, s.list?.current)
+  if (own) return own
+  const items = s.wsList?.items ?? []
+  return items.find(w => w.workspaceId === s.pickedWs)
+    ?? items.find(w => w.workspaceId === s.wsList?.recentWorkspaceId)
+    ?? items[0]
+}
+
+function wsLabel(w: WorkspaceView): string {
+  return w.title || basename(w.path)
+}
+
+/**
+ * The preset the mode surfaces show: the staged pick first (it is what the
+ * next turn runs under), then what the session was composed from, then the
+ * deployment default.
+ */
+function currentPresetId(store: AppStore): string | undefined {
+  const s = store.state
+  return s.stagedPreset
+    ?? store.currentSummary?.agentPreset
+    ?? (s.roster === null ? undefined : defaultPresetId(s.roster))
+}
+
+/**
+ * The mode chip. Switching is offered only while the session is blank — the
+ * gateway refuses a started one with `agent-preset-locked`, so a chip that
+ * opened there would be a control whose every use fails.
+ */
+function ModeChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+  const s = store.state
+  const roster = s.roster
+  const current = currentPresetId(store)
+  if (current === undefined || roster === null) return null
+  const switchable = store.currentSummary === undefined || canSelectPreset(store.currentSummary)
+  const options = selectablePresets(roster).map(p => ({
+    id: p.id,
+    label: presetLabel(p),
+    ...p.description === undefined ? {} : { detail: p.description },
+  }))
+  if (!switchable) {
+    const entry = roster.presets.find(p => p.id === current)
+    return (
+      <ui.StatusPill tone="neutral" title="会话的模式在第一回合后锁定">
+        {entry === undefined ? current : presetLabel(entry)}
+      </ui.StatusPill>
+    )
+  }
+  return (
+    <ui.Select
+      value={current}
+      options={options}
+      disabled={s.presetBusy}
+      onChange={(id) => { store.selectPreset(id) }}
+      title="选择模式"
+    />
+  )
+}
+
+function WorkspaceChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ws = currentWorkspace(store)
+  const items = store.state.wsList?.items ?? []
+  const q = query.trim().toLowerCase()
+  const matches = items.filter(w => q === '' || wsLabel(w).toLowerCase().includes(q) || w.path.toLowerCase().includes(q))
+  return (
+    <ui.Popover
+      open={open}
+      onClose={() => { setOpen(false); setQuery('') }}
+      direction="up"
+      style={{ width: 360 }}
+      anchor={(
+        <button
+          type="button"
+          title="选择工作空间"
+          onClick={() => { setOpen(!open) }}
+          className="dbdy-hv-outline"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7, height: 32, maxWidth: 240, padding: '0 11px',
+            borderRadius: 16, border: '1px solid var(--db-line-input)', background: 'transparent',
+            color: 'var(--db-text)', fontSize: 13, cursor: 'pointer', minWidth: 0,
+            transition: 'background var(--db-tint), border-color var(--db-tint)',
+          }}
+        >
+          <Folder size={14} style={{ flex: '0 0 14px' }} />
+          <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+            {ws ? wsLabel(ws) : '选择工作空间'}
+          </span>
+          <ChevronUp size={12} style={{ flex: '0 0 12px' }} />
+        </button>
+      )}
+    >
+      <div style={{ padding: '2px 4px 8px' }}>
+        <ui.Input value={query} onChange={setQuery} placeholder="搜索工作空间" size={30} />
+      </div>
+      <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+        {matches.map(w => (
+          <div
+            key={w.workspaceId as string}
+            onClick={() => { store.pickWorkspace(w.workspaceId); setOpen(false); setQuery('') }}
+            className="dbdy-hv-2"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, minHeight: 34, padding: '6px 10px',
+              borderRadius: 'var(--db-r-swatch)', cursor: 'pointer',
+              background: ws?.workspaceId === w.workspaceId ? 'var(--db-fill-5)' : 'transparent',
+              transition: 'background var(--db-tint)',
+            }}
+          >
+            <span style={{ flex: '1 0 auto', maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
+              {wsLabel(w)}
+            </span>
+            <ui.Mono style={{ flex: '0 1 auto', minWidth: 0, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', direction: 'rtl', whiteSpace: 'nowrap' }}>
+              {w.path}
+            </ui.Mono>
+          </div>
+        ))}
+        {matches.length === 0 && (
+          <div style={{ padding: '8px 10px', fontSize: 12.5, color: 'var(--db-text-4)' }}>没有匹配的工作空间</div>
+        )}
+      </div>
+      <div
+        onClick={() => { store.openLocalFolder(); setOpen(false) }}
+        className="dbdy-hv-2"
+        style={{
+          display: 'flex', alignItems: 'center', gap: 9, minHeight: 34, padding: '6px 10px', marginTop: 4,
+          borderTop: '1px solid var(--db-line)', borderRadius: 'var(--db-r-swatch)', cursor: 'pointer', fontSize: 13,
+        }}
+      >
+        <Plus size={14} />
+        打开本地文件夹…
+      </div>
+    </ui.Popover>
+  )
+}
+
+function Composer({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+  const s = store.state
+  const running = s.conv?.running === true
+  const errorText = s.sendError
+    ?? (s.conv?.promptError
+      ? `${s.conv.promptError.op === 'stop' ? '停止失败' : '发送失败'}：${s.conv.promptError.error.message}`
+      : null)
+  return (
+    <div style={{ ...COLUMN, paddingBottom: 18 }}>
+      {errorText !== null && (
+        <div style={{ padding: '0 2px 8px', fontSize: 12.5, color: 'var(--db-await)' }}>{errorText}</div>
+      )}
+      <div style={{
+        borderRadius: 'var(--db-r-editor)',
+        border: '1px solid var(--db-line-input)',
+        background: 'var(--db-fill-3)',
+        padding: '4px 4px 8px',
+      }}
+      >
+        <input
+          value={s.draft}
+          onChange={(e) => { store.patch({ draft: e.target.value }) }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) store.send() }}
+          placeholder={running ? '正在运行 — 发送将插话引导本回合' : '交代一件事，@ 引用文件，/ 调用技能'}
+          style={{
+            width: '100%', border: 0, background: 'transparent', outline: 'none',
+            padding: '13px 12px 9px', fontSize: 14, color: 'var(--db-text)',
+          }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
+          <WorkspaceChip store={store} ui={ui} />
+          <ModeChip store={store} ui={ui} />
+          <span style={{ marginLeft: 'auto' }} />
+          {running && (
+            <ui.IconButton title="停止本回合" size={30} onClick={store.stop}>
+              <Stop size={14} />
+            </ui.IconButton>
+          )}
+          <ui.IconButton
+            title={running ? '插话' : '发送'}
+            size={30}
+            onClick={store.send}
+            style={{ background: '#ededed', color: '#141414' }}
+          >
+            <ArrowUp size={15} />
+          </ui.IconButton>
+        </div>
+      </div>
+      <div style={{ paddingTop: 8, fontSize: 11.5, color: 'var(--db-text-5)' }}>内容由 AI 生成，请核实重要信息</div>
+    </div>
+  )
+}
+
+function Hero({ store }: { store: AppStore }): ReactNode {
+  return (
+    <div style={{ ...COLUMN, paddingTop: 96 }}>
+      <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-.02em', color: 'var(--db-text)' }}>今天跑点什么？</div>
+      <div style={{ marginTop: 10, fontSize: 13.5, color: 'var(--db-text-3)', lineHeight: 1.65, maxWidth: '52ch' }}>
+        这是一个本地 harness：会话在这里，运行产物在停靠栏里。
+      </div>
+      {store.state.presetError !== null && (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--db-await)' }}>{`模式：${store.state.presetError}`}</div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Build the chat view occupant.
+ * @param store - the temporary occupants' data plane.
+ * @returns the component to register into `dbdy.main.view`.
+ */
+export function createChatView(store: AppStore): (props: SeatProps) => ReactNode {
+  return function ChatView({ ui, layout }: SeatProps): ReactNode {
+    useStore(store)
+    const summary = store.currentSummary
+    const title = summary?.displayTitle
+    // The kernel draws the top bar; the session's name is ours to contribute.
+    // In an effect, never in the body: setTitle writes kernel state.
+    useEffect(() => { layout.setTitle(title ?? null) }, [layout, title])
+
+    const body = useRef<HTMLDivElement | null>(null)
+    const stick = useRef(true)
+    const conv = store.state.conv
+    useEffect(() => {
+      const el = body.current
+      if (el !== null && stick.current) el.scrollTop = el.scrollHeight
+    }, [conv])
+
+    return (
+      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          ref={body}
+          onScroll={(e) => {
+            const el = e.currentTarget
+            stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+          }}
+          style={{ flex: '1 1 auto', overflowY: 'auto', userSelect: 'text', padding: '0 32px' }}
+        >
+          {store.empty ? <Hero store={store} /> : <Stream store={store} ui={ui} />}
+        </div>
+        <div style={{ flex: '0 0 auto', padding: '0 32px' }}>
+          <Composer store={store} ui={ui} />
+        </div>
+      </div>
+    )
+  }
+}
+
+/**
+ * Build the chat view's own sidebar row. The row ships with the view, so
+ * installing one installs the other — the sidebar never lists a destination
+ * that might not be there.
+ * @param store - the data plane (the row also starts a new task).
+ * @returns the component to register into `dbdy.sidebar.nav`.
+ */
+export function createChatNav(store: AppStore): (props: SeatProps & { current: boolean }) => ReactNode {
+  return function ChatNav({ ui, layout, current }: SeatProps & { current: boolean }): ReactNode {
+    return (
+      <ui.Row
+        current={current}
+        icon={<Compose size={16} />}
+        onClick={() => { layout.setView('chat') }}
+        trailing={(
+          <span onClick={(e) => { e.stopPropagation(); store.newTask() }} style={{ display: 'flex' }}>
+            <ui.IconButton title="新建任务" size={26}>
+              <Plus size={14} />
+            </ui.IconButton>
+          </span>
+        )}
+      >
+        对话
+      </ui.Row>
+    )
+  }
+}
