@@ -1,27 +1,31 @@
 /**
- * The chat view: DeepBuddy's conversation surface, seated in `dbdy.main.view`.
+ * The conversation surface: the workbench's chat view and its sidebar entry
+ * row.
  *
- * This is a TEMPORARY in-package occupant. M1's job is to prove the seat
- * contract carries a real surface — kit through the inject face, tokens
- * through CSS variables, geometry never crossing the boundary — while the
- * window stays usable. M2 lifts this file into its own package unchanged;
- * nothing in it may reach for the kernel except through the seat face.
- *
- * The permission chip the old composer carried is gone rather than faked: it
- * was reading a mock table, and the real plane
+ * Everything here renders from the conversation store and the shared preset
+ * plane; the shell draws the column chrome around it. The permission chip the
+ * old composer carried is gone rather than faked: it was reading a mock
+ * table, and the real plane
  * (`session.projections.faceOf('permissions')` + `/permission`) arrives with
  * the approvals work.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { SeatProps } from '../seats.ts'
-import type { AppStore } from '../store.ts'
-import type { AssistantNode, ConversationNode, ToolResultNode, WorkspaceView } from '../dsh.ts'
-import { basename, textOfParts, workspaceOf } from '../dsh.ts'
-import { canSelectPreset, defaultPresetId, presetLabel, selectablePresets } from '../presets.ts'
-import { useStore } from './store-hook.ts'
-import { METRICS } from '../styles.ts'
-import { ArrowUp, ChevronDown, ChevronUp, Compose, Folder, Plus, Stop } from '../icons.tsx'
+import type { PresetPlane } from '../../dsh/presets.ts'
+import type {
+  AssistantNode, ChatNode, Conversation, ConversationNode, RunningToolCall, ToolResultNode, WorkspaceView,
+} from '../../dsh/adapter.ts'
+import { basename, textOfParts, workspaceOf } from '../../dsh/adapter.ts'
+import { canSelectPreset, defaultPresetId, presetLabel, selectablePresets } from '../../dsh/presets.ts'
+import { useStore } from '../../dsh/hooks.ts'
+import { useAppDeps } from '../../app/context.tsx'
+import type { ConversationStore } from './store.ts'
+import { KIT } from '../../ui/kit.tsx'
+import { METRICS } from '../../ui/tokens.ts'
+import { ArrowUp, ChevronDown, ChevronUp, Compose, Folder, Plus, Stop } from '../../ui/icons.tsx'
+
+/** The app's catalog id; the shell resolves it through WORKBENCH_APPS. */
+export const CONVERSATION_APP_ID = 'chat'
 
 /** The chat column: 720px, left-aligned, never centered (the handoff's rule). */
 const COLUMN = { width: '100%', maxWidth: METRICS.chatColumn } as const
@@ -75,9 +79,8 @@ function inTurnGroup(node: ConversationNode | undefined): boolean {
   return node !== undefined && (node.kind === 'assistant' || node.kind === 'tool-result')
 }
 
-function ToolBlock({ store, ui, callId, name, argsRaw, result }: {
-  store: AppStore
-  ui: SeatProps['ui']
+function ToolBlock({ store, callId, name, argsRaw, result }: {
+  store: ConversationStore
   callId: string
   name: string
   argsRaw: string
@@ -107,7 +110,7 @@ function ToolBlock({ store, ui, callId, name, argsRaw, result }: {
           cursor: 'pointer', transition: 'background var(--db-tint)',
         }}
       >
-        <ui.Dot
+        <KIT.Dot
           tone={running ? 'run' : failed ? 'await' : 'muted'}
           size={7}
           style={running ? { animation: 'dbdy-pulse 1.1s ease-in-out infinite' } : {}}
@@ -180,12 +183,166 @@ function AssistantTurn({ node }: { node: AssistantNode }): ReactNode {
     </div>
   )
 }
+// ── chat-node data shapes ───────────────────────────────────────────────────
 
-function Stream({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+/** The `assistant-step` view vertex, mirroring the harness's projection data. */
+interface AssistantStepData {
+  status: 'running' | 'interrupted' | 'settled'
+  turn: number
+  step: number
+  blocks: AssistantNode['blocks']
+  time: number
+  usage?: unknown
+  /** The settled assistant node, present once the step closed with a message. */
+  finalNode?: AssistantNode
+}
+
+/** The `tool-call` view vertex: its root call, running or settled. */
+interface ToolCallData {
+  root: RunningToolCall | ToolResultNode
+}
+
+/** A message vertex (user / steering / context). */
+interface ChatMessageData {
+  content: unknown
+  role?: string
+}
+
+/** The `turn-error` vertex. */
+interface TurnErrorData {
+  code?: string
+  message: string
+}
+
+/** Render the order of a Chat snapshot, dispatching each vertex by kind. */
+function renderChatNodes(conv: Conversation, store: ConversationStore): ReactNode[] {
+  const chat = conv.chat
+  const rows: ReactNode[] = []
+  for (const key of chat.order) {
+    const node = chat.nodes.get(key)
+    if (node === undefined) continue
+    const data = (node as { data: unknown }).data
+    switch (node.kind) {
+      case 'user':
+      case 'steering':
+      case 'context': {
+        const text = textOfParts((data as ChatMessageData | undefined)?.content)
+        if (text === '') continue
+        rows.push(
+          <div key={node.key} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{
+              maxWidth: '76%', background: 'var(--db-fill-4)', borderRadius: 'var(--db-r-card)',
+              padding: '10px 14px', lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--db-text)',
+            }}
+            >
+              {text}
+            </div>
+          </div>,
+        )
+        break
+      }
+      case 'assistant-step': {
+        rows.push(<AssistantStep key={node.key} data={data as AssistantStepData} />)
+        break
+      }
+      case 'tool-call': {
+        const root = (data as ToolCallData | undefined)?.root
+        if (root === undefined) break
+        // A settled call carries `isError`/`call`; a running one is a
+        // RunningToolCall with name/argsRaw at the top level.
+        const settled = 'isError' in root
+        const result = settled ? root as ToolResultNode : null
+        const name = settled ? root.call?.name ?? root.callId : root.name
+        const argsRaw = settled ? root.call?.argsRaw ?? '' : root.argsRaw
+        rows.push(
+          <ToolBlock
+            key={node.key}
+            store={store}
+            callId={root.callId}
+            name={name}
+            argsRaw={argsRaw}
+            result={result}
+          />,
+        )
+        break
+      }
+      case 'turn-error': {
+        const err = data as TurnErrorData
+        rows.push(
+          <div
+            key={node.key}
+            style={{
+              borderRadius: 'var(--db-r-card)', background: 'var(--db-await-wash)', padding: '10px 14px',
+              fontSize: 13, color: 'var(--db-await)', lineHeight: 1.6,
+            }}
+          >
+            {`回合失败${err.code === undefined ? '' : ` (${err.code})`}：${err.message}`}
+          </div>,
+        )
+        break
+      }
+      // command / compaction / turn-max-tokens / model-retry / turn-tail are
+      // control-plane rows the handoff's minimal list does not surface.
+      default:
+        break
+    }
+  }
+  return rows
+}
+
+/** Render one assistant-step vertex: settled via its final node, else its live blocks. */
+function AssistantStep({ data }: { data: AssistantStepData }): ReactNode {
+  // A closed step carries the durable finalized node; stream live blocks only
+  // while it is still running (the legacy projection dropped these — the bug
+  // this renderer exists to avoid).
+  const node = data.finalNode
+  const blocks = node?.blocks ?? data.blocks
+  const interrupted = node?.interrupted ?? (data.status === 'interrupted')
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {blocks.map((b, i) => {
+        if (b.kind === 'text') {
+          return <div key={i} style={{ fontSize: 14, lineHeight: 1.62, whiteSpace: 'pre-wrap', color: '#dcdcdc' }}>{b.text}</div>
+        }
+        if (b.kind === 'reasoning') {
+          return (
+            <div
+              key={i}
+              style={{
+                borderLeft: '1px solid var(--db-line-card)', paddingLeft: 12, fontSize: 12.5,
+                lineHeight: 1.7, color: 'var(--db-text-4)', whiteSpace: 'pre-wrap',
+              }}
+            >
+              {b.text}
+            </div>
+          )
+        }
+        if (b.kind === 'image') {
+          return <div key={i} style={{ fontSize: 12, color: 'var(--db-text-4)' }}>图片输出（暂不预览）</div>
+        }
+        return null
+      })}
+      {interrupted && <div style={{ fontSize: 12, color: 'var(--db-text-4)' }}>已停止</div>}
+    </div>
+  )
+}
+
+
+/**
+ * Render the active conversation's history.
+ *
+ * The story is read from the shipping `conv.chat` snapshot (order + nodes),
+ * the authoritative source the harness's own body uses. The deprecated legacy
+ * `conv.nodes` projection drops running and interrupted assistant steps, so a
+ * transcript whose steps are streamed-but-not-yet-finalized would render blank
+ * from it; `chat` retains what is visible.
+ */
+function Stream({ store }: { store: ConversationStore }): ReactNode {
   const conv = store.state.conv
   if (conv === null) {
     return <div style={{ ...COLUMN, padding: '24px 0', fontSize: 12.5, color: 'var(--db-text-4)' }}>加载会话…</div>
   }
+  const hasChat = conv.chat.order.length > 0
   const partial = conv.partial
   const partialBlocks = partial === null ? [] : partial.blocks.filter(b => b.kind === 'text' || b.kind === 'reasoning')
   const thinking = conv.running && partialBlocks.length === 0 && conv.runningCalls.length === 0
@@ -193,63 +350,64 @@ function Stream({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactN
     <div style={{ ...COLUMN, display: 'flex', flexDirection: 'column', gap: 26, padding: '24px 0 40px' }}>
       {conv.hasMore && (
         <span style={{ alignSelf: 'flex-start' }}>
-          <ui.Button kind="text" onClick={store.loadOlder}>
+          <KIT.Button kind="text" onClick={store.loadOlder}>
             {conv.loadingOlder ? '加载中…' : '加载更早的消息'}
-          </ui.Button>
+          </KIT.Button>
         </span>
       )}
-      {conv.nodes.map((node, i) => {
-        const prev = conv.nodes[i - 1]
-        switch (node.kind) {
-          case 'user':
-          case 'steering':
-            return (
-              <div key={node.seq} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div style={{
-                  maxWidth: '76%', background: 'var(--db-fill-4)', borderRadius: 'var(--db-r-card)',
-                  padding: '10px 14px', lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--db-text)',
-                }}
-                >
-                  {textOfParts(node.content)}
-                </div>
-              </div>
-            )
-          case 'assistant':
-            return (
-              <div key={node.seq} style={inTurnGroup(prev) ? { marginTop: -12 } : undefined}>
-                <AssistantTurn node={node} />
-              </div>
-            )
-          case 'tool-result':
-            return (
-              <ToolBlock
-                key={node.seq}
-                store={store}
-                ui={ui}
-                callId={node.callId}
-                name={node.call?.name ?? node.callId}
-                argsRaw={node.call?.argsRaw ?? ''}
-                result={node}
-              />
-            )
-          case 'turn-error':
-            return (
-              <div
-                key={node.seq}
-                style={{
-                  borderRadius: 'var(--db-r-card)', background: 'var(--db-await-wash)', padding: '10px 14px',
-                  fontSize: 13, color: 'var(--db-await)', lineHeight: 1.6,
-                }}
-              >
-                {`回合失败${node.code === undefined ? '' : ` (${node.code})`}：${node.message}`}
-              </div>
-            )
-          default:
-            return null
-        }
-      })}
+      {hasChat
+        ? renderChatNodes(conv, store)
+        : conv.nodes.map((node, i) => {
+            const prev = conv.nodes[i - 1]
+            switch (node.kind) {
+              case 'user':
+              case 'steering':
+                return (
+                  <div key={node.seq} style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{
+                      maxWidth: '76%', background: 'var(--db-fill-4)', borderRadius: 'var(--db-r-card)',
+                      padding: '10px 14px', lineHeight: 1.65, whiteSpace: 'pre-wrap', color: 'var(--db-text)',
+                    }}
+                    >
+                      {textOfParts(node.content)}
+                    </div>
+                  </div>
+                )
+              case 'assistant':
+                return (
+                  <div key={node.seq} style={inTurnGroup(prev) ? { marginTop: -12 } : undefined}>
+                    <AssistantTurn node={node} />
+                  </div>
+                )
+              case 'tool-result':
+                return (
+                  <ToolBlock
+                    key={node.seq}
+                    store={store}
+                    callId={node.callId}
+                    name={node.call?.name ?? node.callId}
+                    argsRaw={node.call?.argsRaw ?? ''}
+                    result={node}
+                  />
+                )
+              case 'turn-error':
+                return (
+                  <div
+                    key={node.seq}
+                    style={{
+                      borderRadius: 'var(--db-r-card)', background: 'var(--db-await-wash)', padding: '10px 14px',
+                      fontSize: 13, color: 'var(--db-await)', lineHeight: 1.6,
+                    }}
+                  >
+                    {`回合失败${node.code === undefined ? '' : ` (${node.code})`}：${node.message}`}
+                  </div>
+                )
+              default:
+                return null
+            }
+          })}
       {conv.runningCalls.map(rc => (
-        <ToolBlock key={rc.callId} store={store} ui={ui} callId={rc.callId} name={rc.name} argsRaw={rc.argsRaw} result={null} />
+        <ToolBlock key={rc.callId} store={store} callId={rc.callId} name={rc.name} argsRaw={rc.argsRaw} result={null} />
       ))}
       {partialBlocks.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -264,7 +422,7 @@ function Stream({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactN
       )}
       {thinking && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--db-text-4)' }}>
-          <ui.Dot tone="run" size={7} style={{ animation: 'dbdy-pulse 1.1s ease-in-out infinite' }} />
+          <KIT.Dot tone="run" size={7} style={{ animation: 'dbdy-pulse 1.1s ease-in-out infinite' }} />
           正在思考…
         </div>
       )}
@@ -273,7 +431,7 @@ function Stream({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactN
 }
 
 /** Current workspace of the composer: the session's own, else picked, else recent. */
-function currentWorkspace(store: AppStore): WorkspaceView | undefined {
+function currentWorkspace(store: ConversationStore): WorkspaceView | undefined {
   const s = store.state
   const own = workspaceOf(s.wsList, s.list?.current)
   if (own) return own
@@ -292,8 +450,8 @@ function wsLabel(w: WorkspaceView): string {
  * next turn runs under), then what the session was composed from, then the
  * deployment default.
  */
-function currentPresetId(store: AppStore): string | undefined {
-  const s = store.state
+function currentPresetId(store: ConversationStore, plane: PresetPlane): string | undefined {
+  const s = plane.state
   return s.stagedPreset
     ?? store.currentSummary?.agentPreset
     ?? (s.roster === null ? undefined : defaultPresetId(s.roster))
@@ -304,10 +462,10 @@ function currentPresetId(store: AppStore): string | undefined {
  * gateway refuses a started one with `agent-preset-locked`, so a chip that
  * opened there would be a control whose every use fails.
  */
-function ModeChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
-  const s = store.state
+function ModeChip({ store, plane }: { store: ConversationStore; plane: PresetPlane }): ReactNode {
+  const s = plane.state
   const roster = s.roster
-  const current = currentPresetId(store)
+  const current = currentPresetId(store, plane)
   if (current === undefined || roster === null) return null
   const switchable = store.currentSummary === undefined || canSelectPreset(store.currentSummary)
   const options = selectablePresets(roster).map(p => ({
@@ -318,23 +476,23 @@ function ModeChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): Reac
   if (!switchable) {
     const entry = roster.presets.find(p => p.id === current)
     return (
-      <ui.StatusPill tone="neutral" title="会话的模式在第一回合后锁定">
+      <KIT.StatusPill tone="neutral" title="会话的模式在第一回合后锁定">
         {entry === undefined ? current : presetLabel(entry)}
-      </ui.StatusPill>
+      </KIT.StatusPill>
     )
   }
   return (
-    <ui.Select
+    <KIT.Select
       value={current}
       options={options}
       disabled={s.presetBusy}
-      onChange={(id) => { store.selectPreset(id) }}
+      onChange={(id) => { plane.selectPreset(id) }}
       title="选择模式"
     />
   )
 }
 
-function WorkspaceChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const ws = currentWorkspace(store)
@@ -342,7 +500,7 @@ function WorkspaceChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }):
   const q = query.trim().toLowerCase()
   const matches = items.filter(w => q === '' || wsLabel(w).toLowerCase().includes(q) || w.path.toLowerCase().includes(q))
   return (
-    <ui.Popover
+    <KIT.Popover
       open={open}
       onClose={() => { setOpen(false); setQuery('') }}
       direction="up"
@@ -369,7 +527,7 @@ function WorkspaceChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }):
       )}
     >
       <div style={{ padding: '2px 4px 8px' }}>
-        <ui.Input value={query} onChange={setQuery} placeholder="搜索工作空间" size={30} />
+        <KIT.Input value={query} onChange={setQuery} placeholder="搜索工作空间" size={30} />
       </div>
       <div style={{ maxHeight: 240, overflowY: 'auto' }}>
         {matches.map(w => (
@@ -387,9 +545,9 @@ function WorkspaceChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }):
             <span style={{ flex: '1 0 auto', maxWidth: '55%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
               {wsLabel(w)}
             </span>
-            <ui.Mono style={{ flex: '0 1 auto', minWidth: 0, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', direction: 'rtl', whiteSpace: 'nowrap' }}>
+            <KIT.Mono style={{ flex: '0 1 auto', minWidth: 0, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', direction: 'rtl', whiteSpace: 'nowrap' }}>
               {w.path}
-            </ui.Mono>
+            </KIT.Mono>
           </div>
         ))}
         {matches.length === 0 && (
@@ -407,11 +565,11 @@ function WorkspaceChip({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }):
         <Plus size={14} />
         打开本地文件夹…
       </div>
-    </ui.Popover>
+    </KIT.Popover>
   )
 }
 
-function Composer({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): ReactNode {
+function Composer({ store, plane }: { store: ConversationStore; plane: PresetPlane }): ReactNode {
   const s = store.state
   const running = s.conv?.running === true
   const errorText = s.sendError
@@ -441,22 +599,22 @@ function Composer({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): Reac
           }}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-          <WorkspaceChip store={store} ui={ui} />
-          <ModeChip store={store} ui={ui} />
+          <WorkspaceChip store={store} />
+          <ModeChip store={store} plane={plane} />
           <span style={{ marginLeft: 'auto' }} />
           {running && (
-            <ui.IconButton title="停止本回合" size={30} onClick={store.stop}>
+            <KIT.IconButton title="停止本回合" size={30} onClick={store.stop}>
               <Stop size={14} />
-            </ui.IconButton>
+            </KIT.IconButton>
           )}
-          <ui.IconButton
+          <KIT.IconButton
             title={running ? '插话' : '发送'}
             size={30}
             onClick={store.send}
             style={{ background: '#ededed', color: '#141414' }}
           >
             <ArrowUp size={15} />
-          </ui.IconButton>
+          </KIT.IconButton>
         </div>
       </div>
       <div style={{ paddingTop: 8, fontSize: 11.5, color: 'var(--db-text-5)' }}>内容由 AI 生成，请核实重要信息</div>
@@ -464,86 +622,91 @@ function Composer({ store, ui }: { store: AppStore; ui: SeatProps['ui'] }): Reac
   )
 }
 
-function Hero({ store }: { store: AppStore }): ReactNode {
+function Hero({ store, plane }: { store: ConversationStore; plane: PresetPlane }): ReactNode {
   return (
     <div style={{ ...COLUMN, paddingTop: 96 }}>
       <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-.02em', color: 'var(--db-text)' }}>今天跑点什么？</div>
       <div style={{ marginTop: 10, fontSize: 13.5, color: 'var(--db-text-3)', lineHeight: 1.65, maxWidth: '52ch' }}>
         这是一个本地 harness：会话在这里，运行产物在停靠栏里。
       </div>
-      {store.state.presetError !== null && (
-        <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--db-await)' }}>{`模式：${store.state.presetError}`}</div>
+      {plane.state.presetError !== null && (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--db-await)' }}>{`模式：${plane.state.presetError}`}</div>
       )}
     </div>
   )
 }
 
 /**
- * Build the chat view occupant.
- * @param store - the temporary occupants' data plane.
- * @returns the component to register into `dbdy.main.view`.
+ * The workbench's chat view.
+ *
+ * The shell draws the top bar; the session's name is ours to contribute. In
+ * an effect, never in the body: setTitle writes layout state.
  */
-export function createChatView(store: AppStore): (props: SeatProps) => ReactNode {
-  return function ChatView({ ui, layout }: SeatProps): ReactNode {
-    useStore(store)
-    const summary = store.currentSummary
-    const title = summary?.displayTitle
-    // The kernel draws the top bar; the session's name is ours to contribute.
-    // In an effect, never in the body: setTitle writes kernel state.
-    useEffect(() => { layout.setTitle(title ?? null) }, [layout, title])
+export function ChatView(): ReactNode {
+  const { conversation, layout, presets } = useAppDeps()
+  useStore(conversation)
+  const summary = conversation.currentSummary
+  const title = summary?.displayTitle
+  useEffect(() => { layout.setTitle(title ?? null) }, [layout, title])
 
-    const body = useRef<HTMLDivElement | null>(null)
-    const stick = useRef(true)
-    const conv = store.state.conv
-    useEffect(() => {
-      const el = body.current
-      if (el !== null && stick.current) el.scrollTop = el.scrollHeight
-    }, [conv])
+  const body = useRef<HTMLDivElement | null>(null)
+  const stick = useRef(true)
+  const conv = conversation.state.conv
+  useEffect(() => {
+    const el = body.current
+    if (el !== null && stick.current) el.scrollTop = el.scrollHeight
+  }, [conv])
 
-    return (
-      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <div
-          ref={body}
-          onScroll={(e) => {
-            const el = e.currentTarget
-            stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
-          }}
-          style={{ flex: '1 1 auto', overflowY: 'auto', userSelect: 'text', padding: '0 32px' }}
-        >
-          {store.empty ? <Hero store={store} /> : <Stream store={store} ui={ui} />}
-        </div>
-        <div style={{ flex: '0 0 auto', padding: '0 32px' }}>
-          <Composer store={store} ui={ui} />
-        </div>
+  return (
+    <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div
+        ref={body}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+        }}
+        style={{ flex: '1 1 auto', overflowY: 'auto', userSelect: 'text', padding: '0 32px' }}
+      >
+        {conversation.empty ? <Hero store={conversation} plane={presets} /> : <Stream store={conversation} />}
       </div>
-    )
-  }
+      <div style={{ flex: '0 0 auto', padding: '0 32px' }}>
+        <Composer store={conversation} plane={presets} />
+      </div>
+    </div>
+  )
 }
 
 /**
- * Build the chat view's own sidebar row. The row ships with the view, so
- * installing one installs the other — the sidebar never lists a destination
- * that might not be there.
- * @param store - the data plane (the row also starts a new task).
- * @returns the component to register into `dbdy.sidebar.nav`.
+ * The chat app's own sidebar row. The row ships with the app, so installing
+ * one installs the other — the sidebar never lists a destination that might
+ * not be there.
+ * @param current - whether this app is the main column's selection.
  */
-export function createChatNav(store: AppStore): (props: SeatProps & { current: boolean }) => ReactNode {
-  return function ChatNav({ ui, layout, current }: SeatProps & { current: boolean }): ReactNode {
-    return (
-      <ui.Row
-        current={current}
-        icon={<Compose size={16} />}
-        onClick={() => { layout.setView('chat') }}
-        trailing={(
-          <span onClick={(e) => { e.stopPropagation(); store.newTask() }} style={{ display: 'flex' }}>
-            <ui.IconButton title="新建任务" size={26}>
-              <Plus size={14} />
-            </ui.IconButton>
-          </span>
-        )}
-      >
-        对话
-      </ui.Row>
-    )
-  }
+export function ChatNav({ current }: { current: boolean }): ReactNode {
+  const { conversation, layout } = useAppDeps()
+  useStore(conversation)
+  return (
+    <KIT.Row
+      current={current}
+      icon={<Compose size={16} />}
+      onClick={() => { layout.setView(CONVERSATION_APP_ID) }}
+      trailing={(
+        <span onClick={(e) => {
+          e.stopPropagation()
+          // Reveal the conversation the new session lands in — same rule as
+          // clicking a session row (FEATURE_MAP §2).
+          layout.closeSettings()
+          conversation.newTask()
+        }}
+        style={{ display: 'flex' }}
+        >
+          <KIT.IconButton title="新建任务" size={26}>
+            <Plus size={14} />
+          </KIT.IconButton>
+        </span>
+      )}
+    >
+      对话
+    </KIT.Row>
+  )
 }

@@ -4,8 +4,9 @@
  * The host half's fencing behavior lives in host.test.mjs; here only its
  * registration contract is checked. The client bundle is checked as an
  * artifact (self-registration banner, no stray `@deepseek-ai/` requires
- * beyond the platform table). Layout arithmetic is tested against the
- * numbers in the design handoff README.
+ * beyond the platform table, the retired `dbdy.*` seat contract absent, the
+ * static catalogs present). Layout arithmetic is tested against the numbers
+ * in the design handoff README.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -117,50 +118,57 @@ test('client bundle seats DeepBuddy\'s own columns as shadow occupants', async (
   // alive, their surfaces unrendered) — the reserved-surface behavior the
   // charter defines, not a disabled plugin.
   assert.match(bundle, /OCCUPANT_SHADOW_PRIORITY = -1;/)
-  assert.match(bundle, /name: "sidebar",\s*\n\s*priority: OCCUPANT_SHADOW_PRIORITY,/)
-  assert.match(bundle, /name: "conversation",\s*\n\s*priority: OCCUPANT_SHADOW_PRIORITY,/)
+  assert.match(bundle, /name: "sidebar",\s*\n\s*priority: OCCUPANT_SHADOW_PRIORITY/)
+  assert.match(bundle, /name: "conversation",\s*\n\s*priority: OCCUPANT_SHADOW_PRIORITY/)
 })
 
-test('client bundle declares the dbdy.* seat contract at its renderers', async () => {
+test('client bundle composes first-party surfaces from the static catalogs', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // Every dispatching seat is `list` kind: keyed options carry only
-  // { key, priority }, and the dock's segmented control and the settings rail
-  // have to DRAW a title — which lives in the list `label` or nowhere.
-  const SEATS = {
-    'dbdy.dock.pane': 'list", scope: "root", inject: frame.dockPaneFace',
-    'dbdy.settings.page': 'list", scope: "session-maybe", inject: frame.seatFace',
-    'dbdy.sidebar.nav': 'list", scope: "root", inject: frame.seatFace',
-    'dbdy.sidebar.section': 'list", scope: "root", inject: frame.seatFace',
-    'dbdy.main.view': 'list", scope: "session-maybe", inject: frame.seatFace',
-  }
-  for (const [key, spec] of Object.entries(SEATS)) {
-    assert.ok(
-      bundle.includes(`"${key}": { kind: "${spec} }`),
-      `${key} declares { kind: ${spec} }`,
-    )
-    // Declaring is claiming: a declared seat nobody renders is a dead seat.
-    assert.ok(bundle.includes(`renderSlot("${key}"`), `the declarer renders '${key}'`)
-  }
-  // The inject face is the ONLY channel a seat plugin has to the kit — a
-  // cross-plugin value import is a bundle-purity build error — so the face
-  // must actually carry it.
-  assert.match(bundle, /seatFace = Object\.freeze\(\{\s*\n?\s*ui: KIT/)
-  // ...and it must carry verbs only. A geometry setter here would make the
-  // layout-sovereignty rule (deepbuddy-design-current/DEVELOPMENT_RULES.md §4) unenforceable.
-  // (`\b` matters: the kernel's own resetDockWidth is not a seat verb.)
+  // The dbdy.* seat contract is retired: no seat is declared, injected or
+  // rendered — surfaces are thin Definitions in three static arrays.
+  assert.doesNotMatch(bundle, /dbdy\./, 'no dbdy.* seat remains in the bundle')
+  assert.doesNotMatch(bundle, /seatFace|dockPaneFace|useSeatEntries|SlotReader/, 'no seat-face plumbing remains')
+  // The catalogs exist and hold the shipped definitions (ARCHITECTURE §3).
+  assert.match(bundle, /WORKBENCH_APPS = \[\s*\n\s*ConversationAppDefinition,\s*\n\s*SettingsAppDefinition\s*\n\]/)
+  assert.match(bundle, /SIDEBAR_SECTIONS = \[\s*\n\s*SessionListSectionDefinition\s*\n\]/)
+  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition\s*\n\]/)
+  // The definitions carry their ids — the catalog is the single composition
+  // point the shell renders from.
+  assert.match(bundle, /SettingsAppDefinition = \{\s*\n\s*id: "settings",/)
+  assert.match(bundle, /SessionListSectionDefinition = \{\s*\n\s*id: "sessions",/)
+  assert.match(bundle, /FilesViewDefinition = \{\s*\n\s*id: "explorer",/)
+  // The shell dispatches components generically from the catalogs — no
+  // feature-id branch exists (DEVELOPMENT_RULES §4).
+  assert.match(bundle, /jsx\)\(active\.Component/)
+  assert.match(bundle, /jsx\)\(section\.Component/)
+  // Layout sovereignty holds without the seat face: no geometry setter is
+  // reachable from a surface. (`\b` matters: the store's own private
+  // writeDockWidth / resetDockWidth are not verbs a surface may call.)
   assert.doesNotMatch(bundle, /\bsetDockWidth|\bsetSidebarWidth|\bsetColumnWidth/)
 })
 
-test('the list row is the kit\'s fact, not each seat\'s', async () => {
+test('conversation renders the shipping chat snapshot, not the legacy nodes projection', async () => {
+  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
+  // The deprecated legacy `conv.nodes` projection drops running and interrupted
+  // assistant steps, so a transcript with streamed-but-unfinalized steps would
+  // render blank from it. The story is read from the authoritative `conv.chat`
+  // snapshot (order + nodes) the harness's own body uses, with `conv.nodes`
+  // only as a fallback when `chat` holds nothing.
+  assert.match(bundle, /conv\.chat\.order/)
+  assert.match(bundle, /chat\.nodes\.get/)
+  assert.match(bundle, /hasChat/)
+})
+
+test('the list row is the kit\'s fact, not each surface\'s', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // The prototype's navBase: 31px tall, 8px pad, radius 10, 1px between rows.
   // Every rail row in the distribution — nav, sessions, settings pages, tree —
-  // takes these; a seat that invented its own would be a seat disagreeing with
+  // takes these; a surface that invented its own would be one disagreeing with
   // the distribution by a few pixels, which is exactly what shipping a kit is
   // supposed to make impossible.
   assert.match(bundle, /ROW_METRICS = \{ height: 31, dense: 26, radius: 10, pad: 8, indent: 20, gutter: 8, gap: 1 \}/)
-  // Both row primitives must reach the seats through the frozen kit, or a
-  // seat plugin has no way to draw a row that matches the sidebar it sits in.
+  // Both row primitives must reach the surfaces through the frozen kit, or a
+  // surface has no way to draw a row that matches the sidebar it sits in.
   assert.match(bundle, /KIT = Object\.freeze\(\{[\s\S]{0,400}?Row: RowImpl/)
   assert.match(bundle, /KIT = Object\.freeze\(\{[\s\S]{0,400}?GroupLabel/)
 })
@@ -197,10 +205,9 @@ test('every column\'s top bar is one drag region, declared once', async () => {
   // The shell runs `titleBarStyle: 'hiddenInset'`, so the only thing that
   // moves the window is a declared drag region: a column that forgets one
   // leaves a dead strip the user cannot grab. Every column now draws the same
-  // TopBar, so there is exactly ONE declaration — the previous frame hand-rolled
-  // three and shipped with the panel's bar missing.
+  // ColumnFrame top bar, so there is exactly ONE declaration.
   const drag = bundle.match(/WebkitAppRegion: "drag"/g) ?? []
-  assert.equal(drag.length, 1, 'the shared TopBar is the single drag surface')
+  assert.equal(drag.length, 1, 'the shared ColumnFrame top bar is the single drag surface')
   assert.match(bundle, /height: METRICS\.topbar/)
   // Controls sitting inside those rows must opt back out, or they stop
   // answering clicks and drag the window instead.
@@ -210,9 +217,9 @@ test('every column\'s top bar is one drag region, declared once', async () => {
 })
 
 test('presets: the roster folds to what each surface may offer', async () => {
-  // Same trick as the geometry case: presets.ts is valid JS after type
+  // Same trick as the geometry case: dsh/presets.ts is valid JS after type
   // stripping, which node performs natively.
-  const p = await import(join(root, 'src/client/presets.ts'))
+  const p = await import(join(root, 'src/client/dsh/presets.ts'))
   const roster = {
     authorable: true,
     hasDocument: true,
@@ -242,7 +249,7 @@ test('presets: the roster folds to what each surface may offer', async () => {
 })
 
 test('presets: switching is offered exactly where the gateway allows it', async () => {
-  const p = await import(join(root, 'src/client/presets.ts'))
+  const p = await import(join(root, 'src/client/dsh/presets.ts'))
   assert.equal(p.canSelectPreset({ blank: true }), true)
   // A started session would answer `agent-preset-locked`.
   assert.equal(p.canSelectPreset({ blank: false }), false)
@@ -250,7 +257,7 @@ test('presets: switching is offered exactly where the gateway allows it', async 
 })
 
 test('presets: the copy id is fenced before it reaches the host', async () => {
-  const p = await import(join(root, 'src/client/presets.ts'))
+  const p = await import(join(root, 'src/client/dsh/presets.ts'))
   const roster = { authorable: true, hasDocument: true, presets: [{ id: 'standard', trust: 'system', isDefault: true }] }
   assert.equal(p.copyIdBlocker('my-mode', roster), undefined)
   assert.equal(p.copyIdBlocker('  my-mode  ', roster), undefined)
@@ -263,7 +270,7 @@ test('presets: the copy id is fenced before it reaches the host', async () => {
 })
 
 test('presets: every inventory phase has a label', async () => {
-  const p = await import(join(root, 'src/client/presets.ts'))
+  const p = await import(join(root, 'src/client/dsh/presets.ts'))
   const labels = ['pending', 'loading', 'active', 'failed', 'unloading', null]
     .map(fiberPhase => p.pluginPhaseLabel({ fiberPhase, enabled: true }))
   assert.deepEqual(labels, ['待加载', '加载中', '已挂载', '挂载失败', '卸载中', '未挂载'])
@@ -272,10 +279,10 @@ test('presets: every inventory phase has a label', async () => {
 })
 
 test('geometry: the sidebar clamp follows the handoff', async () => {
-  // The client sources are TS; geometry.ts is valid JS after type stripping,
-  // which node >= 22.6 performs natively, so the arithmetic is exercised
-  // directly instead of through the bundle.
-  const g = await import(join(root, 'src/client/geometry.ts'))
+  // The client sources are TS; shell/geometry.ts is valid JS after type
+  // stripping, which node >= 22.6 performs natively, so the arithmetic is
+  // exercised directly instead of through the bundle.
+  const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 268 is the handoff's one sidebar width; the drag range brackets it.
   assert.equal(g.SIDEBAR_DEFAULT, 268)
   assert.equal(g.clampSidebar(100), 232)
@@ -284,7 +291,7 @@ test('geometry: the sidebar clamp follows the handoff', async () => {
 })
 
 test('geometry: the dock opens at 46% and drags between 30% and 70%', async () => {
-  const g = await import(join(root, 'src/client/geometry.ts'))
+  const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 1440px window, 269px sidebar (268 + its 1px seam).
   assert.equal(g.dockDefault(1440, 269), Math.round(1440 * 0.46))
   // Upper bound is the stricter of 70% (1008) and what the chat column can
@@ -297,7 +304,6 @@ test('geometry: the dock opens at 46% and drags between 30% and 70%', async () =
   assert.equal(g.clampDock(0, 2560, 0), 768)
   // Without a sidebar the 70% cap binds: min(1008, 1440 - 460 = 980) = 980.
   assert.equal(g.clampDock(10_000, 1440, 0), 980)
-
   // The dock is refused rather than opened at an unusable width.
   assert.equal(g.dockFits(1440, 269), true)
   assert.equal(g.dockFits(1100, 269), false)

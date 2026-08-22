@@ -26,6 +26,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: mounts the api-remotes assembly's `ctx.remote` member and its
 // `pluginInventory` namespace into this compilation. Erased at build time.
 import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { Dsh, SessionSummary } from './adapter.ts'
 
 type Api = ConnectionHandle['api']
 type Remote = ClientContext['remote']
@@ -238,5 +239,195 @@ export function pluginPhaseLabel(entry: PluginEntry): string {
     case 'failed': return '挂载失败'
     case 'unloading': return '卸载中'
     default: return entry.enabled ? '未挂载' : '已禁用'
+  }
+}
+
+// ── the preset plane ────────────────────────────────────────────────────────
+
+/**
+ * The roster plane both settings and the composer's mode chip render from.
+ *
+ * Agent presets are DSH domain data, and the surfaces that consume them sit
+ * in two features — the settings modes page and the conversation mode chip —
+ * so the stateful projection of that domain lives here in the adapter: it
+ * folds the wire's failures into one `presetError`, guards every write with
+ * one `presetBusy`, and owns the staged-next-session pick (deepbuddy-design-
+ * current/DEVELOPMENT_RULES.md §5: the adapter unifies error/loading state
+ * and wraps host commands). One instance per plugin fiber.
+ */
+export class PresetPlane {
+  state: {
+    /** Whole roster; null until the first successful read. */
+    roster: AgentPresetRoster | null
+    /** The failure that replaced the roster, rendered in the red-line pattern. */
+    presetError: string | null
+    /** A select/copy/remove/default write is in flight. */
+    presetBusy: boolean
+    /**
+     * A preset picked for the NEXT session, waiting for one to land on. The
+     * new-session screen has no session to switch, and the pick must survive
+     * whether the workspace connect creates a session or reuses a blank one.
+     */
+    stagedPreset: string | null
+  } = {
+    roster: null,
+    presetError: null,
+    presetBusy: false,
+    stagedPreset: null,
+  }
+
+  private readonly dsh: Dsh
+
+  private offList: (() => void) | undefined
+  private offRoster: (() => void) | undefined
+
+  private readonly listeners = new Set<() => void>()
+  private version = 0
+
+  constructor(dsh: Dsh) {
+    this.dsh = dsh
+  }
+
+  /** Replace state and notify. */
+  private setState(next: Partial<PresetPlane['state']>): void {
+    this.state = { ...this.state, ...next }
+    this.version += 1
+    for (const listener of this.listeners) listener()
+  }
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  getVersion = (): number => this.version
+
+  /** Summary row of the current session, straight from the live list. */
+  private get currentSummary(): SessionSummary | undefined {
+    const list = this.dsh.sessions.list.getSnapshot()
+    if (list.current === undefined) return undefined
+    return (list.byId as Partial<Record<string, SessionSummary>>)[list.current as string]
+  }
+
+  // ── lifecycle ─────────────────────────────────────────────────────────────
+
+  mount(): void {
+    // The staged pick is consumed when a current blank session appears, so
+    // the applier follows the live session list.
+    this.offList = this.dsh.sessions.list.subscribe(() => { void this.applyStagedPreset() })
+    // The default moving on disk (or in another tab) changes what the mode
+    // surfaces open on, so the roster follows the settings document.
+    this.offRoster = this.dsh.onRosterMoved(() => { void this.loadRoster() })
+    void this.loadRoster()
+  }
+
+  dispose(): void {
+    this.offList?.()
+    this.offRoster?.()
+  }
+
+  // ── actions ───────────────────────────────────────────────────────────────
+
+  /** Re-read the roster; the one place `presetError` is set from a read. */
+  loadRoster = async (): Promise<void> => {
+    const r = await this.dsh.presets.list()
+    if (!r.ok) {
+      this.setState({ presetError: r.error })
+      return
+    }
+    this.setState({ roster: r.value, presetError: null })
+  }
+
+  /**
+   * Stage a preset for the current-or-next session, then try to apply it.
+   *
+   * Staging rather than applying directly is what makes the mode chip work on
+   * a screen that has no session yet: the pick waits for one to become
+   * current and still be blank, whichever way it got created.
+   * @param agentPreset - the preset id the user picked.
+   */
+  selectPreset = (agentPreset: string): void => {
+    if (this.state.presetBusy) return
+    this.setState({ stagedPreset: agentPreset, presetError: null })
+    void this.applyStagedPreset()
+  }
+
+  /**
+   * Hand the staged pick to the current session when one can take it.
+   *
+   * Runs both after a pick and after every session-list change, because the
+   * session may appear either before or after the pick. A non-blank session
+   * consumes the stage without a call: the gateway would answer
+   * `agent-preset-locked`, and those render read-only anyway.
+   */
+  private applyStagedPreset = async (): Promise<void> => {
+    const staged = this.state.stagedPreset
+    const summary = this.currentSummary
+    if (staged === null || summary === undefined || this.state.presetBusy) return
+    if (!summary.blank || summary.agentPreset === staged) {
+      this.setState({ stagedPreset: null })
+      return
+    }
+    this.setState({ presetBusy: true, presetError: null })
+    const r = await this.dsh.presets.select(summary.id as PresetSessionId, staged)
+    if (!r.ok) {
+      this.setState({ presetBusy: false, stagedPreset: null, presetError: r.error })
+      return
+    }
+    this.setState({ presetBusy: false, stagedPreset: null })
+    // Fold the committed choice into the session store this renders from; the
+    // host's own `agent-preset/selected` does the same for every other tab.
+    this.dsh.sessions.noteAgentPreset(summary.id, r.value)
+  }
+
+  /** Persist the preset that sessions created later start from. */
+  makeDefaultPreset = (agentPreset: string): void => {
+    if (this.state.presetBusy) return
+    this.setState({ presetBusy: true, presetError: null })
+    void (async () => {
+      const r = await this.dsh.presets.setDefault(agentPreset)
+      if (!r.ok) {
+        this.setState({ presetBusy: false, presetError: r.error })
+        return
+      }
+      this.setState({ presetBusy: false })
+      await this.loadRoster()
+    })()
+  }
+
+  /**
+   * Delete the preset awaiting confirmation; sessions already composed from
+   * it keep running. The caller clears its own pending-delete marker.
+   * @param agentPreset - the preset id to remove.
+   */
+  removePreset = async (agentPreset: string): Promise<void> => {
+    if (this.state.presetBusy) return
+    this.setState({ presetBusy: true, presetError: null })
+    try {
+      const r = await this.dsh.presets.remove(agentPreset)
+      if (!r.ok) {
+        this.setState({ presetBusy: false, presetError: r.error })
+        return
+      }
+      this.setState({ presetBusy: false })
+      await this.loadRoster()
+    }
+    catch (e) {
+      this.setState({ presetBusy: false, presetError: e instanceof Error ? e.message : String(e) })
+    }
+  }
+
+  /**
+   * The creator entry: a session composed from the `cordis` preset is how a
+   * new preset (and a new plugin) gets authored, so 「新建模式」 stages that
+   * preset and starts a session rather than writing anything itself.
+   *
+   * Staged WITHOUT the immediate apply: the still-current session would meet
+   * the stage first and consume it as unservable; the list-change applier
+   * takes it once the started session becomes current.
+   */
+  startCreatorSession = (): void => {
+    this.setState({ stagedPreset: 'cordis', presetError: null })
+    this.dsh.workspaces.startSession()
   }
 }

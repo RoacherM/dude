@@ -60,7 +60,7 @@ await build({
 })
 
 await build({
-  entryPoints: [join(root, 'src/client/index.tsx')],
+  entryPoints: [join(root, 'src/client/app/App.tsx')],
   outfile: join(out, 'client.js'),
   bundle: true,
   format: 'cjs',

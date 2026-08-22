@@ -155,3 +155,62 @@ export const AlertCircle = (p: IconProps): ReactNode =>
 
 export const Dots = (p: IconProps): ReactNode =>
   svg(<><path d="M6 12h.01" /><path d="M12 12h.01" /><path d="M18 12h.01" /></>, p)
+
+// ── name lookup for catalog-carried icons ───────────────────────────────────
+
+/**
+ * Every glyph by name. Catalog definitions (app/catalog.ts) carry an
+ * {@link IconName} instead of a component reference — the name keeps a thin
+ * definition data-only, and the shell resolves it through this map. One glyph
+ * per semantic stands here exactly as it does in the direct exports above.
+ */
+export const ICONS = {
+  'panel-left': PanelLeft,
+  'panel-right': PanelRight,
+  compose: Compose,
+  kanban: Kanban,
+  'pull-request': PullRequest,
+  automation: Automation,
+  folder: Folder,
+  'file-text': FileText,
+  gear: Gear,
+  help: Help,
+  explorer: Explorer,
+  globe: Globe,
+  terminal: Terminal,
+  sliders: Sliders,
+  git: Git,
+  search: Search,
+  plus: Plus,
+  close: Close,
+  check: Check,
+  'arrow-up': ArrowUp,
+  'arrow-left': ArrowLeft,
+  'arrow-right': ArrowRight,
+  'chevron-down': ChevronDown,
+  'chevron-up': ChevronUp,
+  'chevron-right': ChevronRight,
+  mic: Mic,
+  stop: Stop,
+  refresh: Refresh,
+  copy: Copy,
+  trash: Trash,
+  eye: Eye,
+  'eye-off': EyeOff,
+  'alert-circle': AlertCircle,
+  dots: Dots,
+} as const
+
+/** The name of any glyph in {@link ICONS}. */
+export type IconName = keyof typeof ICONS
+
+/**
+ * Render one named glyph.
+ * @param name - the semantic name.
+ * @param size - square size in px.
+ * @returns the svg element.
+ */
+export function Glyph({ name, size = 16 }: { name: IconName; size?: number }): ReactNode {
+  const C = ICONS[name]
+  return <C size={size} />
+}

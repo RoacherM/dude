@@ -8,7 +8,7 @@
  * between 30% and 70%.
  */
 
-import { METRICS } from './styles.ts'
+import { METRICS } from '../ui/tokens.ts'
 
 /** Sidebar default width; it collapses to 0, never to an icon rail. */
 export const SIDEBAR_DEFAULT = METRICS.sidebar

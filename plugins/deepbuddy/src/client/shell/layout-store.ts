@@ -1,58 +1,95 @@
 /**
- * The layout kernel's state machine.
+ * The layout store: exactly the facts that decide where things are.
  *
- * It owns exactly the facts that decide where things are — which view the main
- * column shows, whether the sidebar and dock are open, which pane and which
- * settings page are current, and the dock's tab ledger. Nothing about
- * sessions, files, models or presets lives here: those belong to the seats.
+ * Which workbench app the main column shows, whether the sidebar and the
+ * inspector (dock) columns are open, which inspector view type is active, the
+ * dock's tab ledger, and the top-bar title. Nothing about sessions, files,
+ * models or presets lives here — those belong to the features, and the Shell
+ * never branches on them (deepbuddy-design-current/DEVELOPMENT_RULES.md §4).
+ * The workbench app and view-type ids are strings; the catalogs
+ * (app/catalog.ts) resolve them to components.
  *
  * Widths are the one thing deliberately kept OUT of the state object. A drag
  * writes the column's inline width directly and re-reads it from the DOM,
  * because routing sixty mousemove events per second through a store that every
- * seat subscribes to would re-render every panel in the window to move one
+ * column subscribes to would re-render every panel in the window to move one
  * divider. The state object carries booleans and ids; the geometry lives where
  * the browser already keeps it.
  */
 import { createRef, useSyncExternalStore } from 'react'
-import type { HostObservable, SlotLabel, StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: the ctx.layout contract this kernel serves in ui-layout's place.
+// Type-only: the ctx.layout contract this store serves in ui-layout's place.
 import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
-import type {
-  DockPaneFace, DockPaneId, DockTabs, LayoutState, LayoutVerbs, MainViewId,
-  PaneTabs, SeatFace, SettingsPageId, TabRef,
-} from './seats.ts'
-import { KIT } from './kit.tsx'
 import {
   DOCK_BREAKPOINT, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
   clampDock, clampSidebar, dockDefault, dockFits,
 } from './geometry.ts'
 
+/** One tab of a dock pane, as the shell's strip knows it. */
+export interface TabRef {
+  id: string
+  label: string
+}
+
+/** One view type's tab state, as the layout store carries it. */
+export interface PaneTabs {
+  items: readonly TabRef[]
+  active: string | null
+}
+
+/** The read-only layout facts every column renders from. */
+export interface LayoutState {
+  /** Current workbench app key (catalog WORKBENCH_APPS). */
+  view: string
+  /** Whether the sidebar column is rendered at all. */
+  sidebar: boolean
+  /** Whether the inspector column is open. */
+  dock: boolean
+  /** Active inspector view-type key; null while the dock is closed. */
+  pane: string | null
+  /** Whether settings is the main column's surface. */
+  settingsOpen: boolean
+  /**
+   * Top-bar title contributed by the active workbench app; null falls back to
+   * the app entry's title.
+   *
+   * A title is content, not geometry, so the app contributes it rather than
+   * the shell inventing it — the conversation view is the only thing that
+   * knows a session is called 「重构缓存层」. Only the ACTIVE app renders, so
+   * only the active app can set it, and switching apps clears it.
+   */
+  title: string | null
+  /**
+   * Tab state per inspector view type. The shell draws the strip from this
+   * fact; the view renders whatever its active tab means.
+   */
+  tabs: Readonly<Record<string, PaneTabs>>
+}
+
 const NO_TABS: PaneTabs = { items: [], active: null }
 
-/** The layout kernel's controller: one per plugin fiber. */
-export class LayoutController {
+/** The layout store: one per plugin fiber. */
+export class LayoutStore {
   state: LayoutState = {
     view: 'chat',
     sidebar: true,
     dock: false,
     pane: null,
-    settings: null,
+    settingsOpen: false,
     title: null,
     tabs: {},
   }
 
   /**
    * The official frame contract's right details column. Kept OFF
-   * {@link LayoutState} because it is not a `dbdy.*` fact: nothing but
-   * `ctx.layout.openDetails` moves it, and no seat of ours needs to know.
+   * {@link LayoutState} because nothing but `ctx.layout.openDetails` moves it
+   * and no column of ours needs to know.
    */
   detailsOpen = false
 
   readonly sideRef = createRef<HTMLElement>()
   readonly dockRef = createRef<HTMLElement>()
 
-  /** uSES subscribers: one per slot entry rendering from this state. */
+  /** uSES subscribers: one per slot tree rendering from this state. */
   private readonly listeners = new Set<() => void>()
   /** uSES snapshot: a counter, because `state` is replaced on every update. */
   private version = 0
@@ -79,14 +116,6 @@ export class LayoutController {
   }
 
   getVersion = (): number => this.version
-
-  getState = (): LayoutState => this.state
-
-  /** The observable the seat face publishes as `useLayoutState`. */
-  private readonly observable: HostObservable<LayoutState> = {
-    getSnapshot: () => this.state,
-    subscribe: (listener: () => void) => this.subscribe(listener),
-  }
 
   // ── lifecycle ─────────────────────────────────────────────────────────────
 
@@ -116,22 +145,21 @@ export class LayoutController {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && this.state.settings !== null) {
+    if (e.key === 'Escape' && this.state.settingsOpen) {
       this.closeSettings()
       return
     }
     if (!(e.metaKey || e.ctrlKey)) return
     // ⌘J toggles the dock; ⌘, opens settings. The handoff's other shortcuts
-    // (⌘K, ⌘N, ⌘T) belong to surfaces the kernel does not own, and are
-    // registered by those seats when they exist.
+    // (⌘K, ⌘N, ⌘T) belong to surfaces the store does not own.
     if (e.key === 'j') {
       e.preventDefault()
       this.toggleDock()
     }
     else if (e.key === ',') {
       e.preventDefault()
-      if (this.state.settings === null) this.openSettings(null)
-      else this.closeSettings()
+      if (this.state.settingsOpen) this.closeSettings()
+      else this.openSettings()
     }
   }
 
@@ -159,14 +187,18 @@ export class LayoutController {
     el.style.width = `${w}px`
   }
 
-  // ── verbs (the seat-facing face) ──────────────────────────────────────────
+  // ── verbs ─────────────────────────────────────────────────────────────────
 
-  setView = (view: MainViewId): void => {
-    // The title belongs to the view that set it; the next view contributes
-    // its own (or falls back to its label).
-    this.patch({ view, settings: null, title: null })
+  /** Switch the main column to another workbench app. */
+  setView = (view: string): void => {
+    // The title belongs to the app that set it; the next app contributes its
+    // own (or falls back to its catalog title).
+    this.patch({ view, settingsOpen: false, title: null })
   }
 
+  /** Contribute the main top bar's title. Call it from an effect, never from
+   *  a render body — it writes store state, and a write during render is the
+   *  classic re-entrant loop. */
   setTitle = (title: string | null): void => {
     if (this.state.title === title) return
     this.patch({ title })
@@ -176,7 +208,7 @@ export class LayoutController {
     this.patch({ sidebar: !this.state.sidebar })
   }
 
-  openDock = (pane: DockPaneId): void => {
+  openDock = (pane: string): void => {
     this.userClosedDock = false
     if (this.state.dock && this.state.pane === pane) return
     if (!dockFits(window.innerWidth, this.sideWidth())) return
@@ -196,8 +228,8 @@ export class LayoutController {
     this.patch({ dock: false })
   }
 
-  /** The kernel's own dock button; `fallback` is the first registered pane. */
-  toggleDock = (fallback?: DockPaneId): void => {
+  /** The main bar's own dock button; `fallback` is the first registered view. */
+  toggleDock = (fallback?: string): void => {
     if (this.state.dock) {
       this.closeDock()
       return
@@ -206,49 +238,52 @@ export class LayoutController {
     if (pane !== undefined) this.openDock(pane)
   }
 
-  /** `null` opens whatever page the rail resolves first. */
-  openSettings = (page: SettingsPageId | null): void => {
-    this.patch({ settings: page ?? '' })
+  /** Open settings in the main column (the app's own rail picks the page). */
+  openSettings = (): void => {
+    this.patch({ settingsOpen: true })
   }
 
   closeSettings = (): void => {
-    this.patch({ settings: null })
+    this.patch({ settingsOpen: false })
   }
 
-  // ── dock tabs ─────────────────────────────────────────────────────────────
+  // ── inspector tabs ────────────────────────────────────────────────────────
 
-  private tabsOf(pane: DockPaneId): PaneTabs {
+  private tabsOf(pane: string): PaneTabs {
     return this.state.tabs[pane] ?? NO_TABS
   }
 
-  private writeTabs(pane: DockPaneId, next: PaneTabs): void {
+  private writeTabs(pane: string, next: PaneTabs): void {
     this.patch({ tabs: { ...this.state.tabs, [pane]: next } })
   }
 
-  private readonly tabs: DockTabs = {
-    open: (pane, tab: TabRef) => {
-      const cur = this.tabsOf(pane)
-      const exists = cur.items.some(t => t.id === tab.id)
-      this.writeTabs(pane, {
-        items: exists ? cur.items : [...cur.items, tab],
-        active: tab.id,
-      })
-    },
-    close: (pane, id) => {
-      const cur = this.tabsOf(pane)
-      const at = cur.items.findIndex(t => t.id === id)
-      if (at < 0) return
-      const items = cur.items.filter(t => t.id !== id)
-      // Focus falls to the neighbour that took the closed tab's place, then
-      // to the one before it — the browser-tab rule users already have.
-      const next = cur.active === id ? (items[at] ?? items[at - 1] ?? null) : cur.items.find(t => t.id === cur.active) ?? null
-      this.writeTabs(pane, { items, active: next === null ? null : next.id })
-    },
-    focus: (pane, id) => {
-      const cur = this.tabsOf(pane)
-      if (!cur.items.some(t => t.id === id)) return
-      this.writeTabs(pane, { ...cur, active: id })
-    },
+  /** Open a tab of a view type, or focus it when the id already exists. */
+  openTab = (pane: string, tab: TabRef): void => {
+    const cur = this.tabsOf(pane)
+    const exists = cur.items.some(t => t.id === tab.id)
+    this.writeTabs(pane, {
+      items: exists ? cur.items : [...cur.items, tab],
+      active: tab.id,
+    })
+  }
+
+  /** Close one tab; focus falls to its neighbour. */
+  closeTab = (pane: string, id: string): void => {
+    const cur = this.tabsOf(pane)
+    const at = cur.items.findIndex(t => t.id === id)
+    if (at < 0) return
+    const items = cur.items.filter(t => t.id !== id)
+    // Focus falls to the neighbour that took the closed tab's place, then
+    // to the one before it — the browser-tab rule users already have.
+    const next = cur.active === id ? (items[at] ?? items[at - 1] ?? null) : cur.items.find(t => t.id === cur.active) ?? null
+    this.writeTabs(pane, { items, active: next === null ? null : next.id })
+  }
+
+  /** Focus an existing tab. */
+  focusTab = (pane: string, id: string): void => {
+    const cur = this.tabsOf(pane)
+    if (!cur.items.some(t => t.id === id)) return
+    this.writeTabs(pane, { ...cur, active: id })
   }
 
   // ── drag handles ──────────────────────────────────────────────────────────
@@ -297,21 +332,12 @@ export class LayoutController {
     if (el !== null) this.writeDockWidth(el, dockDefault(window.innerWidth, this.sideWidth()))
   }
 
-  // ── the seat faces ────────────────────────────────────────────────────────
-
-  private readonly verbs: LayoutVerbs = {
-    setView: (v) => { this.setView(v) },
-    openDock: (p) => { this.openDock(p) },
-    closeDock: () => { this.closeDock() },
-    openSettings: (p) => { this.openSettings(p) },
-    closeSettings: () => { this.closeSettings() },
-    setTitle: (t) => { this.setTitle(t) },
-  }
+  // ── the official face ─────────────────────────────────────────────────────
 
   /**
    * The `ctx.layout` face DeepBuddy serves in the disabled ui-layout row's
-   * place. Three methods, no store: the official controller forwards to a slot
-   * store because its geometry lives there, while ours lives right here.
+   * place. Three methods, no store: the official controller forwards to a
+   * slot store because its geometry lives there, while ours lives right here.
    * @returns the ILayout implementation to provide.
    */
   layoutFace(): ILayout {
@@ -321,97 +347,18 @@ export class LayoutController {
       closeDetails: () => { this.detailsOpen = false; this.bump() },
     }
   }
-
-  /**
-   * The face handed to ordinary seats. Frozen and built once: an occupant
-   * receives capability, not a mutable handle on the kernel.
-   */
-  readonly seatFace: SeatFace = Object.freeze({
-    ui: KIT,
-    layout: Object.freeze(this.verbs),
-    hooks: { layoutState: this.observable },
-  })
-
-  /** The face handed to dock panes: the seat face plus the tab strip. */
-  readonly dockPaneFace: DockPaneFace = Object.freeze({
-    ...this.seatFace,
-    tabs: Object.freeze(this.tabs),
-  })
 }
 
 // ── render-side helpers ─────────────────────────────────────────────────────
 
 /**
- * Re-render a kernel component whenever the layout state moves. Each `dbdy.*`
- * container is a separate React tree under its own slot entry, so they
- * subscribe rather than share a parent.
- * @param frame - the plugin-scope controller.
+ * Re-render a column component whenever the layout state moves. Each slot
+ * tree is a separate React boundary, so they subscribe rather than share a
+ * parent.
+ * @param store - the plugin-scope layout store.
  */
-export function useFrame(frame: LayoutController): void {
-  useSyncExternalStore(frame.subscribe, frame.getVersion, frame.getVersion)
+export function useLayoutStore(store: LayoutStore): void {
+  useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion)
 }
 
-/**
- * The slice of `ctx.slots` the kernel's containers read. Typed structurally so
- * the kernel never names the runtime Service class and keeps compiling across
- * harness release drift.
- */
-export interface SlotReader {
-  /** Shadowing winners for a key — a render-body read, not a uSES source. */
-  entriesOfSlot(key: string): readonly StoredEntry[]
-  /** Registration changes for a key (microtask-batched). */
-  subscribe(key: string, fn: () => void): () => void
-  /** Monotonic per-key version — bumped synchronously, so it is the uSES snapshot. */
-  getVersion(key: string): number
-}
 
-/** One list-slot entry as a kernel container needs it: identity and title. */
-export interface SeatEntry {
-  id: string
-  label: string | undefined
-  order: number
-}
-
-/**
- * Read a list slot's live entries, sorted by `order` then registration.
- *
- * The subscribe/getVersion pair is the uSES source (the version bumps
- * synchronously per mutation); the projection itself runs in the render body,
- * because `entriesOfSlot` builds a fresh array per call and would make React
- * see a new snapshot forever.
- * @param slots - the reader.
- * @param key - list slot key.
- * @returns the entries in display order.
- */
-export function useSeatEntries(slots: SlotReader, key: string): SeatEntry[] {
-  useSyncExternalStore(
-    fn => slots.subscribe(key, fn),
-    () => slots.getVersion(key),
-    () => slots.getVersion(key),
-  )
-  const rows = slots.entriesOfSlot(key).map((entry, i) => ({
-    id: entry.options.id ?? '',
-    label: resolveSlotLabel(entry.options.label as SlotLabel | undefined),
-    order: entry.options.order ?? i,
-  }))
-  return rows.sort((a, b) => a.order - b.order)
-}
-
-/**
- * Resolve the entry a dispatching seat should render: the requested id when it
- * is registered, else the first one, else undefined.
- *
- * The kernel refuses to render a view/pane/page that nobody registered rather
- * than showing an empty column — a plugin that failed to load looks like a
- * plugin that failed to load.
- * @param rows - the seat's live entries.
- * @param want - the id the layout state asks for.
- * @returns the entry to render.
- */
-export function pickEntry(rows: readonly SeatEntry[], want: string | null): SeatEntry | undefined {
-  if (want !== null && want !== '') {
-    const exact = rows.find(r => r.id === want)
-    if (exact !== undefined) return exact
-  }
-  return rows[0]
-}

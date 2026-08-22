@@ -1,12 +1,11 @@
 /**
- * The component kit the layout kernel hands every seat through the slot inject
- * face (seats.ts). One implementation of each control in `COMPONENTS.md`,
- * built on the tokens in styles.ts.
+ * The component kit every DeepBuddy surface draws with. One implementation of
+ * each control in `COMPONENTS.md`, built on the tokens in ui/tokens.ts.
  *
  * Every size, colour and state here is transcribed from the handoff rather
- * than chosen: `COMPONENTS.md` is a specification with numbers in it, and the
- * whole point of shipping the kit through the inject face is that a seat
- * plugin cannot round 34px to 36px on its way past.
+ * than chosen: `COMPONENTS.md` is a specification with numbers in it, and a
+ * single implementation is what stops one panel rounding 34px to 36px on its
+ * way past.
  *
  * Two conventions the kit enforces structurally:
  *
@@ -18,8 +17,100 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { Kit } from './seats.ts'
 import { ChevronDown, Search } from './icons.tsx'
+
+/** Shared props every kit component accepts. */
+interface Common {
+  style?: CSSProperties
+  title?: string
+}
+
+/** Kit component faces — the shapes COMPONENTS.md specifies, nothing more. */
+export interface Kit {
+  /**
+   * `primary` is capped at one per screen by convention and by review, not by
+   * the type; `secondary` is the outline pill; `text` is the borderless one.
+   */
+  Button: (p: Common & {
+    kind?: 'primary' | 'secondary' | 'text'
+    size?: 30 | 34 | 36
+    disabled?: boolean
+    onClick?: () => void
+    children: ReactNode
+  }) => ReactNode
+  IconButton: (p: Common & {
+    size?: 26 | 28 | 30 | 34
+    active?: boolean
+    disabled?: boolean
+    onClick?: () => void
+    /** Required: an icon with no name is unusable by anyone not looking at it. */
+    title: string
+    children: ReactNode
+  }) => ReactNode
+  Input: (p: Common & {
+    value: string
+    onChange: (v: string) => void
+    placeholder?: string
+    /** Identifiers (paths, ids, keys, model names) render in JetBrains Mono. */
+    mono?: boolean
+    size?: 30 | 38 | 44
+    type?: 'text' | 'password'
+    autoFocus?: boolean
+    onKeyDown?: (e: React.KeyboardEvent) => void
+  }) => ReactNode
+  Select: <T extends string>(p: Common & {
+    value: T
+    options: readonly { id: T; label: string; detail?: string }[]
+    onChange: (v: T) => void
+    /** Pill form sizes to content; form form is a fixed 340px field. */
+    form?: 'pill' | 'field'
+    disabled?: boolean
+    /** Above this many options the menu grows a search row. */
+    placeholder?: string
+  }) => ReactNode
+  Switch: (p: Common & { on: boolean; onChange: (on: boolean) => void; disabled?: boolean }) => ReactNode
+  Badge: (p: Common & { tone?: 'neutral' | 'run' | 'await' | 'outline'; children: ReactNode }) => ReactNode
+  StatusPill: (p: Common & { tone: 'run' | 'await' | 'offline' | 'neutral'; children: ReactNode }) => ReactNode
+  Card: (p: Common & { onClick?: () => void; children: ReactNode }) => ReactNode
+  /** Anchored floating surface; closes on outside click, Esc, or another opening. */
+  Popover: (p: Common & { open: boolean; onClose: () => void; anchor: ReactNode; align?: 'left' | 'right'; direction?: 'down' | 'up'; children: ReactNode }) => ReactNode
+  /** Centered modal — destructive confirmations only, per the handoff. */
+  Dialog: (p: Common & { open: boolean; onClose: () => void; width?: number; children: ReactNode }) => ReactNode
+  /** Dashed empty state: one sentence about the consequence, no art, no button. */
+  EmptyState: (p: Common & { children: ReactNode }) => ReactNode
+  /** `underline` for content sections, `segment` for surface switching. Never both at one level. */
+  Tabs: <T extends string>(p: Common & { form: 'underline' | 'segment'; value: T; tabs: readonly { id: T; label: string; icon?: ReactNode }[]; onChange: (v: T) => void }) => ReactNode
+  /**
+   * A list row — the shape every rail in the window is made of: sidebar nav,
+   * session rows, settings rail, dock tree entries.
+   *
+   * It exists because the alternative was each panel picking its own height,
+   * and three panels disagreeing by 6px is exactly the drift a shipped kit is
+   * supposed to make impossible. Height, radius, padding and the selected
+   * fill are not props.
+   */
+  Row: (p: Common & {
+    /** Selected state: the fill, not a border and not a colour. */
+    current?: boolean
+    icon?: ReactNode
+    /** Right-hand metadata (timestamp, badge, count) — muted by default. */
+    trailing?: ReactNode
+    /** One nesting step, for tree children and grouped rows. */
+    indent?: boolean
+    /** Compact rows for dense trees; the default is the rail row. */
+    dense?: boolean
+    onClick?: () => void
+    children: ReactNode
+  }) => ReactNode
+  /** Group label above a run of rows: the quietest text step, no uppercase. */
+  GroupLabel: (p: Common & { onClick?: () => void; trailing?: ReactNode; children: ReactNode }) => ReactNode
+  /** Settings row: title + description left, control right, hairline below. */
+  SettingRow: (p: Common & { label: string; description?: string; children: ReactNode }) => ReactNode
+  /** Status dot. */
+  Dot: (p: Common & { tone?: 'run' | 'await' | 'offline' | 'primary' | 'muted'; size?: number }) => ReactNode
+  /** Monospace inline text — identifiers, paths, shortcuts. */
+  Mono: (p: Common & { children: ReactNode }) => ReactNode
+}
 
 /** Pill radius: every capsule takes half its height. */
 const half = (h: number): number => h / 2
