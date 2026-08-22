@@ -15,7 +15,7 @@
  * - **No weight ramp.** Nothing here sets `fontWeight` above 500 except
  *   {@link Dialog}'s title slot. Hierarchy comes from the five text steps.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { ChevronDown, Search } from './icons.tsx'
 
@@ -375,6 +375,10 @@ const EmptyState: Kit['EmptyState'] = ({ children, title, style }) => (
  */
 const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direction = 'down', children, style }) => {
   const box = useRef<HTMLDivElement | null>(null)
+  const panel = useRef<HTMLDivElement | null>(null)
+  // The effective direction after viewport measurement: the caller's preferred
+  // direction, flipped when the floating surface would leave the window.
+  const [eff, setEff] = useState<'down' | 'up'>(direction)
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e: MouseEvent): void => {
@@ -390,15 +394,31 @@ const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direct
       window.removeEventListener('keydown', onKey)
     }
   }, [open, onClose])
+  useLayoutEffect(() => {
+    if (!open) return
+    const boxEl = box.current
+    const panelEl = panel.current
+    if (boxEl === null || panelEl === null) return
+    const boxRect = boxEl.getBoundingClientRect()
+    const panelRect = panelEl.getBoundingClientRect()
+    // If the caller's direction is down but the panel would clip the window's
+    // bottom, flip up; the mirror flips a bottom-anchored panel that clips
+    // upward. `flip` re-measures after the direction change settles.
+    let next = direction
+    if (direction === 'down' && boxRect.bottom + panelRect.height + 14 > window.innerHeight) next = 'up'
+    else if (direction === 'up' && boxRect.top - panelRect.height - 14 < 0) next = 'down'
+    setEff(next)
+  }, [open, direction, children])
   return (
     <div ref={box} style={{ position: 'relative', display: 'flex', minWidth: 0 }}>
       {anchor}
       {open && (
         <div
-          className={direction === 'down' ? 'dbdy-pop' : 'dbdy-pop-up'}
+          ref={panel}
+          className={eff === 'down' ? 'dbdy-pop' : 'dbdy-pop-up'}
           style={{
             position: 'absolute',
-            ...direction === 'down' ? { top: '100%', marginTop: 6 } : { bottom: '100%', marginBottom: 6 },
+            ...eff === 'down' ? { top: '100%', marginTop: 6 } : { bottom: '100%', marginBottom: 6 },
             ...align === 'left' ? { left: 0 } : { right: 0 },
             zIndex: 30,
             background: 'var(--db-popover)',

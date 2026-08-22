@@ -187,6 +187,43 @@ describe('readFile preview cap', () => {
   })
 })
 
+describe('readBinary', () => {
+  it('returns the raw bytes of a file inside the session root as base64', async () => {
+    await writeFile(join(root, 'media.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d]))
+    const result = await service.readBinary({ sessionId: SESSION, path: join(root, 'media.png') })
+    assert.equal(result.kind, 'binary')
+    assert.equal(result.size, 5)
+    assert.equal(Buffer.from(result.base64, 'base64').toString('hex'), '89504e470d')
+  })
+
+  it('refuses a `..` traversal out of the root', async () => {
+    const result = await service.readBinary({ sessionId: SESSION, path: join(root, '..', 'outside', 'secret.txt') })
+    assert.deepEqual(result, { error: { kind: 'outside-root' } })
+  })
+
+  it('answers too-large when a file is past the byte cap', async () => {
+    // `withCap` shares the previewMaxChars path; build one with a byte cap so
+    // a small file trips it deterministically.
+    await writeFile(join(root, 'big.bin'), Buffer.alloc(8, 0x41))
+    const fsCtx = new Context()
+    const fs = new LocalFileSystem(fsCtx, LocalFileSystem.Config({ cwd: base }))
+    const ctx = {
+      sessions: { get: () => ({ header: { cwd: root } }) },
+      get: key => (key === 'fs' ? fs : undefined),
+    }
+    const byteCapped = new DeepbuddyFilesService(ctx, { previewMaxChars: 262_144, previewMaxBytes: 4 })
+    const result = await byteCapped.readBinary({ sessionId: SESSION, path: join(root, 'big.bin') })
+    assert.equal(result.kind, 'binary-too-large')
+    assert.equal(result.size, 8)
+  })
+
+  it('rejects a malformed request without reaching the fence', async () => {
+    assert.deepEqual(await service.readBinary(null), { error: { kind: 'bad-request' } })
+    assert.deepEqual(await service.readBinary({ sessionId: SESSION }), { error: { kind: 'bad-request' } })
+    assert.deepEqual(await service.readBinary({ sessionId: SESSION, path: '' }), { error: { kind: 'bad-request' } })
+  })
+})
+
 describe('listDirectory', () => {
   it('lists the session root when the path is empty', async () => {
     const result = await service.listDirectory({ sessionId: SESSION, path: '' })
@@ -282,11 +319,11 @@ describe('session root resolution', () => {
 })
 
 describe('typert registration', () => {
-  it('claims exactly the two endpoints the browser half calls', async () => {
+  it('claims exactly the three endpoints the browser half calls', async () => {
     const { DESCRIPTORS } = await import('../lib/index.js')
     assert.deepEqual(
       DESCRIPTORS.map(descriptor => `${descriptor.namespace}/${descriptor.method}`),
-      ['deepbuddyFiles/readFile', 'deepbuddyFiles/listDirectory'],
+      ['deepbuddyFiles/readFile', 'deepbuddyFiles/readBinary', 'deepbuddyFiles/listDirectory'],
     )
   })
 

@@ -19,16 +19,24 @@ import { basename, textOfParts, workspaceOf } from '../../dsh/adapter.ts'
 import { canSelectPreset, defaultPresetId, presetLabel, selectablePresets } from '../../dsh/presets.ts'
 import { useStore } from '../../dsh/hooks.ts'
 import { useAppDeps } from '../../app/context.tsx'
-import type { ConversationStore } from './store.ts'
+import { useLayoutStore } from '../../shell/layout-store.ts'
 import { KIT } from '../../ui/kit.tsx'
 import { METRICS } from '../../ui/tokens.ts'
 import { ArrowUp, ChevronDown, ChevronUp, Compose, Folder, Plus, Stop } from '../../ui/icons.tsx'
+import type { ConversationStore } from './store.ts'
 
 /** The app's catalog id; the shell resolves it through WORKBENCH_APPS. */
 export const CONVERSATION_APP_ID = 'chat'
 
-/** The chat column: 720px, left-aligned, never centered (the handoff's rule). */
-const COLUMN = { width: '100%', maxWidth: METRICS.chatColumn } as const
+/**
+ * The chat content column. With the dock open the conversation stays on the
+ * handoff's 720px left-aligned column; with the dock closed the message stream
+ * and composer take the main column's full width (the caller's 32px padding
+ * keeps the comfortable edge). `maxWidth` is the only thing that differs.
+ */
+function columnStyle(dockOpen: boolean): { width: string; maxWidth?: number } {
+  return dockOpen ? { width: '100%', maxWidth: METRICS.chatColumn } : { width: '100%' }
+}
 
 /**
  * The one-line argument summary the handoff puts beside the tool name
@@ -337,17 +345,38 @@ function AssistantStep({ data }: { data: AssistantStepData }): ReactNode {
  * transcript whose steps are streamed-but-not-yet-finalized would render blank
  * from it; `chat` retains what is visible.
  */
-function Stream({ store }: { store: ConversationStore }): ReactNode {
+function Stream({ store, dockOpen }: { store: ConversationStore; dockOpen: boolean }): ReactNode {
   const conv = store.state.conv
   if (conv === null) {
-    return <div style={{ ...COLUMN, padding: '24px 0', fontSize: 12.5, color: 'var(--db-text-4)' }}>加载会话…</div>
+    return <div style={{ ...columnStyle(dockOpen), padding: '24px 0', fontSize: 12.5, color: 'var(--db-text-4)' }}>加载会话…</div>
+  }
+  if (conv.openState === 'error') {
+    // A session whose log failed to open (e.g. `corrupt session log: seq gap`)
+    // must not render as a blank page — say what happened and why.
+    const detail = conv.openError?.message ?? conv.openError?.code ?? '未知错误'
+    return (
+      <div style={{ ...columnStyle(dockOpen), padding: '24px 0' }}>
+        <div style={{
+          border: '1px solid var(--db-await-wash)', background: 'var(--db-await-wash)',
+          borderRadius: 'var(--db-r-card)', padding: '14px 16px', lineHeight: 1.6,
+        }}
+        >
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--db-await)' }}>会话历史无法加载</div>
+          <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--db-text-3)' }}>{detail}</div>
+          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--db-text-4)' }}>请重试，或换一个会话继续。</div>
+        </div>
+      </div>
+    )
+  }
+  if (conv.openState === 'loading' || conv.openState === 'cold') {
+    return <div style={{ ...columnStyle(dockOpen), padding: '24px 0', fontSize: 12.5, color: 'var(--db-text-4)' }}>加载会话…</div>
   }
   const hasChat = conv.chat.order.length > 0
   const partial = conv.partial
   const partialBlocks = partial === null ? [] : partial.blocks.filter(b => b.kind === 'text' || b.kind === 'reasoning')
   const thinking = conv.running && partialBlocks.length === 0 && conv.runningCalls.length === 0
   return (
-    <div style={{ ...COLUMN, display: 'flex', flexDirection: 'column', gap: 26, padding: '24px 0 40px' }}>
+    <div style={{ ...columnStyle(dockOpen), display: 'flex', flexDirection: 'column', gap: 26, padding: '24px 0 40px' }}>
       {conv.hasMore && (
         <span style={{ alignSelf: 'flex-start' }}>
           <KIT.Button kind="text" onClick={store.loadOlder}>
@@ -430,13 +459,32 @@ function Stream({ store }: { store: ConversationStore }): ReactNode {
   )
 }
 
-/** Current workspace of the composer: the session's own, else picked, else recent. */
+/** Whether a session has started (blank === false) and so locked its workspace. */
+function sessionLocked(store: ConversationStore): boolean {
+  const cur = store.state.list?.current
+  if (cur === undefined) return false
+  const conv = store.state.conv
+  if (conv !== null && conv.blank === false) return true
+  const summary = store.currentSummary
+  return summary !== undefined && summary.blank === false
+}
+
+/**
+ * Current workspace of the composer. On a blank or no-session page the armed
+ * pick wins (it is where the next prompt opens a session); once the session
+ * has started its own workspace is locked and shown.
+ */
 function currentWorkspace(store: ConversationStore): WorkspaceView | undefined {
   const s = store.state
-  const own = workspaceOf(s.wsList, s.list?.current)
-  if (own) return own
   const items = s.wsList?.items ?? []
+  if (sessionLocked(store)) {
+    const own = workspaceOf(s.wsList, s.list?.current)
+    if (own) return own
+    // Locked but the session's workspace is not in the list: fall through to
+    // the armed/recent project rather than showing nothing.
+  }
   return items.find(w => w.workspaceId === s.pickedWs)
+    ?? workspaceOf(s.wsList, s.list?.current)
     ?? items.find(w => w.workspaceId === s.wsList?.recentWorkspaceId)
     ?? items[0]
 }
@@ -499,16 +547,25 @@ function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
   const items = store.state.wsList?.items ?? []
   const q = query.trim().toLowerCase()
   const matches = items.filter(w => q === '' || wsLabel(w).toLowerCase().includes(q) || w.path.toLowerCase().includes(q))
+  if (sessionLocked(store)) {
+    // A started session's workspace is locked at creation; a picker here would
+    // be a control whose every use is refused (mirrors ModeChip's lock).
+    return (
+      <KIT.StatusPill tone="neutral" title="会话的工作区在创建时锁定，无法在对话开始后切换">
+        <Folder size={12} style={{ flex: '0 0 12px', marginRight: -3 }} />
+        {ws === undefined ? '工作空间已锁定' : wsLabel(ws)}
+      </KIT.StatusPill>
+    )
+  }
   return (
     <KIT.Popover
       open={open}
       onClose={() => { setOpen(false); setQuery('') }}
-      direction="up"
       style={{ width: 360 }}
       anchor={(
         <button
           type="button"
-          title="选择工作空间"
+          title="选择工作空间（新会话将在此文件夹中开始）"
           onClick={() => { setOpen(!open) }}
           className="dbdy-hv-outline"
           style={{
@@ -569,7 +626,7 @@ function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
   )
 }
 
-function Composer({ store, plane }: { store: ConversationStore; plane: PresetPlane }): ReactNode {
+function Composer({ store, plane, dockOpen }: { store: ConversationStore; plane: PresetPlane; dockOpen: boolean }): ReactNode {
   const s = store.state
   const running = s.conv?.running === true
   const errorText = s.sendError
@@ -577,7 +634,7 @@ function Composer({ store, plane }: { store: ConversationStore; plane: PresetPla
       ? `${s.conv.promptError.op === 'stop' ? '停止失败' : '发送失败'}：${s.conv.promptError.error.message}`
       : null)
   return (
-    <div style={{ ...COLUMN, paddingBottom: 18 }}>
+    <div style={{ ...columnStyle(dockOpen), paddingBottom: 18 }}>
       {errorText !== null && (
         <div style={{ padding: '0 2px 8px', fontSize: 12.5, color: 'var(--db-await)' }}>{errorText}</div>
       )}
@@ -622,9 +679,9 @@ function Composer({ store, plane }: { store: ConversationStore; plane: PresetPla
   )
 }
 
-function Hero({ store, plane }: { store: ConversationStore; plane: PresetPlane }): ReactNode {
+function Hero({ store, plane, dockOpen }: { store: ConversationStore; plane: PresetPlane; dockOpen: boolean }): ReactNode {
   return (
-    <div style={{ ...COLUMN, paddingTop: 96 }}>
+    <div style={{ ...columnStyle(dockOpen) }}>
       <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-.02em', color: 'var(--db-text)' }}>今天跑点什么？</div>
       <div style={{ marginTop: 10, fontSize: 13.5, color: 'var(--db-text-3)', lineHeight: 1.65, maxWidth: '52ch' }}>
         这是一个本地 harness：会话在这里，运行产物在停靠栏里。
@@ -645,9 +702,11 @@ function Hero({ store, plane }: { store: ConversationStore; plane: PresetPlane }
 export function ChatView(): ReactNode {
   const { conversation, layout, presets } = useAppDeps()
   useStore(conversation)
+  useLayoutStore(layout)
   const summary = conversation.currentSummary
   const title = summary?.displayTitle
   useEffect(() => { layout.setTitle(title ?? null) }, [layout, title])
+  const dockOpen = layout.state.dock
 
   const body = useRef<HTMLDivElement | null>(null)
   const stick = useRef(true)
@@ -656,6 +715,23 @@ export function ChatView(): ReactNode {
     const el = body.current
     if (el !== null && stick.current) el.scrollTop = el.scrollHeight
   }, [conv])
+
+  if (conversation.empty) {
+    // Blank/new-session page: the greeting and the composer are one group,
+    // vertically centered in the main column (official DSH layout). Once the
+    // first message is sent the conversation is no longer blank and switches
+    // to the message stream + bottom composer.
+    return (
+      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '0 32px' }}>
+        <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
+          <Hero store={conversation} plane={presets} dockOpen={dockOpen} />
+          <div style={{ marginTop: 28 }}>
+            <Composer store={conversation} plane={presets} dockOpen={dockOpen} />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -667,10 +743,10 @@ export function ChatView(): ReactNode {
         }}
         style={{ flex: '1 1 auto', overflowY: 'auto', userSelect: 'text', padding: '0 32px' }}
       >
-        {conversation.empty ? <Hero store={conversation} plane={presets} /> : <Stream store={conversation} />}
+        <Stream store={conversation} dockOpen={dockOpen} />
       </div>
       <div style={{ flex: '0 0 auto', padding: '0 32px' }}>
-        <Composer store={conversation} plane={presets} />
+        <Composer store={conversation} plane={presets} dockOpen={dockOpen} />
       </div>
     </div>
   )

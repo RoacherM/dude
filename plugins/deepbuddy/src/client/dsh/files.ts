@@ -17,6 +17,13 @@ export interface WorkspaceRefusal {
 export type ReadFileResult =
   | { kind: 'text'; text: string; truncated: boolean; size: number | null }
   | { kind: 'binary'; size: number | null }
+  | { kind: 'binary-too-large'; size: number | null }
+  | { error: WorkspaceRefusal }
+
+/** Result of the byte channel an image/video renderer reads through. */
+export type ReadBinaryResult =
+  | { kind: 'binary'; base64: string; size: number | null }
+  | { kind: 'binary-too-large'; size: number | null }
   | { error: WorkspaceRefusal }
 
 export interface DirectoryChild {
@@ -38,6 +45,7 @@ export interface ConnectionRpc {
 
 export interface WorkspaceFilesWire {
   readFile(sessionId: string, path: string): Promise<ReadFileResult>
+  readBinary(sessionId: string, path: string): Promise<ReadBinaryResult>
   listDirectory(sessionId: string, path: string, signal?: AbortSignal): Promise<ListDirectoryResult>
 }
 
@@ -47,10 +55,14 @@ const RETRY_LIMIT = 12
 
 function hydrating(value: unknown): boolean {
   if (typeof value !== 'object' || value === null || !('error' in value)) return false
-  return (value as { error: WorkspaceRefusal }).error.kind === HYDRATING
+  const error = value.error
+  return typeof error === 'object' && error !== null && error !== undefined
+    && 'kind' in error && error.kind === HYDRATING
 }
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  // The TS lib target predates `Promise.withResolvers`, so the executor form
+  // is the portable way to build this promise.
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       signal?.removeEventListener('abort', onAbort)
@@ -67,7 +79,7 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
 /**
  * Build the wire over the Connection RPC caller.
  * @param rpc - `connection.rpc`.
- * @returns the two calls the file dock makes.
+ * @returns the three calls the file dock makes.
  */
 export function createFilesWire(rpc: ConnectionRpc): WorkspaceFilesWire {
   const call = async (method: string, request: unknown, signal?: AbortSignal): Promise<unknown> => {
@@ -85,6 +97,9 @@ export function createFilesWire(rpc: ConnectionRpc): WorkspaceFilesWire {
   return {
     async readFile(sessionId, path) {
       return await call('readFile', { sessionId, path }) as ReadFileResult
+    },
+    async readBinary(sessionId, path) {
+      return await call('readBinary', { sessionId, path }) as ReadBinaryResult
     },
     async listDirectory(sessionId, path, signal) {
       return await call('listDirectory', { sessionId, path }, signal) as ListDirectoryResult

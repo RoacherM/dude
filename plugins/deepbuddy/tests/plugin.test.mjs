@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-test('host half registers the file service and its two endpoints', async () => {
+test('host half registers the file service and its three endpoints', async () => {
   const mod = await import(join(root, 'lib/index.js'))
   assert.equal(mod.name, 'deepbuddy')
   assert.deepEqual(mod.inject, ['typert', 'sessions'])
@@ -32,14 +32,14 @@ test('host half registers the file service and its two endpoints', async () => {
     provide(key, service) { provided.push([key, service]) },
     typert: { register(contribution) { registered.push(contribution); return () => {} } },
   }
-  mod.apply(ctx, { previewMaxChars: 262_144 })
+  mod.apply(ctx, { previewMaxChars: 262_144, previewMaxBytes: 50_102_400 })
 
   assert.equal(provided.length, 1)
   assert.equal(provided[0][0], 'deepbuddyFiles')
   assert.equal(registered.length, 1)
   assert.deepEqual(
     registered[0].invocations.map(d => `${d.namespace}/${d.method}`),
-    ['deepbuddyFiles/readFile', 'deepbuddyFiles/listDirectory'],
+    ['deepbuddyFiles/readFile', 'deepbuddyFiles/readBinary', 'deepbuddyFiles/listDirectory'],
   )
   // The Gateway invokes descriptor.method on the provided service; a rename
   // on either side would strand the wire.

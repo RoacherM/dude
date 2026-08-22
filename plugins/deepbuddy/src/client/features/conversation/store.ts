@@ -12,6 +12,7 @@
 import type {
   Conversation, Dsh, SessionId, SessionList, SessionSummary, WorkspaceId, WorkspaceList,
 } from '../../dsh/adapter.ts'
+import { workspaceOf } from '../../dsh/adapter.ts'
 
 /** Everything the conversation surface renders from. */
 export interface ConversationState {
@@ -163,21 +164,32 @@ export class ConversationStore {
     void (async () => {
       try {
         const cur = this.state.list?.current
-        if (cur !== undefined) {
-          const binding = this.dsh.sessions.binding(cur)
+        const armed = this.state.pickedWs
+        const own = cur === undefined ? undefined : workspaceOf(this.state.wsList, cur)?.workspaceId
+        // A blank session re-targets to the armed workspace on the next prompt;
+        // a started session is locked to its own. A blank session started in a
+        // workspace the user then picked is reconnected there (connectWorkspace
+        // reuses its blank session), so the first message land in the picked one.
+        const blank = cur !== undefined && this.state.conv?.blank === true
+        const reTarget = blank && armed !== undefined && armed !== own
+        if (cur === undefined || reTarget) {
+          const wsId = armed
+            ?? this.state.wsList?.recentWorkspaceId
+            ?? this.state.wsList?.items[0]?.workspaceId
+          if (wsId === undefined) throw new Error('没有可用的工作空间')
+          const id = await this.dsh.workspaces.connectWorkspace(wsId)
+          this.dsh.sessions.open(id)
+          const binding = this.dsh.sessions.binding(id)
           if (!binding) throw new Error('会话尚未就绪')
-          const mode: 'queue' | 'steer' = this.state.conv?.running ? 'steer' : 'queue'
-          await binding.session.prompt([{ type: 'text', text }], mode)
+          await binding.session.prompt([{ type: 'text', text }], 'queue')
+          // The armed pick was consumed by the session it opened.
+          this.patch({ pickedWs: null })
           return
         }
-        // No session at all: connect the picked (or most recent) workspace.
-        const wsId = this.state.pickedWs
-          ?? this.state.wsList?.recentWorkspaceId
-          ?? this.state.wsList?.items[0]?.workspaceId
-        if (wsId === undefined) throw new Error('没有可用的工作空间')
-        const id = await this.dsh.workspaces.connectWorkspace(wsId)
-        this.dsh.sessions.open(id)
-        await this.dsh.sessions.binding(id)?.session.prompt([{ type: 'text', text }], 'queue')
+        const binding = this.dsh.sessions.binding(cur)
+        if (!binding) throw new Error('会话尚未就绪')
+        const mode: 'queue' | 'steer' = this.state.conv?.running ? 'steer' : 'queue'
+        await binding.session.prompt([{ type: 'text', text }], mode)
       }
       catch (e) {
         this.setState({ sendError: e instanceof Error ? e.message : String(e) })
@@ -203,15 +215,13 @@ export class ConversationStore {
     this.setState(x => ({ openCalls: { ...x.openCalls, [callId]: !x.openCalls[callId] } }))
   }
 
-  /** Composer picker: with no session it connects now, else it arms the next task. */
+  /**
+   * Composer picker: arms the workspace the NEXT prompt opens a session in.
+   * A started session (blank === false) is locked to its workspace and never
+   * offers this; before that, the chip reflects the armed pick and a blank or
+   * no-session `send` connects it (see {@link send}).
+   */
   pickWorkspace = (id: WorkspaceId): void => {
-    if (this.state.list?.current === undefined) {
-      void (async () => {
-        const sessionId = await this.dsh.workspaces.connectWorkspace(id)
-        this.dsh.sessions.open(sessionId)
-      })()
-      return
-    }
     this.patch({ pickedWs: id })
   }
 

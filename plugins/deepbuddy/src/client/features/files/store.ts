@@ -11,6 +11,14 @@
 import type { Dsh, SessionId } from '../../dsh/adapter.ts'
 import type { DirectoryChild, ReadFileResult } from '../../dsh/files.ts'
 
+/** Decode a base64 string into raw bytes (used by the media preview). */
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
 /** Everything the file tree renders from. */
 export interface FilesState {
   /** The current session id; undefined on the empty frame. */
@@ -23,7 +31,20 @@ export interface FilesState {
   fsExpanded: Record<string, boolean>
   /** Opened file bodies, keyed by path. */
   fileBodies: Record<string, ReadFileResult | 'loading'>
+  /**
+   * Decoded image/video previews, keyed by path. A blob URL the view owns and
+   * revokes on unmount (see {@link FileBody}); kept out of {@link fileBodies}
+   * because a media preview is rendering state, not a text-body result.
+   */
+  mediaBodies: Record<string, MediaBody>
 }
+
+/** The byte-preview state for one image/video path. */
+export type MediaBody =
+  | 'loading'
+  | { kind: 'url'; url: string; size: number | null }
+  | { kind: 'too-large'; size: number | null }
+  | { kind: 'error'; message: string }
 
 /** A state update in the shape the ported actions were written against. */
 type StateUpdate = Partial<FilesState> | null
@@ -36,6 +57,7 @@ export class FilesStore {
     fsChildren: {},
     fsExpanded: {},
     fileBodies: {},
+    mediaBodies: {},
   }
 
   /** The wire bundle every action dispatches through. */
@@ -102,7 +124,7 @@ export class FilesStore {
   private watchSession(id: SessionId | undefined): void {
     this.watchedId = id
     // Session switch: the file tree belongs to the old fence.
-    this.setState({ fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {} })
+    this.setState({ fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {}, mediaBodies: {} })
     if (id === undefined) return
     const binding = this.dsh.sessions.binding(id)
     if (!binding) {
@@ -158,6 +180,42 @@ export class FilesStore {
       .catch((e: unknown) => {
         const err: ReadFileResult = { error: { kind: 'wire', message: e instanceof Error ? e.message : String(e) } }
         this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: err } }))
+      })
+  }
+
+  /** Read one image/video file's bytes and decode a blob URL for the preview. */
+  openBinaryFile = (path: string): void => {
+    const id = this.watchedId
+    const files = this.dsh.files
+    if (id === undefined || files === null || this.state.mediaBodies[path] !== undefined) return
+    this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: 'loading' } }))
+    void files.readBinary(id as string, path)
+      .then((r) => {
+        if ('error' in r) {
+          this.setState(x => ({
+            mediaBodies: {
+              ...x.mediaBodies,
+              [path]: { kind: 'error', message: r.error.message ?? r.error.kind },
+            },
+          }))
+          return
+        }
+        if (r.kind === 'binary-too-large') {
+          this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'too-large', size: r.size } } }))
+          return
+        }
+        // Decode base64 to a blob URL. `atob`, not the deprecated Buffer path —
+        // this runs in the browser renderer without Node globals.
+        const bytes = base64ToBytes(r.base64)
+        // `bytes` is exactly-sized (built from the decoded length), so its
+        // backing buffer is a plain ArrayBuffer — safe to hand to Blob.
+        const blob = new Blob([bytes.buffer as ArrayBuffer])
+        const url = URL.createObjectURL(blob)
+        this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'url', url, size: r.size } } }))
+      })
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e)
+        this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'error', message } } }))
       })
   }
 }

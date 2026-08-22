@@ -98,8 +98,75 @@ function TreeLevel({ store, onOpen, active, dirKey, depth }: {
   )
 }
 
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)$/i
+const VIDEO_EXT = /\.(mp4|webm|mov)$/i
+
+/** Which media renderer a file path needs, if any. */
+function mediaKind(path: string): 'image' | 'video' | null {
+  if (IMAGE_EXT.test(path)) return 'image'
+  if (VIDEO_EXT.test(path)) return 'video'
+  return null
+}
+
+/**
+ * The image/video preview body. Owns one blob URL: it requests the bytes on
+ * mount and revokes the URL on unmount, so a preview never leaks. The byte
+ * size guard lives in the host (returns `binary-too-large` past the cap).
+ */
+function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; mime: 'image' | 'video' }): ReactNode {
+  const media = store.state.mediaBodies[path]
+  const requested = media !== undefined
+  useEffect(() => {
+    if (!requested) store.openBinaryFile(path)
+  }, [store, path, requested])
+  useEffect(() => {
+    // Revoke this path's blob URL when the preview unmounts (or path changes).
+    const current = store.state.mediaBodies[path]
+    const url = current !== undefined && current !== 'loading' && current.kind === 'url' ? current.url : null
+    return () => {
+      if (url !== null) URL.revokeObjectURL(url)
+    }
+  }, [store, path])
+  if (media === undefined || media === 'loading') {
+    return <div style={{ padding: 16, fontSize: 12.5, color: 'var(--db-text-4)' }}>读取媒体…</div>
+  }
+  if (media.kind === 'error') {
+    return (
+      <div style={{ padding: 16, fontSize: 12.5, color: 'var(--db-await)' }}>
+        {`无法预览：${media.message}`}
+      </div>
+    )
+  }
+  if (media.kind === 'too-large') {
+    return (
+      <div style={{ padding: 16 }}>
+        <KIT.EmptyState>
+          {`文件过大${media.size === null ? '' : ` · ${(media.size / (1024 * 1024)).toFixed(1)} MB`}`}
+        </KIT.EmptyState>
+      </div>
+    )
+  }
+  return (
+    <div style={{ padding: 16, height: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflow: 'auto' }}>
+      {mime === 'image'
+        ? (
+            <img
+              src={media.url}
+              alt={basename(path)}
+              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--db-r-card)' }}
+            />
+          )
+        : <video src={media.url} controls style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 'var(--db-r-card)' }} />}
+    </div>
+  )
+}
+
 function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNode {
   const body = store.state.fileBodies[path]
+  const kind = mediaKind(path)
+  if (kind !== null) {
+    return <MediaPreview store={store} path={path} mime={kind} />
+  }
   if (body === undefined || body === 'loading') {
     return <div style={{ padding: 16, fontSize: 12.5, color: 'var(--db-text-4)' }}>读取中…</div>
   }
@@ -110,11 +177,13 @@ function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNo
       </div>
     )
   }
-  if (body.kind === 'binary') {
+  if (body.kind === 'binary' || body.kind === 'binary-too-large') {
     return (
       <div style={{ padding: 16 }}>
         <KIT.EmptyState>
-          {`二进制文件${body.size === null ? '' : ` · ${(body.size / 1024).toFixed(1)} KB`}`}
+          {body.kind === 'binary-too-large'
+            ? `文件过大${body.size === null ? '' : ` · ${(body.size / (1024 * 1024)).toFixed(1)} MB`}`
+            : `二进制文件${body.size === null ? '' : ` · ${(body.size / 1024).toFixed(1)} KB`}`}
         </KIT.EmptyState>
       </div>
     )

@@ -47,6 +47,12 @@ export const Config = Schema.object({
    * A larger file still answers, with `truncated: true`.
    */
   previewMaxChars: Schema.natural().min(1024).default(262_144),
+  /**
+   * Inclusive byte cap for the binary preview channel. A file past this
+   * answers `tooLarge: true`, never a transport failure — a 200MB media file
+   * must not be read into the browser half whole.
+   */
+  previewMaxBytes: Schema.natural().min(1024).default(50 * 1024 * 1024),
 })
 
 /**
@@ -70,7 +76,7 @@ function descriptorOf(method) {
 }
 
 /** The Remote surface: read one file, and list one directory level. */
-const DESCRIPTORS = [descriptorOf('readFile'), descriptorOf('listDirectory')]
+const DESCRIPTORS = [descriptorOf('readFile'), descriptorOf('readBinary'), descriptorOf('listDirectory')]
 
 /** Fold a thrown filesystem failure into the refusal vocabulary. */
 function fsErrorRefusal(error) {
@@ -81,11 +87,21 @@ function fsErrorRefusal(error) {
   const message = typeof error.message === 'string' ? error.message : JSON.stringify(error)
   return { kind: 'fs-error', ...(code === undefined ? {} : { code }), message }
 }
-
 /** Whether the thrown value is the fs seam's binary-content rejection. */
 function isNotTextRejection(error) {
   return typeof error === 'object' && error !== null && error.code === 'FS_NOT_TEXT'
 }
+
+/** Whether the thrown value is the fs seam's byte-cap rejection. */
+function isTooLargeRejection(error) {
+  return typeof error === 'object' && error !== null && error.code === 'FS_TOO_LARGE'
+}
+
+/** Encode raw bytes as base64 for JSON-safe transport across the Remote wire. */
+function Uint8ArrayToBase64(bytes) {
+  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64')
+}
+
 
 /**
  * Resolve the project root that fences one session's reads.
@@ -210,6 +226,59 @@ async function readWorkspaceFileText(ctx, sessionId, path, maxChars, signal) {
   return { ok: true, kind: 'text', text, truncated, size }
 }
 
+
+/** Resolve a fenced directory target; the file resolver's twin, minus the regular-file rule. */
+async function resolveWorkspaceDirectory(ctx, sessionId, path, signal) {
+  const root = await resolveSessionCwd(ctx, sessionId, signal)
+  if (!root.ok) return root
+  const cwd = root.cwd
+  const fs = ctx.get('fs')
+  if (fs === undefined) return { ok: false, refusal: { kind: 'fs-missing' } }
+  try {
+    const opts = signal === undefined ? undefined : { signal }
+    const rootTarget = await fs.resolve(cwd, opts)
+    // An empty request means the session root itself, which is what the tree
+    // opens on; anything else is fenced exactly like a file request.
+    const target = path === '' ? rootTarget : await fs.resolve(path, opts)
+    if (!fs.contains(rootTarget, target)) return { ok: false, refusal: { kind: 'outside-root' } }
+    const info = await fs.stat(target, signal)
+    if (info === undefined) return { ok: false, refusal: { kind: 'not-found' } }
+    if (info.type !== 'directory') return { ok: false, refusal: { kind: 'not-directory' } }
+    return { ok: true, target, path: fs.processPath(target) }
+  } catch (error) {
+    return { ok: false, refusal: fsErrorRefusal(error) }
+  }
+}
+/**
+ * Read a fenced workspace file as capped raw bytes.
+ *
+ * Underlying read is the fs seam's `readBytes`, a full-file allocation under a
+ * byte cap; a file past the cap answers `tooLarge: true` rather than throwing,
+ * so the caller renders a "文件过大" state instead of a transport failure.
+ * Content the seam would reject as non-text is NOT reached here — the caller
+ * only asks for bytes of extensions it knows are image/video.
+ * @param ctx - host context carrying `sessions` and optionally `sessionPersistence` and `fs`.
+ * @param sessionId - the session whose root fences the read.
+ * @param path - absolute path of the file to read.
+ * @param maxBytes - inclusive byte cap.
+ * @param signal - aborts the read.
+ * @returns the raw bytes, the too-large marker, or the refusal.
+ */
+async function readWorkspaceFileBytes(ctx, sessionId, path, maxBytes, signal) {
+  const resolved = await resolveWorkspaceFile(ctx, sessionId, path, signal)
+  if (!resolved.ok) return resolved
+  const fs = ctx.get('fs')
+  if (fs === undefined) return { ok: false, refusal: { kind: 'fs-missing' } }
+  const size = typeof resolved.info.size === 'number' ? resolved.info.size : null
+  try {
+    const bytes = await fs.readBytes(resolved.target, signal, maxBytes)
+    return { ok: true, size, bytes }
+  } catch (error) {
+    if (isTooLargeRejection(error)) return { ok: true, size, tooLarge: true }
+    return { ok: false, refusal: fsErrorRefusal(error) }
+  }
+}
+
 /**
  * List one fenced directory level: files and directories together, in stable
  * name order, each with the absolute path the explorer opens next.
@@ -242,29 +311,6 @@ async function listWorkspaceDirectory(ctx, sessionId, path, signal) {
   }
 }
 
-/** Resolve a fenced directory target; the file resolver's twin, minus the regular-file rule. */
-async function resolveWorkspaceDirectory(ctx, sessionId, path, signal) {
-  const root = await resolveSessionCwd(ctx, sessionId, signal)
-  if (!root.ok) return root
-  const cwd = root.cwd
-  const fs = ctx.get('fs')
-  if (fs === undefined) return { ok: false, refusal: { kind: 'fs-missing' } }
-  try {
-    const opts = signal === undefined ? undefined : { signal }
-    const rootTarget = await fs.resolve(cwd, opts)
-    // An empty request means the session root itself, which is what the tree
-    // opens on; anything else is fenced exactly like a file request.
-    const target = path === '' ? rootTarget : await fs.resolve(path, opts)
-    if (!fs.contains(rootTarget, target)) return { ok: false, refusal: { kind: 'outside-root' } }
-    const info = await fs.stat(target, signal)
-    if (info === undefined) return { ok: false, refusal: { kind: 'not-found' } }
-    if (info.type !== 'directory') return { ok: false, refusal: { kind: 'not-directory' } }
-    return { ok: true, target, path: fs.processPath(target) }
-  } catch (error) {
-    return { ok: false, refusal: fsErrorRefusal(error) }
-  }
-}
-
 /**
  * The `deepbuddyFiles` service behind the Remote endpoints.
  *
@@ -279,6 +325,7 @@ export class DeepbuddyFilesService {
   constructor(ctx, config) {
     this.ctx = ctx
     this.previewMaxChars = config.previewMaxChars
+    this.previewMaxBytes = config.previewMaxBytes
     this.typertRemote = Object.freeze({
       service: this,
       serviceKey: SERVICE_KEY,
@@ -309,6 +356,33 @@ export class DeepbuddyFilesService {
     if (!read.ok) return { error: read.refusal }
     if (read.kind === 'binary') return { kind: 'binary', size: read.size }
     return { kind: 'text', text: read.text, truncated: read.truncated, size: read.size }
+  }
+
+  /**
+   * Read one workspace file's raw bytes for the browser's media renderer.
+   *
+   * Same fence and refusal vocabulary as {@link readFile}; the byte cap is
+   * `previewMaxBytes`. A file past the cap answers `tooLarge: true` so the
+   * renderer shows a "文件过大" state. The bytes travel as base64 — JSON-safe
+   * across the Remote boundary without a second channel.
+   * @param request - `{ sessionId, path }`; the path is fenced to that
+   *   session's project root.
+   * @param signal - request cancellation supplied by the Gateway.
+   * @returns `{ kind: 'binary', base64, size }`, `{ kind: 'binary-too-large',
+   *   size }`, or `{ error }` on refusal.
+   */
+  async readBinary(request, signal) {
+    if (typeof request !== 'object' || request === null) {
+      return { error: { kind: 'bad-request' } }
+    }
+    const { sessionId, path } = request
+    if (typeof sessionId !== 'string' || typeof path !== 'string' || path === '') {
+      return { error: { kind: 'bad-request' } }
+    }
+    const read = await readWorkspaceFileBytes(this.ctx, sessionId, path, this.previewMaxBytes, signal)
+    if (!read.ok) return { error: read.refusal }
+    if (read.tooLarge) return { kind: 'binary-too-large', size: read.size }
+    return { kind: 'binary', base64: Uint8ArrayToBase64(read.bytes), size: read.size }
   }
 
   /**
