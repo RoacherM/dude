@@ -12,7 +12,7 @@
 | ThreeColumnFrame | 全窗 | Shell | Window / Layout | Layout Store |
 | Session List | Sidebar | 普通模块 | DSH Sessions / Workspaces | DSH + 局部筛选状态 |
 | Conversation | Workbench | 领域模块 | DSH Session Log / Agent | DSH；草稿归 Conversation |
-| Settings | Workbench | 普通模块 | DSH Settings / Models / Presets | DSH Settings |
+| Settings | Overlay Dialog | 普通模块 | DSH Settings / Models / Presets | DSH Settings |
 | Files | Inspector | 普通 View | DSH Filesystem | Files Provider |
 | File Preview | Inspector | 普通 View Instance | DSH Filesystem | Files Provider + View State |
 | Terminal | Inspector | 资源 View | DSH Terminal 或 Electron PTY | Terminal Resource Manager |
@@ -82,13 +82,22 @@ DeepBuddy 负责：
 
 Conversation 可以使用 DSH 已有的领域 Slot，因为那里已经有真实消费者。不要把这种复杂度推广到 Settings、Files 等普通页面。
 
+默认工作空间：不选文件夹也能直接开聊。存在一个默认工作空间，cwd 为用户主目录（`~`）；
+空白页 composer 的工作空间 chip 默认显示「默认空间」（title / 悬浮提示展示实际路径）。
+发送时若未显式选择：优先用已存在的主目录 workspace，没有则自动
+`workspaces.create({ path: 主目录 })` 再连接。主目录路径从 DSH 侧取（`host.listDirectory` 的
+`home`），取不到就用 host 提供的信息（`host.describe` 的 `cwd`），不在客户端硬编码。显式选过
+文件夹的行为不变。
+
 ### Settings
 
-Settings 是普通主列页面：
+Settings 是覆盖式设置面板（弹层面板，对齐 DSH web 原生 / WorkBuddy）：
 
 - 从 Sidebar 底部或快捷键打开；
 - 不创建独立整窗模式；
-- 左右列保持当前状态；
+- 打开设置不改变主列内容——主列继续显示当前会话；
+- 面板内部左侧竖排导航（模式 / 插件，结构上允许以后加页），右侧内容区，右上角 × 关闭；
+- 居中、占视口大部（宽 min(1200px, 90vw)、高 min(860px, 90vh)）、圆角、遮罩层点击关闭；
 - 页面结构先静态写死；
 - 第三个独立设置分组出现后，再考虑内部配置数组。
 
@@ -154,6 +163,10 @@ Resource Manager 与 View 分开，但留在 `features/terminal` 内。
 → 无右邻则左邻
 → 最后一个关闭则收起右列
 ```
+
+右列（停靠栏）与其开关按钮只在打开了一个非空会话（有对话内容或已开始）时可见；
+空白 / 新任务页不显示开关，若 dock 已开则自动收起。切回有内容的会话时恢复
+用户上次的 dock 开关偏好（layout-store 已有的状态即可，不新增持久化）。
 
 ---
 

@@ -129,12 +129,13 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /dbdy\./, 'no dbdy.* seat remains in the bundle')
   assert.doesNotMatch(bundle, /seatFace|dockPaneFace|useSeatEntries|SlotReader/, 'no seat-face plumbing remains')
   // The catalogs exist and hold the shipped definitions (ARCHITECTURE §3).
-  assert.match(bundle, /WORKBENCH_APPS = \[\s*\n\s*ConversationAppDefinition,\s*\n\s*SettingsAppDefinition\s*\n\]/)
+  assert.match(bundle, /WORKBENCH_APPS = \[\s*\n\s*ConversationAppDefinition\s*\n\]/)
   assert.match(bundle, /SIDEBAR_SECTIONS = \[\s*\n\s*SessionListSectionDefinition\s*\n\]/)
   assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition\s*\n\]/)
   // The definitions carry their ids — the catalog is the single composition
-  // point the shell renders from.
-  assert.match(bundle, /SettingsAppDefinition = \{\s*\n\s*id: "settings",/)
+  // point the shell renders from. Settings is no longer a workbench app (it
+  // is a dialog overlay, wave 4 §5), so it is deliberately absent here.
+  assert.doesNotMatch(bundle, /SettingsAppDefinition = \{\s*\n\s*id: "settings",/)
   assert.match(bundle, /SessionListSectionDefinition = \{\s*\n\s*id: "sessions",/)
   assert.match(bundle, /FilesViewDefinition = \{\s*\n\s*id: "explorer",/)
   // The shell dispatches components generically from the catalogs — no

@@ -12,7 +12,6 @@
  */
 import type { ComponentType } from 'react'
 import { ConversationAppDefinition } from '../features/conversation/index.ts'
-import { SettingsAppDefinition } from '../features/settings/index.ts'
 import { SessionListSectionDefinition } from '../features/sessions/index.ts'
 import { FilesViewDefinition } from '../features/files/index.ts'
 import type { IconName } from '../ui/icons.tsx'
@@ -65,9 +64,7 @@ export interface InspectorViewTypeDefinition {
 /** Workbench apps, in nav order. */
 export const WORKBENCH_APPS = [
   ConversationAppDefinition,
-  SettingsAppDefinition,
 ] as const
-
 /** Sidebar sections, in display order. */
 export const SIDEBAR_SECTIONS = [
   SessionListSectionDefinition,

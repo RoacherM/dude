@@ -1,16 +1,17 @@
 /**
- * The settings app: a workbench page like any other, with its own rail.
- *
- * The rail is the page switcher — two navigations at one level is the thing
- * the handoff's tab rule forbids, so the rail replaces the old two-tab modal.
- * Which page is open is settings-local UI state; the shell only knows whether
- * settings is the main column's surface at all (Esc and the close button
- * belong to the layout store).
+ * The settings dialog: a centered overlay modal, not a workbench page (wave 4
+ * §5). Opening it never changes the main column — the current session stays
+ * behind it. The rail is the page switcher (模式 / 插件 today, more pages
+ * later); which page is open is settings-local UI state. Esc closes through
+ * the shared Dialog (DESIGN_INTENT §12), and the main column is untouched.
  */
 import { useState } from 'react'
 import type { ComponentType, ReactNode } from 'react'
+import { useAppDeps } from '../../app/context.tsx'
+import { useLayoutStore } from '../../shell/layout-store.ts'
 import { KIT } from '../../ui/kit.tsx'
 import { METRICS } from '../../ui/tokens.ts'
+import { Close } from '../../ui/icons.tsx'
 import { ModesPage } from './ModesPage.tsx'
 import { PluginsPage } from './PluginsPage.tsx'
 
@@ -43,9 +44,8 @@ function RailRow({ row, active, onSelect }: {
 }
 
 /**
- * The settings app body: rail left, page right. Mounts fresh each time
- * settings opens, so it always starts on the first page — matching the
- * shell's old `openSettings('')` resolution.
+ * The settings content: rail left, page right. Mounts fresh each time the
+ * dialog opens, so it always starts on the first page.
  */
 export function SettingsApp(): ReactNode {
   const [page, setPage] = useState<string>(SETTINGS_PAGES[0]?.id ?? '')
@@ -83,5 +83,28 @@ export function SettingsApp(): ReactNode {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The settings dialog shell: the overlay modal around {@link SettingsApp}.
+ * Sized to the WorkBuddy reference — most of the viewport, centered, rounded,
+ * with a dimming backdrop that closes on click.
+ */
+export function SettingsDialog(): ReactNode {
+  const { layout } = useAppDeps()
+  useLayoutStore(layout)
+  return (
+    <KIT.Dialog open onClose={layout.closeSettings} style={{ width: 'min(1200px, 90vw)', maxHeight: 'min(860px, 90vh)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 10px', borderBottom: '1px solid var(--db-line)', flex: '0 0 auto' }}>
+        <span style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--db-text)' }}>设置</span>
+        <KIT.IconButton title="关闭设置" onClick={layout.closeSettings}>
+          <Close size={15} />
+        </KIT.IconButton>
+      </div>
+      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
+        <SettingsApp />
+      </div>
+    </KIT.Dialog>
   )
 }

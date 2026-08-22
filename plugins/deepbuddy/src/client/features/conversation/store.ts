@@ -28,6 +28,8 @@ export interface ConversationState {
   sendError: string | null
   /** Workspace chosen in the composer picker for the NEXT session. */
   pickedWs: WorkspaceId | null
+  /** Resolved host home dir — the default workspace path (wave 4 §3). */
+  homePath: string | null
   /** Per-callId expansion of tool blocks (default collapsed). */
   openCalls: Record<string, boolean>
 }
@@ -44,6 +46,7 @@ export class ConversationStore {
     draft: '',
     sendError: null,
     pickedWs: null,
+    homePath: null,
     openCalls: {},
   }
 
@@ -98,6 +101,16 @@ export class ConversationStore {
     return conv !== null && conv.blank
   }
 
+  /** Whether the current session is blank (a fresh, not-yet-started one). */
+  get isBlank(): boolean {
+    const { conv, list } = this.state
+    if (conv !== null) return conv.blank
+    const cur = list?.current
+    if (cur === undefined) return true
+    const summary = (list?.byId as Partial<Record<string, SessionSummary>> | undefined)?.[cur as string]
+    return summary === undefined || summary.blank === true
+  }
+
   /** Summary row of the current session. */
   get currentSummary(): SessionSummary | undefined {
     const { list } = this.state
@@ -105,6 +118,37 @@ export class ConversationStore {
     return (list.byId as Partial<Record<string, SessionSummary>>)[list.current as string]
   }
 
+
+  /** Resolve (once) the host home directory for the default workspace. */
+  async resolveHome(): Promise<string | null> {
+    if (this.state.homePath !== null) return this.state.homePath
+    const home = await this.dsh.resolveHome()
+    this.patch({ homePath: home })
+    return home
+  }
+
+  /**
+   * The default workspace for a send with no explicit pick: an existing
+   * workspace over the host home, or a freshly created one, or null when
+   * neither the home nor any workspace is reachable.
+   */
+  async defaultWorkspace(): Promise<WorkspaceId | null> {
+    const { wsList } = this.state
+    const home = await this.resolveHome()
+    // Re-read the list after resolving home (a mount may have settled it).
+    const items = this.state.wsList?.items ?? []
+    const byHome = home === null ? undefined : items.find(w => w.path === home)
+    if (byHome !== undefined) return byHome.workspaceId
+    const recent = this.state.wsList?.recentWorkspaceId
+    if (recent !== undefined) return recent
+    const first = items[0]?.workspaceId
+    if (first !== undefined) return first
+    // No workspace at all: create one over the host home. If home is also
+    // unreachable there is nothing to open a session in.
+    if (home === null) return null
+    const created = await this.dsh.workspaces.create({ path: home })
+    return created.workspaceId
+  }
   // ── lifecycle ─────────────────────────────────────────────────────────────
 
   mount(): void {
@@ -173,10 +217,8 @@ export class ConversationStore {
         const blank = cur !== undefined && this.state.conv?.blank === true
         const reTarget = blank && armed !== undefined && armed !== own
         if (cur === undefined || reTarget) {
-          const wsId = armed
-            ?? this.state.wsList?.recentWorkspaceId
-            ?? this.state.wsList?.items[0]?.workspaceId
-          if (wsId === undefined) throw new Error('没有可用的工作空间')
+          const wsId = armed ?? (await this.defaultWorkspace())
+          if (wsId == null) throw new Error('没有可用的工作空间')
           const id = await this.dsh.workspaces.connectWorkspace(wsId)
           this.dsh.sessions.open(id)
           const binding = this.dsh.sessions.binding(id)

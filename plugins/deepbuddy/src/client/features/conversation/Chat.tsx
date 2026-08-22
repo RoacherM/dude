@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { PresetPlane } from '../../dsh/presets.ts'
 import type {
-  AssistantNode, ChatNode, Conversation, ConversationNode, RunningToolCall, ToolResultNode, WorkspaceView,
+  AssistantNode, ChatNode, Conversation, ConversationNode, RunningToolCall, ToolResultNode, WorkspaceView, WorkspaceId,
 } from '../../dsh/adapter.ts'
 import { basename, textOfParts, workspaceOf } from '../../dsh/adapter.ts'
 import { canSelectPreset, defaultPresetId, presetLabel, selectablePresets } from '../../dsh/presets.ts'
@@ -29,13 +29,18 @@ import type { ConversationStore } from './store.ts'
 export const CONVERSATION_APP_ID = 'chat'
 
 /**
- * The chat content column. With the dock open the conversation stays on the
- * handoff's 720px left-aligned column; with the dock closed the message stream
- * and composer take the main column's full width (the caller's 32px padding
- * keeps the comfortable edge). `maxWidth` is the only thing that differs.
+ * The chat content column. Always centered — a wide-screen message column
+ * pulled to the screen edge is the one layout the user vetoed (wave 4 §1).
+ * With the dock open the conversation stays on the handoff's 720px centered
+ * column; with the dock closed it widens to 880px and still centers, but the
+ * stream and composer never stretch to the window's full width.
  */
-function columnStyle(dockOpen: boolean): { width: string; maxWidth?: number } {
-  return dockOpen ? { width: '100%', maxWidth: METRICS.chatColumn } : { width: '100%' }
+function columnStyle(dockOpen: boolean): { width: string; maxWidth: number; margin: string } {
+  return {
+    width: '100%',
+    maxWidth: dockOpen ? METRICS.chatColumn : METRICS.chatColumnWide,
+    margin: '0 auto',
+  }
 }
 
 /**
@@ -469,10 +474,17 @@ function sessionLocked(store: ConversationStore): boolean {
   return summary !== undefined && summary.blank === false
 }
 
+/** The synthetic workspace shown when nothing is armed, recent or listed: the
+ *  host-home default (wave 4 §3). Its id is a sentinel so picker matching and
+ *  `workspaceOf` never confuse it with a real workspace record. */
+const DEFAULT_WORKSPACE_ID = '__default__'
+
 /**
  * Current workspace of the composer. On a blank or no-session page the armed
  * pick wins (it is where the next prompt opens a session); once the session
- * has started its own workspace is locked and shown.
+ * has started its own workspace is locked and shown. With neither armed nor a
+ * real workspace, a synthetic default (host home) is shown so the user can
+ * send without picking a folder.
  */
 function currentWorkspace(store: ConversationStore): WorkspaceView | undefined {
   const s = store.state
@@ -483,10 +495,25 @@ function currentWorkspace(store: ConversationStore): WorkspaceView | undefined {
     // Locked but the session's workspace is not in the list: fall through to
     // the armed/recent project rather than showing nothing.
   }
-  return items.find(w => w.workspaceId === s.pickedWs)
+  const real = items.find(w => w.workspaceId === s.pickedWs)
     ?? workspaceOf(s.wsList, s.list?.current)
     ?? items.find(w => w.workspaceId === s.wsList?.recentWorkspaceId)
     ?? items[0]
+  if (real !== undefined) return real
+  // Nothing armed and no workspace at all: show the default (host home). It is
+  // not a real workspace yet — send creates it on demand.
+  const home = s.homePath
+  if (home !== null) {
+    return {
+      workspaceId: DEFAULT_WORKSPACE_ID as unknown as WorkspaceId,
+      path: home,
+      title: '默认空间',
+      sessionIds: [],
+      createdAt: '',
+      updatedAt: '',
+    }
+  }
+  return undefined
 }
 
 function wsLabel(w: WorkspaceView): string {
@@ -565,7 +592,7 @@ function WorkspaceChip({ store }: { store: ConversationStore }): ReactNode {
       anchor={(
         <button
           type="button"
-          title="选择工作空间（新会话将在此文件夹中开始）"
+          title={ws?.workspaceId === DEFAULT_WORKSPACE_ID ? `默认空间：${ws.path}` : '选择工作空间（新会话将在此文件夹中开始）'}
           onClick={() => { setOpen(!open) }}
           className="dbdy-hv-outline"
           style={{
@@ -705,7 +732,18 @@ export function ChatView(): ReactNode {
   useLayoutStore(layout)
   const summary = conversation.currentSummary
   const title = summary?.displayTitle
+  const started = !conversation.isBlank
   useEffect(() => { layout.setTitle(title ?? null) }, [layout, title])
+  // The dock exists only for a started session (wave 4 §4). Contribute the
+  // fact here — the conversation view is the sole owner; the shell just
+  // reads it to gate the dock surface and its toggle.
+  useEffect(() => { layout.setSessionStarted(started) }, [layout, started])
+  // The default workspace is home-based; resolve the host home once while the
+  // page is blank so the composer chip can show 「默认空间」 (wave 4 §3).
+  useEffect(() => {
+    if (!conversation.empty) return
+    void conversation.resolveHome()
+  }, [conversation])
   const dockOpen = layout.state.dock
 
   const body = useRef<HTMLDivElement | null>(null)
@@ -751,36 +789,31 @@ export function ChatView(): ReactNode {
     </div>
   )
 }
-
 /**
  * The chat app's own sidebar row. The row ships with the app, so installing
  * one installs the other — the sidebar never lists a destination that might
- * not be there.
+ * not be there. The whole row is the new-task entry (wave 4 §2): clicking it
+ * (or pressing Enter/Space while focused) opens a fresh task and reveals the
+ * conversation it lands in. The row is a button semantically so a keyboard
+ * user gets the same action.
  * @param current - whether this app is the main column's selection.
  */
 export function ChatNav({ current }: { current: boolean }): ReactNode {
   const { conversation, layout } = useAppDeps()
   useStore(conversation)
+  const newTask = (): void => {
+    // Reveal the conversation the new session lands in — same rule as
+    // clicking a session row (FEATURE_MAP §2).
+    layout.setView(CONVERSATION_APP_ID)
+    conversation.newTask()
+  }
   return (
     <KIT.Row
       current={current}
       icon={<Compose size={16} />}
-      onClick={() => { layout.setView(CONVERSATION_APP_ID) }}
-      trailing={(
-        <span onClick={(e) => {
-          e.stopPropagation()
-          // Reveal the conversation the new session lands in — same rule as
-          // clicking a session row (FEATURE_MAP §2).
-          layout.closeSettings()
-          conversation.newTask()
-        }}
-        style={{ display: 'flex' }}
-        >
-          <KIT.IconButton title="新建任务" size={26}>
-            <Plus size={14} />
-          </KIT.IconButton>
-        </span>
-      )}
+      onClick={newTask}
+      title="新建任务"
+      style={{ cursor: 'pointer' }}
     >
       对话
     </KIT.Row>

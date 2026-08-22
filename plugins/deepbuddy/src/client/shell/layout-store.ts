@@ -46,8 +46,15 @@ export interface LayoutState {
   dock: boolean
   /** Active inspector view-type key; null while the dock is closed. */
   pane: string | null
-  /** Whether settings is the main column's surface. */
+  /** Whether the settings dialog overlay is open. */
   settingsOpen: boolean
+  /**
+   * Whether a non-blank (started) session is the conversation's subject.
+   * Contributed by the conversation view (the only workbench app) so the shell
+   * can hide the dock whose content belongs to a running/historical session.
+   * A blank/new-task page shows neither the dock nor its toggle.
+   */
+  sessionStarted: boolean
   /**
    * Top-bar title contributed by the active workbench app; null falls back to
    * the app entry's title.
@@ -75,6 +82,7 @@ export class LayoutStore {
     dock: false,
     pane: null,
     settingsOpen: false,
+    sessionStarted: false,
     title: null,
     tabs: {},
   }
@@ -145,13 +153,11 @@ export class LayoutStore {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && this.state.settingsOpen) {
-      this.closeSettings()
-      return
-    }
     if (!(e.metaKey || e.ctrlKey)) return
     // ⌘J toggles the dock; ⌘, opens settings. The handoff's other shortcuts
-    // (⌘K, ⌘N, ⌘T) belong to surfaces the store does not own.
+    // (⌘K, ⌘N, ⌘T) belong to surfaces the store does not own. Esc is handled
+    // by the floating layers themselves (DESIGN_INTENT §12: Popover first,
+    // then Dialog) — the shell never swallows it.
     if (e.key === 'j') {
       e.preventDefault()
       this.toggleDock()
@@ -192,8 +198,10 @@ export class LayoutStore {
   /** Switch the main column to another workbench app. */
   setView = (view: string): void => {
     // The title belongs to the app that set it; the next app contributes its
-    // own (or falls back to its catalog title).
-    this.patch({ view, settingsOpen: false, title: null })
+    // own (or falls back to its catalog title). The started-session fact also
+    // belongs to the conversation view, so clearing it here keeps the dock
+    // rule from leaking across apps.
+    this.patch({ view, settingsOpen: false, sessionStarted: false, title: null })
   }
 
   /** Contribute the main top bar's title. Call it from an effect, never from
@@ -238,13 +246,24 @@ export class LayoutStore {
     if (pane !== undefined) this.openDock(pane)
   }
 
-  /** Open settings in the main column (the app's own rail picks the page). */
+  /** Open the settings dialog overlay. The main column keeps its current
+   *  surface — settings is never a workbench page (wave 4 §5). */
   openSettings = (): void => {
     this.patch({ settingsOpen: true })
   }
 
   closeSettings = (): void => {
     this.patch({ settingsOpen: false })
+  }
+
+  /**
+   * Contribute whether the conversation's subject is a started (non-blank)
+   * session. The dock only renders for a started session, so the conversation
+   * view is the sole owner of this fact; the shell just reads it.
+   */
+  setSessionStarted = (started: boolean): void => {
+    if (this.state.sessionStarted === started) return
+    this.patch({ sessionStarted: started })
   }
 
   // ── inspector tabs ────────────────────────────────────────────────────────

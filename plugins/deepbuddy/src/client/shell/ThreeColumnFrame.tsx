@@ -30,7 +30,7 @@ import { KIT, ROW_METRICS } from '../ui/kit.tsx'
 import { Close, Gear, Glyph, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
 import { ChatNav, ConversationAppDefinition } from '../features/conversation/index.ts'
-import { SettingsApp } from '../features/settings/index.ts'
+import { SettingsDialog } from '../features/settings/index.ts'
 
 /** Details column width when `ctx.layout` opens it (ui-layout's DETAILS_DEFAULT). */
 const DETAILS_WIDTH = 480
@@ -133,17 +133,12 @@ export function DeepBuddyMain(): ReactNode {
             color: 'var(--db-text)',
           }}
           >
-            {s.settingsOpen ? '设置' : s.title ?? active?.title ?? ''}
+            {s.title ?? active?.title ?? ''}
           </span>
           <span style={{ marginLeft: 'auto' }} />
-          {s.settingsOpen && (
-            <div style={NO_DRAG}>
-              <KIT.IconButton title="关闭设置" onClick={layout.closeSettings}>
-                <Close size={15} />
-              </KIT.IconButton>
-            </div>
-          )}
-          {firstView !== undefined && !s.dock && (
+          {/* The dock toggle only appears for a started session — a blank/new
+              task page has no session to inspect (wave 4 §4). */}
+          {firstView !== undefined && s.sessionStarted && !s.dock && (
             <div style={NO_DRAG}>
               <KIT.IconButton
                 title="打开停靠栏"
@@ -156,15 +151,13 @@ export function DeepBuddyMain(): ReactNode {
         </>
       )}
     >
-      {s.settingsOpen
-        ? <SettingsApp />
-        : active === undefined
-          ? (
-              <div style={{ padding: 32 }}>
-                <KIT.EmptyState>没有装配任何主视图。</KIT.EmptyState>
-              </div>
-            )
-          : <active.Component />}
+      {active === undefined
+        ? (
+            <div style={{ padding: 32 }}>
+              <KIT.EmptyState>没有装配任何主视图。</KIT.EmptyState>
+            </div>
+          )
+        : <active.Component />}
     </ColumnFrame>
   )
 }
@@ -356,7 +349,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             </>
           )}
           {renderSlot('conversation', {})}
-          {s.dock && (
+          {s.dock && s.sessionStarted && (
             <>
               <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />
               <InspectorColumn />
@@ -376,6 +369,9 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
           </div>
           {/* Frame-wide floating layer: click-through, entries opt back in. */}
           <div className="dbdy-overlay">{renderSlot('shell.overlay', {})}</div>
+          {/* The settings dialog overlay: an in-window modal, not a workbench
+              page. Opening it never changes the main column's surface. */}
+          {s.settingsOpen && <SettingsDialog />}
         </div>
       </AppDepsProvider>
     )

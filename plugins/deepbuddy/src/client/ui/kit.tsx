@@ -367,6 +367,13 @@ const EmptyState: Kit['EmptyState'] = ({ children, title, style }) => (
     {children}
   </div>
 )
+/**
+ * How many Popovers are currently open. DESIGN_INTENT §12 says Esc closes a
+ * Popover before the Dialog beneath it; the Kit can't know that ordering
+ * from local props alone, so the Popover registers itself and the Dialog's
+ * Esc handler defers while any is open.
+ */
+let openPopoverCount = 0
 
 /**
  * The shared floating surface. Closes on outside click, on Esc, and — because
@@ -381,6 +388,7 @@ const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direct
   const [eff, setEff] = useState<'down' | 'up'>(direction)
   useEffect(() => {
     if (!open) return undefined
+    openPopoverCount += 1
     const onDown = (e: MouseEvent): void => {
       if (box.current && !box.current.contains(e.target as Node)) onClose()
     }
@@ -390,6 +398,7 @@ const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direct
     window.addEventListener('mousedown', onDown, true)
     window.addEventListener('keydown', onKey)
     return () => {
+      openPopoverCount -= 1
       window.removeEventListener('mousedown', onDown, true)
       window.removeEventListener('keydown', onKey)
     }
@@ -439,7 +448,9 @@ const Popover: Kit['Popover'] = ({ open, onClose, anchor, align = 'left', direct
 const Dialog: Kit['Dialog'] = ({ open, onClose, width = 420, children, style }) => {
   useEffect(() => {
     if (!open) return undefined
-    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') onClose() }
+    // §12: Esc closes the popover first, then the dialog. Defer while a
+    // popover is open so one press never closes both layers at once.
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape' && openPopoverCount === 0) onClose() }
     window.addEventListener('keydown', onKey)
     return () => { window.removeEventListener('keydown', onKey) }
   }, [open, onClose])
@@ -654,7 +665,21 @@ export const ROW_METRICS = { height: 31, dense: 26, radius: 10, pad: 8, indent: 
 const RowImpl: Kit['Row'] = ({ current, icon, trailing, indent, dense, onClick, title, style, children }) => (
   <div
     {...title === undefined ? {} : { title }}
-    {...onClick === undefined ? {} : { onClick }}
+    {...onClick === undefined
+      ? {}
+      : {
+          onClick,
+          // Clickable rows carry button semantics so the keyboard can reach
+          // them (DESIGN_INTENT §12) — Enter/Space activate like a button.
+          role: 'button',
+          tabIndex: 0,
+          onKeyDown: (e: { key: string, preventDefault(): void }) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClick()
+            }
+          },
+        }}
     className={current === true ? undefined : 'dbdy-hv-2'}
     style={{
       display: 'flex',

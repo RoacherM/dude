@@ -34,9 +34,11 @@ export const METRICS = {
   traffic: 88,
   /** Sidebar width; it collapses to 0 rather than to an icon rail. */
   sidebar: 268,
-  /** Conversation content column — left-aligned, never centered. */
+  /** Conversation content column — centered; 720px with the dock open, 880px with it closed. */
   chatColumn: 720,
-  /** Settings content column. */
+  /** Conversation content column with the dock closed — centered, wider, never full-bleed. */
+  chatColumnWide: 880,
+  /** Settings content column (within the settings dialog). */
   settingsColumn: 820,
   /** Command palette width. */
   palette: 560,

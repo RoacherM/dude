@@ -76,6 +76,14 @@ export interface Dsh {
    * default changed in another tab or edited on disk. Returns the disposer.
    */
   onRosterMoved(handler: () => void): () => void
+  /**
+   * Resolve the host account's home directory — the default workspace path
+   * (wave 4 §3). DSH-side first (`host.listDirectory` returns `home`); falls
+   * back to the host process cwd (`host.describe`) when the browse surface is
+   * absent. Never hardcodes a user path on the client.
+   * @returns the home path, or null when neither surface answers.
+   */
+  resolveHome(): Promise<string | null>
 }
 
 /** The part of the bundle only the adapter's own wiring may touch. */
@@ -104,6 +112,24 @@ export function createDsh(ctx: ClientContext, connection: ConnectionHandle): Dsh
     onRosterMoved(handler) {
       rosterListeners.add(handler)
       return () => { rosterListeners.delete(handler) }
+    },
+    async resolveHome(): Promise<string | null> {
+      // The host account's home is the `home` field of the no-path directory
+      // listing (the `browse` capability). When that surface is absent, fall
+      // back to the host process cwd — still host-provided, never client hardcoded.
+      try {
+        const listing = await connection.api.host.listDirectory({}, undefined)
+        const home = (listing.result as { ok: true; value: { home?: string } } | undefined)?.value?.home
+        if (typeof home === 'string' && home !== '') return home
+      }
+      catch { /* browse absent — fall through */ }
+      try {
+        const desc = await connection.api.host.describe({}, undefined)
+        const cwd = (desc.result as { ok: true; value: { cwd?: string } } | undefined)?.value?.cwd
+        if (typeof cwd === 'string' && cwd !== '') return cwd
+      }
+      catch { /* describe absent — no home */ }
+      return null
     },
     notifyRosterMoved() {
       for (const handler of rosterListeners) handler()
