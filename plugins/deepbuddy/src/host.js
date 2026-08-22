@@ -24,6 +24,8 @@
 
 import Schema from '@deepseek-ai/schemastery'
 
+import { createReadStream } from 'node:fs'
+
 /** Stable Cordis plugin name. */
 export const name = 'deepbuddy'
 
@@ -32,13 +34,22 @@ export const name = 'deepbuddy'
  * and a missing backend is a per-request refusal (`fs-missing`), not a reason
  * to keep the whole distribution unmounted.
  */
-export const inject = ['typert', 'sessions']
+export const inject = ['typert', 'sessions', 'webServer']
 
 /** Cordis service key and Remote wire namespace of the file surface. */
 const SERVICE_KEY = 'deepbuddyFiles'
 
 /** npm package name, used as the Typert contribution's owner identity. */
 const PACKAGE_NAME = 'dsh-plugin-deepbuddy'
+
+/**
+ * HTTP path prefix owning fenced media streaming. The browser half builds
+ * `<video>`/`<img>` srcs over this; the route re-fences every path against
+ * the requesting session's root, so the outbound URL is a capability over a
+ * session-relative path, never a server-wide file read. Uses the longest
+ * prefix so a distinct sub-path per session carries no state.
+ */
+const MEDIA_ROUTE = '/deepbuddy/media'
 
 /** Plugin configuration, validated and defaulted by the dsh loader. */
 export const Config = Schema.object({
@@ -170,6 +181,85 @@ async function resolveWorkspaceFile(ctx, sessionId, path, signal) {
   } catch (error) {
     return { ok: false, refusal: fsErrorRefusal(error) }
   }
+}
+
+/**
+ * MIME for the media the file dock streams over HTTP. Videos use
+ * `<video src>` which needs a browser-supported type to render; every other
+ * extension the browser could <img> gets a single-image type or a generic
+ * binary fallback so a mismatched preview degrades to a download, never a
+ * wrong paint.
+ */
+function mediaMime(filePath) {
+  const ext = filePath.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'mp4': return 'video/mp4'
+    case 'webm': return 'video/webm'
+    case 'mov': return 'video/quicktime'
+    case 'png': return 'image/png'
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg'
+    case 'gif': return 'image/gif'
+    case 'webp': return 'image/webp'
+    case 'svg': return 'image/svg+xml'
+    default: return 'application/octet-stream'
+  }
+}
+
+/**
+ * Serve one fenced media file over HTTP with single-Range support.
+ *
+ * The webserver's `webServer.register` owns the full response lifecycle, so
+ * this endpoint streams the realpath with `createReadStream` instead of
+ * buffering the whole file into the Remote wire — a 63MB mp4 never becomes
+ * base64 in memory. `Range` is honored so `<video>` can seek; a malformed
+ * Range still answers 200 with the whole body. The path is re-fenced to the
+ * session root (same `resolveWorkspaceFile`), so a URL can never read outside
+ * its session.
+ * @param ctx - host context, for the same fencing the RPC uses.
+ * @param req - the node:http request.
+ * @param res - the response to stream into.
+ * @param sessionId - the session owning the file (path is relative to it).
+ * @param path - the file, already decoded and fenced by the caller.
+ */
+async function streamMedia(ctx, req, res, sessionId, path) {
+  const fenced = await resolveWorkspaceFile(ctx, sessionId, path, undefined)
+  if (!fenced.ok) {
+    res.statusCode = fenced.refusal.kind === 'not-found' ? 404 : 403
+    res.end(fenced.refusal.message ?? fenced.refusal.kind)
+    return
+  }
+  const filePath = fenced.path
+  const size = typeof fenced.info.size === 'number' ? fenced.info.size : null
+  const mime = mediaMime(filePath)
+  res.setHeader('Content-Type', mime)
+  res.setHeader('Accept-Ranges', 'bytes')
+  if (size === null) {
+    // Unknown size: no Range math, stream the whole file.
+    res.statusCode = 200
+    createReadStream(filePath).pipe(res)
+    return
+  }
+  res.setHeader('Content-Length', String(size))
+  const range = typeof req.headers.range === 'string' ? req.headers.range : undefined
+  const match = range === undefined ? null : /^bytes=(\d*)-(\d*)$/.exec(range)
+  if (match === null) {
+    res.statusCode = 200
+    createReadStream(filePath).pipe(res)
+    return
+  }
+  const start = match[1] === '' ? 0 : Number(match[1])
+  const end = match[2] === '' ? size - 1 : Math.min(Number(match[2]), size - 1)
+  if (start > end || start >= size) {
+    res.statusCode = 416
+    res.setHeader('Content-Range', `bytes */${size}`)
+    res.end()
+    return
+  }
+  res.statusCode = 206
+  res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`)
+  res.setHeader('Content-Length', String(end - start + 1))
+  createReadStream(filePath, { start, end }).pipe(res)
 }
 
 /**
@@ -326,11 +416,28 @@ export class DeepbuddyFilesService {
     this.ctx = ctx
     this.previewMaxChars = config.previewMaxChars
     this.previewMaxBytes = config.previewMaxBytes
+    this.webServer = ctx.get('webServer')
     this.typertRemote = Object.freeze({
       service: this,
       serviceKey: SERVICE_KEY,
       namespace: SERVICE_KEY,
     })
+  }
+
+  /**
+   * Absolute HTTP URL for a session-fenced media file, when the web server
+   * route is registered. The path is percent-encoded so the session id and
+   * file path round-trip through the URL; the route re-fences it.
+   * @param sessionId - the session owning the file.
+   * @param path - the file path (relative to the session root).
+   * @returns the URL, or null when no web server is present.
+   */
+  mediaUrl(sessionId, path) {
+    if (this.webServer === undefined) return null
+    // Origin-relative path, not an absolute URL: the page may load over a LAN
+    // IP or a loopback literal, and the browser half prepends its own origin.
+    // The route is the same capability either way.
+    return `${MEDIA_ROUTE}/${encodeURIComponent(sessionId)}/${encodeURIComponent(path)}`
   }
 
   /**
@@ -357,20 +464,6 @@ export class DeepbuddyFilesService {
     if (read.kind === 'binary') return { kind: 'binary', size: read.size }
     return { kind: 'text', text: read.text, truncated: read.truncated, size: read.size }
   }
-
-  /**
-   * Read one workspace file's raw bytes for the browser's media renderer.
-   *
-   * Same fence and refusal vocabulary as {@link readFile}; the byte cap is
-   * `previewMaxBytes`. A file past the cap answers `tooLarge: true` so the
-   * renderer shows a "文件过大" state. The bytes travel as base64 — JSON-safe
-   * across the Remote boundary without a second channel.
-   * @param request - `{ sessionId, path }`; the path is fenced to that
-   *   session's project root.
-   * @param signal - request cancellation supplied by the Gateway.
-   * @returns `{ kind: 'binary', base64, size }`, `{ kind: 'binary-too-large',
-   *   size }`, or `{ error }` on refusal.
-   */
   async readBinary(request, signal) {
     if (typeof request !== 'object' || request === null) {
       return { error: { kind: 'bad-request' } }
@@ -379,6 +472,13 @@ export class DeepbuddyFilesService {
     if (typeof sessionId !== 'string' || typeof path !== 'string' || path === '') {
       return { error: { kind: 'bad-request' } }
     }
+    // When the media route is registered (web deployment), serve the bytes
+    // from the streaming HTTP endpoint instead of buffering them into the
+    // Remote wire as base64. The URL is a capability over a session-relative
+    // path; the route re-fences it, so the size cap no longer decides what
+    // previews — 63MB mp4s stream.
+    const url = this.mediaUrl(sessionId, path)
+    if (url !== null) return { kind: 'url', url, size: null }
     const read = await readWorkspaceFileBytes(this.ctx, sessionId, path, this.previewMaxBytes, signal)
     if (!read.ok) return { error: read.refusal }
     if (read.tooLarge) return { kind: 'binary-too-large', size: read.size }
@@ -425,6 +525,29 @@ export function apply(ctx, config) {
     model: { services: [], events: [], objects: [] },
     invocations: DESCRIPTORS,
   }), 'deepbuddy: typert definitions')
+  // Stream session-fenced media over HTTP so <video>/<img> load directly and
+  // large files never round-trip as base64. Guard the optional webServer: a
+  // non-web deployment (headless, file://) has none, and readBinary then
+  // falls back to the capped base64 path.
+  const webServer = ctx.get('webServer')
+  if (webServer !== undefined) {
+    ctx.effect(() => webServer.register({
+      kind: 'prefix',
+      path: MEDIA_ROUTE,
+      handler(req, res) {
+        const raw = new URL(req.url ?? '/', 'http://x').pathname
+        const rest = raw.slice(MEDIA_ROUTE.length).replace(/^\//, '')
+        const [sessionId, ...pathParts] = rest.split('/').map(part => decodeURIComponent(part))
+        if (sessionId === undefined || sessionId === '' || pathParts.length === 0) {
+          res.statusCode = 400
+          res.end('bad media URL')
+          return
+        }
+        const path = pathParts.join('/')
+        void streamMedia(ctx, req, res, sessionId, path)
+      },
+    }), 'deepbuddy: media route')
+  }
 }
 
 export { DESCRIPTORS, SERVICE_KEY }

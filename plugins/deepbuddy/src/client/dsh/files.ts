@@ -24,6 +24,7 @@ export type ReadFileResult =
 export type ReadBinaryResult =
   | { kind: 'binary'; base64: string; size: number | null }
   | { kind: 'binary-too-large'; size: number | null }
+  | { kind: 'url'; url: string; size: number | null }
   | { error: WorkspaceRefusal }
 
 export interface DirectoryChild {

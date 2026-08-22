@@ -19,7 +19,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 test('host half registers the file service and its three endpoints', async () => {
   const mod = await import(join(root, 'lib/index.js'))
   assert.equal(mod.name, 'deepbuddy')
-  assert.deepEqual(mod.inject, ['typert', 'sessions'])
+  assert.deepEqual(mod.inject, ['typert', 'sessions', 'webServer'])
 
   const provided = []
   const registered = []
@@ -30,6 +30,7 @@ test('host half registers the file service and its three endpoints', async () =>
       disposers.push(fn())
     },
     provide(key, service) { provided.push([key, service]) },
+    get() { return undefined /* no webServer in the contract test */ },
     typert: { register(contribution) { registered.push(contribution); return () => {} } },
   }
   mod.apply(ctx, { previewMaxChars: 262_144, previewMaxBytes: 50_102_400 })
@@ -291,10 +292,10 @@ test('geometry: the sidebar clamp follows the handoff', async () => {
   assert.equal(g.clampSidebar(9999), 380)
 })
 
-test('geometry: the dock opens at 46% and drags between 30% and 70%', async () => {
+test('geometry: the dock opens at 30% and drags between 30% and 70%', async () => {
   const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 1440px window, 269px sidebar (268 + its 1px seam).
-  assert.equal(g.dockDefault(1440, 269), Math.round(1440 * 0.46))
+  assert.equal(g.dockDefault(1440, 269), Math.round(1440 * 0.30))
   // Upper bound is the stricter of 70% (1008) and what the chat column can
   // survive (1440 - 269 - 460 = 711).
   assert.equal(g.clampDock(10_000, 1440, 269), 711)

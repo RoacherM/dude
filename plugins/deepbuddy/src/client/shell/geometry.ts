@@ -4,7 +4,7 @@
  *
  * Numbers come from the Synara handoff
  * (`design/synara/design_handoff_dsh_desktop/README.md` §Screens 1 and 3):
- * sidebar 268px collapsing to zero, dock at 46% of the shell and draggable
+ * sidebar 268px collapsing to zero, dock at 30% of the shell and draggable
  * between 30% and 70%.
  */
 
@@ -20,7 +20,7 @@ export const SIDEBAR_MIN = 232
 export const SIDEBAR_MAX = 380
 
 /** Dock share of the shell: default, and the ends of its drag range. */
-export const DOCK_DEFAULT_RATIO = 0.46
+export const DOCK_DEFAULT_RATIO = 0.30
 export const DOCK_MIN_RATIO = 0.30
 export const DOCK_MAX_RATIO = 0.70
 
@@ -45,7 +45,7 @@ export function clampSidebar(w: number): number {
 }
 
 /**
- * The dock's opening width: 46% of the shell, held inside the drag range.
+ * The dock's opening width: 30% of the shell, held inside the drag range.
  * @param vw - window inner width.
  * @param side - rendered sidebar width including its handle (0 when collapsed).
  * @returns the width to open the dock at.

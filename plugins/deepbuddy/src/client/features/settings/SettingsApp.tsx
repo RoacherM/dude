@@ -95,7 +95,7 @@ export function SettingsDialog(): ReactNode {
   const { layout } = useAppDeps()
   useLayoutStore(layout)
   return (
-    <KIT.Dialog open onClose={layout.closeSettings} style={{ width: 'min(1200px, 90vw)', maxHeight: 'min(860px, 90vh)' }}>
+    <KIT.Dialog open onClose={layout.closeSettings} style={{ width: 'min(1200px, 90vw)', height: 'min(860px, 90vh)', maxHeight: 'min(860px, 90vh)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px 10px', borderBottom: '1px solid var(--db-line)', flex: '0 0 auto' }}>
         <span style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--db-text)' }}>设置</span>
         <KIT.IconButton title="关闭设置" onClick={layout.closeSettings}>

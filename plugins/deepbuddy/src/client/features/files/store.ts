@@ -204,6 +204,16 @@ export class FilesStore {
           this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'too-large', size: r.size } } }))
           return
         }
+        // An HTTP URL (media route registered): hand it straight to
+        // <img>/<video>, which streams with Range — no base64 decode, no blob.
+        // A blob URL is only for the capped base64 fallback.
+        if (r.kind === 'url') {
+          // The host answers a session-relative path; the page origin makes it
+          // an absolute URL to the same HTTP server the app already loaded from.
+          const href = new URL(r.url, window.location.origin).href
+          this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'url', url: href, size: r.size } } }))
+          return
+        }
         // Decode base64 to a blob URL. `atob`, not the deprecated Buffer path —
         // this runs in the browser renderer without Node globals.
         const bytes = base64ToBytes(r.base64)
@@ -212,10 +222,6 @@ export class FilesStore {
         const blob = new Blob([bytes.buffer as ArrayBuffer])
         const url = URL.createObjectURL(blob)
         this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'url', url, size: r.size } } }))
-      })
-      .catch((e: unknown) => {
-        const message = e instanceof Error ? e.message : String(e)
-        this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'error', message } } }))
       })
   }
 }

@@ -224,6 +224,35 @@ describe('readBinary', () => {
   })
 })
 
+describe('readBinary media URL', () => {
+  const web = { port: 3099 }
+
+  it('returns a streaming URL over webServer instead of base64', async () => {
+    await writeFile(join(root, 'movie.mp4'), Buffer.alloc(32, 0x41))
+    const fsCtx = new Context()
+    const fs = new LocalFileSystem(fsCtx, LocalFileSystem.Config({ cwd: base }))
+    const ctx = {
+      sessions: { get: id => (id === SESSION ? { header: { cwd: root } } : undefined) },
+      get: key => (key === 'fs' ? fs : key === 'webServer' ? web : undefined),
+    }
+    const withWeb = new DeepbuddyFilesService(ctx, { previewMaxChars: 262_144 })
+    const result = await withWeb.readBinary({ sessionId: SESSION, path: join(root, 'movie.mp4') })
+    assert.equal(result.kind, 'url')
+    assert.equal(result.size, null)
+    assert.match(result.url, /^\/deepbuddy\/media\//)
+    // The session id and the fenced path round-trip encoded into the URL.
+    assert.ok(result.url.includes(encodeURIComponent(SESSION)), 'the session id rides the URL')
+    assert.ok(result.url.includes(encodeURIComponent(join(root, 'movie.mp4'))), 'the file path rides the URL')
+  })
+
+  it('falls back to capped base64 when no webServer is present', async () => {
+    await writeFile(join(root, 'still.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d]))
+    const result = await service.readBinary({ sessionId: SESSION, path: join(root, 'still.png') })
+    assert.equal(result.kind, 'binary')
+    assert.equal(result.size, 5)
+  })
+})
+
 describe('listDirectory', () => {
   it('lists the session root when the path is empty', async () => {
     const result = await service.listDirectory({ sessionId: SESSION, path: '' })

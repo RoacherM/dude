@@ -303,6 +303,34 @@ function renderChatNodes(conv: Conversation, store: ConversationStore): ReactNod
   return rows
 }
 
+/**
+ * Whether the live chat snapshot already shows running content — a running
+ * assistant-step with visible blocks, or a running tool-call. Used to decide
+ * the 「正在思考…」 indicator in the chat path, where live content lives in
+ * the snapshot rather than the legacy `partial`/`runningCalls` projections.
+ */
+/** Whether an unknown-valued blocks field carries visible text/reasoning. */
+function blocksShowVisible(blocks: unknown): boolean {
+  if (!Array.isArray(blocks)) return false
+  return blocks.some(b => typeof b === 'object' && b !== null && 'kind' in b && (b.kind === 'text' || b.kind === 'reasoning'))
+}
+
+function chatHasVisibleRunning(conv: Conversation): boolean {
+  const chat = conv.chat
+  for (const key of chat.order) {
+    const node = chat.nodes.get(key)
+    if (node === undefined) continue
+    if (node.kind === 'tool-call') return true
+    if (node.kind !== 'assistant-step') continue
+    const data: unknown = node.data
+    if (typeof data !== 'object' || data === null) continue
+    if (!('status' in data) || data.status !== 'running') continue
+    if ('finalNode' in data && data.finalNode !== null && blocksShowVisible(data.finalNode)) return true
+    if ('blocks' in data && blocksShowVisible(data.blocks)) return true
+  }
+  return false
+}
+
 /** Render one assistant-step vertex: settled via its final node, else its live blocks. */
 function AssistantStep({ data }: { data: AssistantStepData }): ReactNode {
   // A closed step carries the durable finalized node; stream live blocks only
@@ -379,7 +407,14 @@ function Stream({ store, dockOpen }: { store: ConversationStore; dockOpen: boole
   const hasChat = conv.chat.order.length > 0
   const partial = conv.partial
   const partialBlocks = partial === null ? [] : partial.blocks.filter(b => b.kind === 'text' || b.kind === 'reasoning')
-  const thinking = conv.running && partialBlocks.length === 0 && conv.runningCalls.length === 0
+  // The chat snapshot already renders running assistant steps and tool-calls
+  // (renderChatNodes), so the live `runningCalls`/`partial` tail is only for the
+  // discontinued legacy path — rendering it again would duplicate content.
+  // 「正在思考…」 reads the same source as the body it sits under.
+  const showLiveTail = !hasChat
+  const thinking = conv.running && (hasChat
+    ? !chatHasVisibleRunning(conv)
+    : partialBlocks.length === 0 && conv.runningCalls.length === 0)
   return (
     <div style={{ ...columnStyle(dockOpen), display: 'flex', flexDirection: 'column', gap: 26, padding: '24px 0 40px' }}>
       {conv.hasMore && (
@@ -440,10 +475,10 @@ function Stream({ store, dockOpen }: { store: ConversationStore; dockOpen: boole
                 return null
             }
           })}
-      {conv.runningCalls.map(rc => (
+      {showLiveTail && conv.runningCalls.map(rc => (
         <ToolBlock key={rc.callId} store={store} callId={rc.callId} name={rc.name} argsRaw={rc.argsRaw} result={null} />
       ))}
-      {partialBlocks.length > 0 && (
+      {showLiveTail && partialBlocks.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {partialBlocks.map((b, i) => b.kind === 'text'
             ? <div key={i} style={{ lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>{b.text}</div>
