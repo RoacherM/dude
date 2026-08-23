@@ -318,6 +318,18 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               aria-hidden
               style={{ position: 'absolute', top: 0, left: 0, right: 0, height: METRICS.topbar, zIndex: -1, pointerEvents: 'none', WebkitAppRegion: 'drag' } as CSSProperties}
             />
+            {/* Collapsing the sidebar unmounts its column — and the toggle
+                inside it. The way back lives here: pinned where the sidebar's
+                toggle sat, shifted right of the native traffic lights under
+                Electron (they overlay this corner once the sidebar's inset
+                band is gone). */}
+            {!s.sidebar && (
+              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: IN_ELECTRON ? 78 : 12, zIndex: 6 }}>
+                <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
+                  <PanelLeft size={16} />
+                </KIT.IconButton>
+              </div>
+            )}
             {renderSlot('conversation', {})}
           </div>
           {s.dock && s.sessionStarted && (
