@@ -71,6 +71,9 @@ export const Automation = (p: IconProps): ReactNode =>
 export const Folder = (p: IconProps): ReactNode =>
   svg(<path d="M3.5 6.8a1.8 1.8 0 011.8-1.8h3.3l1.9 2h7.7a1.8 1.8 0 011.8 1.8v8.4a1.8 1.8 0 01-1.8 1.8H5.3a1.8 1.8 0 01-1.8-1.8z" />, p)
 
+export const FolderOpen = (p: IconProps): ReactNode =>
+  svg(<><path d="M3.5 6.8a1.8 1.8 0 011.8-1.8h3.3l1.9 2h7.7a1.8 1.8 0 011.8 1.8v1.4H7.2l-3.7 8.4z" /><path d="M4.1 19h14.5a1.8 1.8 0 001.7-1.2l.7-2a1.8 1.8 0 00-1.7-2.4H8.6a1.8 1.8 0 00-1.7 1.2l-1.3 3.9a.9.9 0 00.1.5z" /></>, p)
+
 export const FileText = (p: IconProps): ReactNode =>
   svg(<><path d="M13.5 3.5H7a1.8 1.8 0 00-1.8 1.8v13.4A1.8 1.8 0 007 20.5h10a1.8 1.8 0 001.8-1.8V8.8z" /><path d="M13.5 3.5v5.3h5.3" /></>, p)
 

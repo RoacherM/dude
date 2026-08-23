@@ -5,17 +5,22 @@
  * knows there is a dock. It reads the DSH session and workspace snapshots
  * straight through the adapter and draws rows grouped by workspace; the shell
  * places it through SIDEBAR_SECTIONS.
+ *
+ * ui-unify (wave): the tree matches the official sidebar — folder open/closed
+ * icons (no chevron, no count badge), no session dot, short zh times
+ * (「12小时」「5天」), current-session rounded pill, and 「未分组」 as a
+ * collapsible group row at the same level as workspace groups.
  */
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Dsh, SessionId, SessionSummary, WorkspaceView } from '../../dsh/adapter.ts'
-import { basename, fmtRel, topSessions, workspaceOf } from '../../dsh/adapter.ts'
+import type { Dsh, SessionId, SessionSummary } from '../../dsh/adapter.ts'
+import { basename, fmtRel, topSessions } from '../../dsh/adapter.ts'
 import { useSnapshot } from '../../dsh/hooks.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { KIT } from '../../ui/kit.tsx'
-import { ChevronDown, ChevronRight, Folder, Plus, Search } from '../../ui/icons.tsx'
+import { Folder, FolderOpen, Plus, Search } from '../../ui/icons.tsx'
 
-/** Sessions shown per workspace before the 「显示更多」 row (ref 10). */
+/** Sessions shown per workspace before the 「展开其余」 row (ref 10). */
 const PER_GROUP = 5
 
 function SessionRow({ onOpen, row, indent, current }: {
@@ -30,9 +35,11 @@ function SessionRow({ onOpen, row, indent, current }: {
       indent={indent === true}
       title={row.displayTitle}
       onClick={() => { onOpen(row.id) }}
-      icon={<KIT.Dot tone={row.running ? 'run' : 'muted'} size={6} />}
+      dense
       trailing={row.running
-        ? <span style={{ color: 'var(--db-run-soft)' }}>运行中</span>
+        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--db-run-soft)' }}>
+            <KIT.Dot tone="run" size={5} />
+          </span>
         : fmtRel(row.updatedAt)}
     >
       {row.displayTitle}
@@ -41,64 +48,55 @@ function SessionRow({ onOpen, row, indent, current }: {
 }
 
 /**
- * One workspace group: a collapsible workspace row (folder icon + name) over
- * its member sessions, capped at {@link PER_GROUP} with a 「显示更多」 row.
- * The group holding the current session starts expanded.
+ * One collapsible tree group: a folder row (open/closed icon + name) over its
+ * member sessions, capped at {@link PER_GROUP} with a 「展开其余」 row. The
+ * group holding the current session starts expanded. `variant` distinguishes
+ * a workspace row from the 「未分组」 row (same presentation).
  */
-function WorkspaceGroup({ ws, byId, currentId, open, onToggle, onOpen, onShowMore }: {
-  ws: WorkspaceView
-  byId: Partial<Record<string, SessionSummary>>
+function TreeGroup({ label, members, currentId, open, onToggle, onOpen, onShowMore, overflow }: {
+  label: string
+  members: SessionSummary[]
   currentId: string | undefined
   open: boolean
   onToggle: () => void
   onOpen: (id: string) => void
   onShowMore: () => void
+  overflow: number
 }): ReactNode {
-  const members = (ws.sessionIds as readonly string[])
-    .map(sid => byId[sid])
-    .filter((x): x is SessionSummary => x !== undefined)
-  const visible = members.slice(0, PER_GROUP)
-  const overflow = members.length - visible.length
   return (
     <div>
       <KIT.Row
         onClick={onToggle}
-        icon={open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-        trailing={members.length === 0 ? undefined : String(members.length)}
-        title={ws.title || basename(ws.path)}
+        icon={open ? <FolderOpen size={14} /> : <Folder size={14} />}
+        title={label}
       >
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-          <Folder size={14} style={{ flex: '0 0 14px', color: 'var(--db-text-3)' }} />
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {ws.title || basename(ws.path)}
-          </span>
-        </span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
       </KIT.Row>
-      {open && visible.map(m => (
+      {open && members.map(m => (
         <SessionRow key={m.id as string} onOpen={onOpen} row={m} indent current={currentId === m.id} />
       ))}
       {open && overflow > 0 && (
         <KIT.Row
           onClick={onShowMore}
           indent
-          title={`显示更多会话（还有 ${overflow} 个）`}
+          dense
+          title={`展开其余 ${overflow} 个会话`}
           style={{ color: 'var(--db-text-4)' }}
         >
-          {`显示更多会话（${overflow}）`}
+          {`展开其余 ${overflow} 个会话`}
         </KIT.Row>
       )}
       {open && members.length === 0 && (
-        <div style={{ padding: '2px 10px 4px 32px', fontSize: 11.5, color: 'var(--db-text-5)' }}>空</div>
+        <div style={{ padding: '2px 10px 4px 28px', fontSize: 11.5, color: 'var(--db-text-5)' }}>空</div>
       )}
     </div>
   )
 }
 
 /**
- * The session-list section: the 「工作空间」 header with search + add actions,
- * then one group per workspace, then an 「未分组」 group for sessions that
- * belong to no workspace. The group holding the current session expands by
- * default. Expansion is local UI state.
+ * The session-list section: the 「工作区」 header with search + add actions,
+ * then one tree group per workspace, then a 「未分组」 tree group. The group
+ * holding the current session expands by default. Expansion is local UI state.
  */
 export function SessionList(): ReactNode {
   const { dsh } = useAppDeps()
@@ -106,7 +104,10 @@ export function SessionList(): ReactNode {
   const wsList = useSnapshot(dsh.workspaces.list)
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
+  // Per-group expansion override. Absent = default (the group holding the
+  // current session shows open, others closed); present = the user's explicit
+  // choice, which wins — so the current group can still be collapsed by hand.
+  const [expanded, setExpanded] = useState<Readonly<Partial<Record<string, boolean>>>>(() => ({}))
   const [shownMore, setShownMore] = useState<ReadonlySet<string>>(() => new Set())
   const currentId = list.current ?? undefined
   const sessions = topSessions(list)
@@ -120,11 +121,8 @@ export function SessionList(): ReactNode {
   const openSession = (id: string): void => {
     dsh.sessions.open(id as SessionId)
   }
-  const toggle = (id: string): void => {
-    const next = new Set(expanded)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setExpanded(next)
+  const toggle = (id: string, open: boolean): void => {
+    setExpanded({ ...expanded, [id]: !open })
   }
   const showMore = (id: string): void => {
     const next = new Set(shownMore)
@@ -135,7 +133,7 @@ export function SessionList(): ReactNode {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <KIT.GroupLabel>
-        工作空间
+        工作区
         <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 2 }}>
           <KIT.IconButton
             size={28}
@@ -147,7 +145,7 @@ export function SessionList(): ReactNode {
           </KIT.IconButton>
           <KIT.IconButton
             size={28}
-            title="添加工作空间"
+            title="添加工作区"
             onClick={() => { void dsh.workspaces.pickDirectory() }}
           >
             <Plus size={13} />
@@ -163,57 +161,36 @@ export function SessionList(): ReactNode {
 
       {grouped.map(({ ws, members }) => {
         const id = ws.workspaceId as string
-        const open = expanded.has(id) || currentId !== undefined && (ws.sessionIds as readonly string[]).includes(currentId)
+        const open = expanded[id] ?? (currentId !== undefined && (ws.sessionIds as readonly string[]).includes(currentId))
         const limit = shownMore.has(id) ? members.length : PER_GROUP
         const visible = q === '' ? members.slice(0, limit) : members.filter(m => m.displayTitle.toLowerCase().includes(q))
         const overflow = members.length - Math.min(members.length, limit)
         return (
-          <div key={id}>
-            <KIT.Row
-              onClick={() => { toggle(id) }}
-              icon={open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              trailing={members.length === 0 ? undefined : String(members.length)}
-              title={ws.title || basename(ws.path)}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                <Folder size={14} style={{ flex: '0 0 14px', color: 'var(--db-text-3)' }} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {ws.title || basename(ws.path)}
-                </span>
-              </span>
-            </KIT.Row>
-            {open && visible.map(m => (
-              <SessionRow key={m.id as string} onOpen={openSession} row={m} indent current={currentId === m.id} />
-            ))}
-            {open && q === '' && overflow > 0 && (
-              <KIT.Row
-                onClick={() => { showMore(id) }}
-                indent
-                title={`显示更多会话（还有 ${overflow} 个）`}
-                style={{ color: 'var(--db-text-4)' }}
-              >
-                {`显示更多会话（${overflow}）`}
-              </KIT.Row>
-            )}
-            {open && members.length === 0 && (
-              <div style={{ padding: '2px 10px 4px 32px', fontSize: 11.5, color: 'var(--db-text-5)' }}>空</div>
-            )}
-          </div>
+          <TreeGroup
+            key={id}
+            label={ws.title || basename(ws.path)}
+            members={visible}
+            currentId={currentId}
+            open={open}
+            onToggle={() => { toggle(id, open) }}
+            onOpen={openSession}
+            onShowMore={() => { showMore(id) }}
+            overflow={q === '' ? overflow : 0}
+          />
         )
       })}
 
       {(ungrouped.length > 0 || spaces.length === 0) && (
-        <>
-          <KIT.GroupLabel>未分组</KIT.GroupLabel>
-          {ungrouped.map(row => (
-            <SessionRow key={row.id as string} onOpen={openSession} row={row} current={currentId === row.id} />
-          ))}
-          {ungrouped.length === 0 && (
-            <div style={{ padding: '2px 10px 6px', fontSize: 12, color: 'var(--db-text-5)' }}>
-              {list ? '还没有会话' : '加载中…'}
-            </div>
-          )}
-        </>
+        <TreeGroup
+          label="未分组"
+          members={ungrouped}
+          currentId={currentId}
+          open={expanded['__ungrouped__'] ?? true}
+          onToggle={() => { toggle('__ungrouped__', expanded['__ungrouped__'] ?? true) }}
+          onOpen={openSession}
+          onShowMore={() => {}}
+          overflow={0}
+        />
       )}
     </div>
   )

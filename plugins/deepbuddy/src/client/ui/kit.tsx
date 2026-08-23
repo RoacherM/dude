@@ -152,8 +152,8 @@ const Button: Kit['Button'] = ({ kind = 'secondary', size = 34, disabled, onClic
         padding: primary ? '0 19px' : '0 16px',
         borderRadius: half(size),
         border: primary ? 0 : '1px solid var(--db-line-emphasis)',
-        background: primary ? '#ededed' : 'transparent',
-        color: primary ? '#141414' : 'var(--db-text)',
+        background: primary ? 'var(--db-text)' : 'transparent',
+        color: primary ? 'var(--db-window)' : 'var(--db-text)',
         fontSize: 13,
         fontWeight: primary ? 520 : 400,
         cursor: disabled === true ? 'default' : 'pointer',
@@ -246,7 +246,7 @@ const Switch: Kit['Switch'] = ({ on, onChange, disabled, title, style }) => (
       borderRadius: 11,
       border: 0,
       padding: 2,
-      background: on ? 'var(--db-primary)' : 'rgba(255,255,255,.12)',
+      background: on ? 'var(--db-primary)' : 'var(--db-fill-4)',
       cursor: disabled === true ? 'default' : 'pointer',
       opacity: disabled === true ? 0.45 : 1,
       transition: 'background var(--db-tint)',
@@ -256,7 +256,7 @@ const Switch: Kit['Switch'] = ({ on, onChange, disabled, title, style }) => (
     }}
   >
     <span style={{
-      width: 18, height: 18, borderRadius: '50%', background: '#fff', display: 'block',
+      width: 18, height: 18, borderRadius: '50%', background: 'var(--db-text)', display: 'block',
       transition: 'transform var(--db-tint)',
     }}
     />
@@ -299,7 +299,7 @@ const Badge: Kit['Badge'] = ({ tone = 'neutral', children, title, style }) => {
     : tone === 'await'
       ? { background: 'var(--db-await-wash)', color: 'var(--db-await)', border: 0 }
       : tone === 'outline'
-        ? { background: 'transparent', color: 'var(--db-text-2)', border: '1px solid rgba(255,255,255,.12)' }
+        ? { background: 'transparent', color: 'var(--db-text-2)', border: '1px solid var(--db-line-container)' }
         : { background: 'var(--db-fill-5)', color: 'var(--db-text-3)', border: 0 }
   return (
     <span
@@ -484,7 +484,7 @@ function SelectImpl<T extends string>({ value, options, onChange, form = 'pill',
             padding: field ? '0 13px' : '0 11px',
             borderRadius: field ? 'var(--db-r-input)' : 16,
             border: `1px solid ${field ? 'var(--db-line-input-2)' : 'var(--db-line-input)'}`,
-            background: field ? 'rgba(255,255,255,.04)' : 'transparent',
+            background: field ? 'var(--db-fill-2)' : 'transparent',
             color: current === undefined ? 'var(--db-text-4)' : 'var(--db-text)',
             fontSize: 13,
             cursor: disabled === true ? 'default' : 'pointer',
@@ -557,7 +557,7 @@ interface TabsProps<T extends string> {
 function TabsImpl<T extends string>({ form, value, tabs, onChange, style }: TabsProps<T>): ReactNode {
   if (form === 'segment') {
     return (
-      <div style={{ ...ROW, gap: 2, padding: 3, borderRadius: 'var(--db-r-swatch)', background: 'rgba(255,255,255,.04)', ...style }}>
+      <div style={{ ...ROW, gap: 2, padding: 3, borderRadius: 'var(--db-r-swatch)', background: 'var(--db-fill-1)', ...style }}>
         {tabs.map(t => (
           <button
             key={t.id}
@@ -566,7 +566,7 @@ function TabsImpl<T extends string>({ form, value, tabs, onChange, style }: Tabs
             className={t.id === value ? undefined : 'dbdy-hv-2'}
             style={{
               ...ROW, gap: 7, height: 30, padding: '0 12px', border: 0, borderRadius: 8,
-              background: t.id === value ? 'rgba(255,255,255,.10)' : 'transparent',
+              background: t.id === value ? 'var(--db-fill-4)' : 'transparent',
               color: t.id === value ? 'var(--db-text)' : 'var(--db-text-3)',
               fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
               transition: 'background var(--db-tint), color var(--db-tint)',
@@ -644,7 +644,7 @@ const RowImpl: Kit['Row'] = ({ current, icon, trailing, indent, dense, onClick, 
       cursor: onClick === undefined ? 'default' : 'pointer',
       fontSize: dense === true ? 12.5 : 13,
       color: current === true ? 'var(--db-text)' : 'var(--db-text-2)',
-      background: current === true ? 'var(--db-fill-5)' : 'transparent',
+      background: current === true ? 'var(--db-fill-2)' : 'transparent',
       transition: 'background var(--db-tint)',
       ...style,
     }}
@@ -689,7 +689,7 @@ const GroupLabel: Kit['GroupLabel'] = ({ onClick, trailing, children, title, sty
 
 const SettingRow: Kit['SettingRow'] = ({ label, description, children, style }) => (
   <div style={{
-    ...ROW, gap: 24, padding: '17px 0', borderBottom: '1px solid rgba(255,255,255,.07)', ...style,
+    ...ROW, gap: 24, padding: '17px 0', borderBottom: '1px solid var(--db-line-card)', ...style,
   }}
   >
     <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>

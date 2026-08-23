@@ -24,6 +24,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // time — cross-plugin VALUE imports are a bundle-purity error.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { LayoutStore } from '../shell/layout-store.ts'
+import brandMarkUrl from '../assets/brand-mark.png'
 import { createFilesWire } from './files.ts'
 import type { WorkspaceFilesWire } from './files.ts'
 import { createPluginsWire, createPresetsWire } from './presets.ts'
@@ -196,21 +197,19 @@ const PRESET_SETTINGS_NS = 'agent-presets'
 /**
  * The DeepBuddy identity rendered in the official conversation hero's
  * `conversation.hero.brand.mark` seat. Replaces the official fish logo
- * (registered at priority 0 by ui-brand-official) at priority -1, so the
- * brand area shows the DeepBuddy identity instead of the official fish.
- * The hero headline/preview texts are ui-conversation-owned (one occupant per
- * locale NS), so the DeepBuddy slogan rides the headline via a locale override
- * (see {@link mountDeepbuddyConversationLocale}) rather than here.
+ * (registered at priority 0 by ui-brand-official) at priority -1.
  *
- * The mark is a compact wordmark: the official hero's brand column is a fixed
- * 34px cell, so a stacked name+slogan would overflow into the headline and
- * overlap it (wave8-fix D2). The name renders on one line; the slogan is the
- * headline's own text.
+ * The official hero's brand column is a fixed 34px grid cell sized for a
+ * square logo glyph, so the mark is the DeepBuddy whale (the wordmark lives
+ * in the sidebar brand row) — any text wordmark overflows the cell into the
+ * headline.
  */
 function DeepBuddyBrandMark(): ReactNode {
-  return createElement('span', {
-    style: { fontSize: 11, fontWeight: 600, letterSpacing: '-.01em', color: 'var(--db-text)', whiteSpace: 'nowrap', marginRight: 10 },
-  }, 'DeepBuddy')
+  return createElement('img', {
+    src: brandMarkUrl,
+    alt: 'DeepBuddy',
+    style: { display: 'block', width: 34, height: 34 },
+  })
 }
 
 /**
@@ -357,17 +356,18 @@ export function textOfParts(content: unknown): string {
 }
 
 /**
- * Relative time for the session list rows.
+ * Relative time for the session list rows. Matches the official sidebar's
+ * zh short format: `刚刚` / `X分钟` / `X小时` / `X天` — no space, no 「前」.
  * @param ts - epoch ms.
- * @returns Chinese relative label, matching the design's row format.
+ * @returns Chinese relative label.
  */
 export function fmtRel(ts: number): string {
   const mins = Math.floor((Date.now() - ts) / 60_000)
   if (mins < 1) return '刚刚'
-  if (mins < 60) return `${mins} 分钟前`
+  if (mins < 60) return `${mins}分钟`
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} 小时前`
-  return `${Math.floor(hours / 24)} 天前`
+  if (hours < 24) return `${hours}小时`
+  return `${Math.floor(hours / 24)}天`
 }
 
 /**

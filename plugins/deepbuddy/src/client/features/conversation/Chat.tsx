@@ -30,10 +30,10 @@ export function ChatNav({ current }: { current: boolean }): ReactNode {
       onClick={newTask}
       className="dbdy-hv-1"
       style={{
-        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-        height: 40, padding: '0 13px', borderRadius: 'var(--db-r-swatch)',
-        border: '1px solid var(--db-line-card)', background: 'var(--db-fill-2)',
-        color: 'var(--db-text)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%',
+        height: 38, padding: '8px 16px', borderRadius: 12,
+        background: 'var(--dsw-alias-bg-raised, #43454a)',
+        color: 'var(--db-text)', fontSize: 14, fontWeight: 500, cursor: 'pointer',
         transition: 'background var(--db-tint), border-color var(--db-tint)',
       }}
     >

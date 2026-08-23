@@ -2,19 +2,21 @@
  * The distribution's design tokens, and the few rules inline styles cannot
  * carry (hover tints, focus rings, keyframes, scrollbars, the overlay layer).
  *
- * Values are the Synara handoff's final numbers
- * (`design/synara/design_handoff_dsh_desktop/README.md` §Design Tokens and
- * `COMPONENTS.md`), transcribed verbatim rather than approximated: the handoff
- * is high-fidelity, so every colour, radius and duration here is a pixel
- * decision someone already made.
+ * UI-unify (wave): every `--db-*` value now references the harness's official
+ * `--dsw-*` / `--ds-*` variables (injected by the enabled ui-conversation /
+ * ui-layout rows) with a hardcoded fallback, so DeepBuddy's sidebar and dock
+ * share the official main column's palette instead of a parallel Synara set.
+ * The values were reverse-engineered from the official web profile (port 3080)
+ * via getComputedStyle — the alias names were read off the live DOM, not
+ * guessed from names.
  *
  * Three disciplines the token set exists to enforce (they are what separates
  * this from a palette swap — see `design/STUDY-synara.md`):
  *
  * 1. **Separation is material, not line.** `--db-fill-*` carry the weight;
- *    `--db-line` is 5% white and is reserved for STRUCTURAL seams (column to
- *    column, top bar to body, composer outline, popover outline). Row- and
- *    card-level borders are not drawn.
+ *    `--db-line` is reserved for STRUCTURAL seams (column to column, top bar
+ *    to body, composer outline, popover outline). Row- and card-level borders
+ *    are not drawn.
  * 2. **Hierarchy is opacity, not weight.** Five text steps, one 600 weight
  *    used only for the wordmark, the hero line and dialog titles. No
  *    uppercase micro-labels, no letter-spacing tricks.
@@ -46,67 +48,67 @@ export const METRICS = {
 
 const CSS = `
 .dbdy {
-  /* ── grounds ─────────────────────────────────────────────────────────── */
-  --db-window: #0f0f0f;
-  --db-rail: #0a0a0a;
-  --db-popover: #181818;
-  --db-dialog: #161616;
+  /* ── grounds: official main frame / sidebar / menu / panel ─────────────── */
+  --db-window: var(--dsw-alias-bg-base, #151517);
+  --db-rail: var(--dsw-specific-sidebar-fill, #1b1b1c);
+  --db-popover: var(--dsw-specific-menu, #353638);
+  --db-dialog: var(--dsw-specific-menu, #2c2c2e);
 
-  /* ── surface fills: white over the ground, card → hover → selected ───── */
-  --db-fill-1: rgba(255, 255, 255, .022);
-  --db-fill-2: rgba(255, 255, 255, .028);
-  --db-fill-3: rgba(255, 255, 255, .035);
-  --db-fill-4: rgba(255, 255, 255, .06);
-  --db-fill-5: rgba(255, 255, 255, .07);
-  --db-fill-6: rgba(255, 255, 255, .09);
+  /* ── surface fills: card → hover → selected ───────────────────────────── */
+  --db-fill-1: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover, #ffffff14) 40%, transparent);
+  --db-fill-2: var(--dsw-alias-interactive-bg-hover, #ffffff14);
+  --db-fill-3: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover, #ffffff14) 140%, transparent);
+  --db-fill-4: var(--dsw-alias-interactive-bg-active, #ffffff24);
+  --db-fill-5: color-mix(in srgb, var(--dsw-alias-interactive-bg-active, #ffffff24) 130%, transparent);
+  --db-fill-6: color-mix(in srgb, var(--dsw-alias-interactive-bg-active, #ffffff24) 160%, transparent);
 
-  /* ── text: the whole hierarchy, weight stays 400 ─────────────────────── */
-  --db-text: #ededed;
-  --db-text-2: #b4b4b4;
-  --db-text-3: #7a7a7a;
-  --db-text-4: #6f6f6f;
-  --db-text-5: #5f5f5f;
+  /* ── text: official primary / secondary / tertiary / caption + a dimmer ── */
+  --db-text: var(--dsw-alias-label-primary, #f9fafb);
+  --db-text-2: var(--dsw-alias-label-secondary, #cfd3d6);
+  --db-text-3: var(--dsw-alias-label-tertiary, #adb2b8);
+  --db-text-4: var(--dsw-alias-label-caption, #81858c);
+  --db-text-5: color-mix(in srgb, var(--dsw-alias-label-caption, #81858c) 78%, transparent);
 
-  /* ── strokes: structure / container / input / emphasis / focus ───────── */
-  --db-line: rgba(255, 255, 255, .05);
-  --db-line-card: rgba(255, 255, 255, .08);
-  --db-line-container: rgba(255, 255, 255, .09);
-  --db-line-input: rgba(255, 255, 255, .10);
-  --db-line-input-2: rgba(255, 255, 255, .14);
-  --db-line-emphasis: rgba(255, 255, 255, .16);
-  --db-line-focus: rgba(255, 255, 255, .24);
-  --db-line-hover: rgba(255, 255, 255, .26);
-  --db-line-dashed: rgba(255, 255, 255, .14);
+  /* ── strokes: official border tiers ────────────────────────────────────── */
+  --db-line: var(--dsw-alias-border-l1, #ffffff0f);
+  --db-line-card: var(--dsw-alias-border-l1, #ffffff0f);
+  --db-line-container: var(--dsw-alias-border-l2, #ffffff1f);
+  --db-line-input: var(--dsw-alias-border-l2, #ffffff1f);
+  --db-line-input-2: var(--dsw-alias-border-l3, #ffffff29);
+  --db-line-emphasis: var(--dsw-alias-border-l3, #ffffff29);
+  --db-line-focus: var(--dsw-alias-border-l4, #fff3);
+  --db-line-hover: var(--dsw-alias-interactive-bg-active, #ffffff24);
+  --db-line-dashed: var(--dsw-alias-border-l2, #ffffff1f);
 
-  /* ── semantics: the only colours on screen ───────────────────────────── */
-  --db-run: #10b981;
-  --db-run-soft: #34d399;
-  --db-run-wash: rgba(16, 185, 129, .14);
-  --db-await: #d97757;
-  --db-await-wash: rgba(217, 119, 87, .13);
-  --db-primary: #4d6bfe;
-  --db-offline: #8b8b8b;
+  /* ── semantics: the only colours on screen ─────────────────────────────── */
+  --db-run: var(--dsw-alias-state-success-primary, #22c55e);
+  --db-run-soft: color-mix(in srgb, var(--dsw-alias-state-success-primary, #22c55e) 80%, var(--dsw-alias-label-primary, #f9fafb));
+  --db-run-wash: color-mix(in srgb, var(--dsw-alias-state-success-primary, #22c55e) 14%, transparent);
+  --db-await: var(--dsw-alias-state-warning-primary, #d97757);
+  --db-await-wash: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #d97757) 13%, transparent);
+  --db-primary: var(--dsw-alias-state-business-primary, #679efe);
+  --db-offline: var(--dsw-alias-label-caption, #81858c);
 
-  /* ── type ────────────────────────────────────────────────────────────── */
-  --db-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Helvetica Neue", sans-serif;
+  /* ── type ──────────────────────────────────────────────────────────────── */
+  --db-font: -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --db-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* ── radii: pills take half their height, everything else is listed ──── */
-  --db-r-badge: 6px;
+  /* ── radii: official row 8px, cards/pills 22px / 999px ─────────────────── */
+  --db-r-badge: 8px;
   --db-r-chip: 8px;
   --db-r-swatch: 10px;
-  --db-r-row: 11px;
+  --db-r-row: 8px;
   --db-r-input: 14px;
-  --db-r-card: 15px;
-  --db-r-surface: 16px;
-  --db-r-editor: 18px;
+  --db-r-card: 22px;
+  --db-r-surface: 22px;
+  --db-r-editor: 22px;
 
-  /* ── motion ──────────────────────────────────────────────────────────── */
-  --db-in: 140ms ease-out;
-  --db-size: 180ms ease;
-  --db-tint: 120ms ease;
+  /* ── motion: official transition durations / ease ──────────────────────── */
+  --db-in: var(--ds-transition-duration-fast, 0.1s) var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1));
+  --db-size: var(--ds-transition-duration-normal, 0.2s) var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1));
+  --db-tint: var(--ds-transition-duration-fast, 0.1s) var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1));
 
-  /* ── elevation ───────────────────────────────────────────────────────── */
+  /* ── elevation ─────────────────────────────────────────────────────────── */
   --db-shadow-popover: 0 22px 54px rgba(0, 0, 0, .68);
   --db-shadow-menu: 0 24px 60px rgba(0, 0, 0, .70);
   --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .74);
@@ -119,18 +121,17 @@ const CSS = `
 .dbdy input, .dbdy textarea { font-family: var(--db-font); color: inherit; }
 .dbdy input::placeholder, .dbdy textarea::placeholder { color: var(--db-text-4); }
 
-/* Scrollbars read as material, not as a control: no track, thumb only, and
-   it stays inside the 5–9% stroke band so a scrolling column does not grow a
-   bright edge. */
-.dbdy ::-webkit-scrollbar { width: 10px; height: 10px; }
-.dbdy ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .09); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
-.dbdy ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .16); background-clip: content-box; }
+/* Scrollbars: official dsw scrollbar tiers — thumb only, 8px, l2 thumb / l2
+   hover. */
+.dbdy ::-webkit-scrollbar { width: 8px; height: 8px; }
+.dbdy ::-webkit-scrollbar-thumb { background: var(--dsw-alias-scrollbar-bg-l2, #545557); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+.dbdy ::-webkit-scrollbar-thumb:hover { background: var(--dsw-alias-scrollbar-hover-l2, #65676b); background-clip: content-box; }
 .dbdy ::-webkit-scrollbar-track { background: transparent; }
 .dbdy ::-webkit-scrollbar-corner { background: transparent; }
 
 .dbdy :focus { outline: none; }
 .dbdy :focus-visible { outline: 2px solid var(--db-primary); outline-offset: 2px; }
-.dbdy ::selection { background: rgba(77, 107, 254, .35); }
+.dbdy ::selection { background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #679efe) 35%, transparent); }
 
 /* ── hover tints: the one thing inline styles cannot express ───────────── */
 .dbdy-hv-1:hover { background: var(--db-fill-2) !important; }
@@ -161,7 +162,7 @@ const CSS = `
 .dbdy-pop { animation: dbdy-pop var(--db-in); }
 .dbdy-pop-up { animation: dbdy-pop-up var(--db-in); }
 .dbdy-fade { animation: dbdy-fade var(--db-in); }
-.dbdy-pulse { animation: dbdy-pulse 1.1s ease-in-out infinite; }
+.dbdy-pulse { animation: dbdy-pulse 1.1s var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1)) infinite; }
 
 /* The frame contract's 'shell.overlay' layer: above every column, outside
    their scroll containers, and click-through — an entry opts back into

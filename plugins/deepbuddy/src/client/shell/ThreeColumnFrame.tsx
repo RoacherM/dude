@@ -60,24 +60,33 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
       header={(
         <>
           <TrafficLights />
+          <span style={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: 16,
+            fontWeight: 600,
+            letterSpacing: '-.01em',
+            color: 'var(--db-text)',
+            lineHeight: 1.2,
+          }}
+          >
+            DeepBuddy
+          </span>
           <span style={{ marginLeft: 'auto' }} />
           <div style={NO_DRAG}>
-            <KIT.IconButton title="折叠侧栏" onClick={layout.toggleSidebar}>
+            <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
               <PanelLeft size={16} />
             </KIT.IconButton>
           </div>
         </>
       )}
     >
-      {/* 14.5/600, left edge flush with the row text below it (gutter 8 +
-          row pad 8), so the brand and the nav share one optical margin. The
-          slogan rides here because the official hero's 34px brand cell (and
-          its single-occupant locale) cannot host the DeepBuddy identity —
-          the hero brand mark shows the name; the slogan lives with the
-          sidebar brand. */}
-      <div style={{ padding: `2px ${ROW_METRICS.gutter + ROW_METRICS.pad}px 14px` }}>
-        <div style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-.01em', color: 'var(--db-text)' }}>DeepBuddy</div>
-        <div style={{ marginTop: 2, fontSize: 11, color: 'var(--db-text-4)', lineHeight: 1.4 }}>向着未知出发，把每一步都变成脚印。</div>
+      {/* The muted slogan under the brand line — official muted tier
+          (label-tertiary), 12px, tight. */}
+      <div style={{ padding: `0 ${ROW_METRICS.gutter + ROW_METRICS.pad}px 12px` }}>
+        <div style={{ fontSize: 12, color: 'var(--db-text-3)', lineHeight: 1.4 }}>向着未知出发，把每一步都变成脚印。</div>
       </div>
 
       {/* The conversation entry is the app's own full-width new-task button —
