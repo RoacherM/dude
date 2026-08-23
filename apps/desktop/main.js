@@ -194,7 +194,10 @@ function createWindow(url) {
     minWidth: 860,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 14, y: 18 },
+    // Centered on the shell's 34px lights band (12px lights → y 11..23),
+    // sharing a centerline with the collapsed-sidebar expand toggle that
+    // rides the band (ThreeColumnFrame).
+    trafficLightPosition: { x: 14, y: 11 },
     // The compositor shows this during fast drag/resize before the web
     // content repaints — it must match the UI's ground (--dsw-alias-bg-base
     // per scheme; the theme presenter follows the system by default), or the
