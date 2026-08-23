@@ -2,12 +2,39 @@
   "name": "deepbuddy-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Electron shell for the DeepBuddy harness UI: a hiddenInset macOS window over a local `dsh web` serving the deepbuddy plugin.",
+  "description": "DeepBuddy.app — a self-contained Electron shell that spawns the staged dsh runtime and loads its web UI in a hiddenInset window (wave 10).",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "stage": "bash stage-runtime.sh",
+    "build": "bash stage-runtime.sh && electron-builder --mac --arm64",
+    "pack": "bash stage-runtime.sh && electron-builder --mac --arm64 --dir"
   },
   "devDependencies": {
-    "electron": "^38.2.0"
+    "electron": "^38.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "dev.deepbuddy.desktop",
+    "productName": "DeepBuddy",
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        { "target": "dir", "arch": ["arm64"] },
+        { "target": "dmg", "arch": ["arm64"] }
+      ],
+      "icon": "build/icon.png",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "staging/runtime", "to": "dsh-runtime" },
+      { "from": "staging/plugin", "to": "deepbuddy-plugin" }
+    ]
   }
 }
