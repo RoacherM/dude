@@ -140,7 +140,11 @@ function ensureDesktopProfile(resourcesDir) {
 function spawnDsh(port) {
   const resourcesDir = process.resourcesPath ?? ''
   const runtimeDir = path.join(resourcesDir, 'dsh-runtime')
-  const binPath = path.join(runtimeDir, '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  // The staged tree lives under a literal node_modules so ESM bare imports
+  // between the staged packages resolve by ancestor walk-up — NODE_PATH is
+  // CJS-only and cannot carry them (stage-runtime.sh).
+  const modulesDir = path.join(runtimeDir, 'node_modules')
+  const binPath = path.join(modulesDir, '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   if (!fs.existsSync(binPath)) {
     throw new Error(`[deepbuddy] packaged dsh runtime missing at ${binPath}`)
   }
@@ -152,9 +156,10 @@ function spawnDsh(port) {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       DSH_HOME: DEEP_BUDDY_HOME,
-      // Resolve the dsh app's dependencies from the bundled runtime (they are
-      // a flat, real tree), so bundles resolve installation-first.
-      NODE_PATH: runtimeDir,
+      // CJS requires anchored outside the runtime (the generated profile dir)
+      // still find the same staged tree — one resolution target for both
+      // module systems, so every package loads exactly once.
+      NODE_PATH: modulesDir,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

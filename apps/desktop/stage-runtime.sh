@@ -16,8 +16,17 @@
 # symlinks to a central store); the global pnpm store makes re-runs cheap.
 #
 # Produces:
-#   apps/desktop/staging/runtime/    real npm-dependency tree (@deepseek-ai/dsh + deps)
-#   apps/desktop/staging/plugin/     built dsh-plugin-deepbuddy (lib + package.json + cordis.patch.yml)
+#   apps/desktop/staging/runtime/node_modules/  real npm tree (@deepseek-ai/dsh + deps)
+#   apps/desktop/staging/plugin/                built dsh-plugin-deepbuddy (lib + package.json + cordis.patch.yml)
+#
+# The tree MUST stay under a directory literally named node_modules: ESM bare
+# imports resolve ONLY by walking up node_modules directories (NODE_PATH is
+# CJS-only). A tree renamed to anything else makes every staged inter-package
+# import fall through to whatever node_modules an ancestor directory happens
+# to have — inside this repo that silently loads the repo's pnpm copies (two
+# instances of each package, so cross-package Symbol keys like dsh-tools'
+# scheduler stop matching and the first tool dispatch dies), and outside the
+# repo it refuses to boot at all.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -54,8 +63,10 @@ echo "stage-runtime: pnpm install $LOCKED_DSH (hoisted, prod) in isolated cache.
 (cd "$BUILD_DIR/runtime" && pnpm install "$LOCKED_DSH" --prod --ignore-scripts)
 # Clear the pnpm workspace marker if pnpm created a nested store node_modules.
 rm -rf "$BUILD_DIR/runtime/node_modules/.pnpm"
-# Move the real tree into the staging (mv is cheaper than cp for 269M).
-mv "$BUILD_DIR/runtime/node_modules" "$RUNTIME"
+# Move the real tree into the staging (mv is cheaper than cp for 269M),
+# preserving the node_modules directory name ESM resolution depends on.
+mkdir -p "$RUNTIME"
+mv "$BUILD_DIR/runtime/node_modules" "$RUNTIME/node_modules"
 
 # The built DeepBuddy plugin rides along as an extra resource so the app's
 # generated profile can point its node_modules/dsh-plugin-deepbuddy here.
