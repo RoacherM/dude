@@ -74,6 +74,39 @@ DSH_WEB_URL=http://127.0.0.1:3081 pnpm --filter deepbuddy-desktop start
 `dsh` CLI 本体（server 侧 runtime）钉在仓库根 `package.json` 的 devDependencies，
 `pnpm install` 后用 `node_modules/.bin/dsh`；不要依赖全局或 npx 缓存里的版本。
 
+## 启动方式
+
+发行版一律经启动器运行，配置与官方 `~/.dsh` 隔离（wave 9）：
+
+```sh
+# 起服务（首次运行自动从 ~/.dsh 迁移配置；端口可换）
+./scripts/deepbuddy --port 3082 --no-open
+
+# 起壳（壳指向上面启动的 web 端口）
+DSH_WEB_URL=http://127.0.0.1:3082 pnpm --filter deepbuddy-desktop start
+```
+
+`scripts/deepbuddy` 设置 `DSH_HOME="$HOME/.deepbuddy"` 后 exec
+`node_modules/.bin/dsh --profile deepbuddy "$@"`（参数透传）。根 package.json 的
+`"bin"` 也把它注册为 `deepbuddy` 命令。
+
+## 配置隔离
+
+DeepBuddy 的用户数据统一放在 `~/.deepbuddy`（`DSH_HOME`）：
+
+- 首次运行（`~/.deepbuddy` 不存在时）从官方 `~/.dsh` **复制**（不是移动，官方目录
+  一个字节不改）：`settings.yaml`、`.credentials.yaml`、`.anonymous-user-id`、
+  `.agent-presets/`、`storages/`、`sessions/`、`profiles/deepbuddy/`。
+- `profiles/deepbuddy/` 用 `cp -RP` 复制，保留 `node_modules/dsh-plugin-deepbuddy`
+  指向本仓库的符号链接（复制成实体目录会断热更新）。
+- 不复制官方专属的 `profiles/web` / `profiles/headless`。
+- `~/.deepbuddy` 已存在则跳过迁移，不做任何 merge/同步——自迁移时刻起，DeepBuddy
+  配置与官方 `~/.dsh` 分叉，之后互不可见。
+
+`dsh` CLI 本体（server 侧 runtime）钉在仓库根 `package.json` 的 devDependencies，
+`pnpm install` 后用 `node_modules/.bin/dsh`；启动器已解析此路径，不要依赖全局或
+npx 缓存里的版本。
+
 ## 开发
 
 ```sh

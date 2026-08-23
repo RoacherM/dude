@@ -2,6 +2,9 @@
   "name": "deepbuddy",
   "private": true,
   "description": "DeepBuddy — a desktop distribution of the DeepSeek Harness: the official dsh core and web UI plugins at locked versions, fronted by DeepBuddy's own UI plugin and shipped in an Electron shell.",
+  "bin": {
+    "deepbuddy": "scripts/deepbuddy"
+  },
   "scripts": {
     "build": "pnpm -r --filter './plugins/*' build",
     "test": "pnpm -r --filter './plugins/*' test",

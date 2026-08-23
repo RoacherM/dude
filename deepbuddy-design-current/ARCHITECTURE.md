@@ -300,6 +300,11 @@ Resource 生命周期
 - Renderer 不直接获得 `fs`、`child_process` 或裸 `ipcRenderer`。
 - 文件、终端、通知等原生能力通过 Adapter / Provider 使用。
 - Client 模块边界用于维护产品秩序，不替代 Host 侧权限和 DSH 审批。
+- **配置隔离（wave 9）**：发行版一律以 `DSH_HOME=~/.deepbuddy` 运行（启动器
+  `scripts/deepbuddy`），用户数据（settings / credentials / sessions / storages /
+  profiles/deepbuddy）全部落在 `~/.deepbuddy`，与官方 `~/.dsh` 自首次迁移时刻起
+  分叉、互不可见。首次运行从 `~/.dsh` **复制**（非移动，官方目录只读），
+  `profiles/deepbuddy` 用 `cp -RP` 保留指向本仓库的符号链接。
 
 具体安全实现另随代码落地，但不得以“当前都是自己写的代码”为由打开完整 Node 权限。
 
