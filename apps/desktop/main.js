@@ -195,7 +195,10 @@ function createWindow(url) {
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 14, y: 18 },
-    backgroundColor: '#fafaf9',
+    // The compositor shows this during fast drag/resize before the web
+    // content repaints — it must match the UI's darkest ground
+    // (--dsw-alias-bg-base), or the window flashes white.
+    backgroundColor: '#151517',
     title: 'DeepBuddy',
   })
   win.removeMenu?.()
