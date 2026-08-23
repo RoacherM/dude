@@ -253,7 +253,7 @@ function killChild(child) {
 
 app.whenReady().then(async () => {
   const resourcesDir = process.resourcesPath ?? ''
-  const runtimeBin = path.join(resourcesDir, 'dsh-runtime', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
+  const runtimeBin = path.join(resourcesDir, 'dsh-runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   if (fs.existsSync(runtimeBin)) {
     // Packaged: own the dsh lifecycle.
     ensureDeepBuddyHome()

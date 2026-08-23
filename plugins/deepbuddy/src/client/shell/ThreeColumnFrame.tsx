@@ -59,7 +59,17 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
       }}
       header={(
         <>
+          {/* The sidebar toggle lives beside the lights in BOTH states (the
+              Electron shell parks both in the frame band instead), so
+              collapsing never teleports the control the user just clicked. */}
           <TrafficLights />
+          {!IN_ELECTRON && (
+            <div style={NO_DRAG}>
+              <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
+                <PanelLeft size={16} />
+              </KIT.IconButton>
+            </div>
+          )}
           <span style={{
             minWidth: 0,
             overflow: 'hidden',
@@ -74,12 +84,6 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
           >
             DeepBuddy
           </span>
-          <span style={{ marginLeft: 'auto' }} />
-          <div style={NO_DRAG}>
-            <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
-              <PanelLeft size={16} />
-            </KIT.IconButton>
-          </div>
         </>
       )}
     >
@@ -294,18 +298,17 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               columns, so every column's status bar starts at the same y —
               a per-column inset would stagger the header rows. The band is
               a window drag surface; a browser has no native lights and no
-              band. With the sidebar collapsed, the expand toggle rides the
-              band right after the lights (their row, their centerline —
-              main.js positions the lights on the band's center). */}
+              band. The sidebar toggle rides the band right after the lights
+              in BOTH states (their row, their centerline — main.js positions
+              the lights on the band's center), so collapsing never moves the
+              control the user just clicked. */}
           {IN_ELECTRON && (
             <div style={{ flex: '0 0 34px', display: 'flex', alignItems: 'center', WebkitAppRegion: 'drag' } as CSSProperties}>
-              {!s.sidebar && (
-                <div style={{ marginLeft: 76 }}>
-                  <KIT.IconButton size={26} title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
-                    <PanelLeft size={15} />
-                  </KIT.IconButton>
-                </div>
-              )}
+              <div style={{ marginLeft: 76 }}>
+                <KIT.IconButton size={26} title={s.sidebar ? '收起侧边栏' : '展开侧边栏'} onClick={deps.layout.toggleSidebar}>
+                  <PanelLeft size={15} />
+                </KIT.IconButton>
+              </div>
             </div>
           )}
           <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, display: 'flex' }}>
@@ -344,7 +347,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
                 lockup the sidebar header showed — and the dbdy-noside class
                 indents the official header title clear of them (tokens.ts). */}
             {!s.sidebar && !IN_ELECTRON && (
-              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <TrafficLights />
                 <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
                   <PanelLeft size={16} />
