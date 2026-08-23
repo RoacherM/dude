@@ -113,12 +113,18 @@ const CSS = `
   --db-shadow-menu: 0 24px 60px rgba(0, 0, 0, .70);
   --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .74);
 
-  color-scheme: dark;
+  /* color-scheme is NOT pinned here: the theme presenter sets it on the root
+     per snapshot, and inheritance carries it — a dark pin would keep dark
+     scrollbars and native widgets inside .dbdy under the light theme. */
 }
 
 .dbdy, .dbdy * { box-sizing: border-box; }
-.dbdy button { font-family: var(--db-font); color: inherit; }
-.dbdy input, .dbdy textarea { font-family: var(--db-font); color: inherit; }
+/* Font only — never color: official surfaces (the settings dialog, the
+   conversation column) render inside .dbdy too, and \`color: inherit\` here
+   overrode their buttons' own foreground (a white-on-white 保存 button).
+   Every KIT control declares its color explicitly. */
+.dbdy button { font-family: var(--db-font); }
+.dbdy input, .dbdy textarea { font-family: var(--db-font); }
 .dbdy input::placeholder, .dbdy textarea::placeholder { color: var(--db-text-4); }
 
 /* Scrollbars: official dsw scrollbar tiers — thumb only, 8px, l2 thumb / l2
