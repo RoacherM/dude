@@ -200,17 +200,32 @@ const PRESET_SETTINGS_NS = 'agent-presets'
  * `conversation.hero.brand.mark` seat. Replaces the official fish logo
  * (registered at priority 0 by ui-brand-official) at priority -1.
  *
- * The official hero's brand column is a fixed 34px grid cell sized for a
- * square logo glyph, so the mark is the DeepBuddy whale (the wordmark lives
- * in the sidebar brand row) — any text wordmark overflows the cell into the
- * headline.
+ * The whale mark plus the animated headline: 「探索未至之境」 pops out one
+ * character at a time on a loop (no 预览版 badge). The official headline and
+ * badge spans are static siblings of this slot and locale-locked (single
+ * occupant per NS), so tokens.ts hides them by their stable class suffixes
+ * and this component renders the text instead — metrics copied from the
+ * official headline (26px/500/32px, 10px row gap). Chars are aria-hidden
+ * behind one labelled span so the animation never reaches screen readers.
  */
 function DeepBuddyBrandMark(): ReactNode {
-  return createElement('img', {
-    src: brandMarkUrl,
-    alt: 'DeepBuddy',
-    style: { display: 'block', width: 34, height: 34 },
-  })
+  const HEADLINE = '探索未至之境'
+  return createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 12 } },
+    createElement('img', {
+      src: brandMarkUrl,
+      alt: 'DeepBuddy',
+      style: { display: 'block', width: 34, height: 34 },
+    }),
+    createElement('span', {
+      'aria-label': HEADLINE,
+      style: { fontSize: 26, fontWeight: 500, lineHeight: '32px', color: 'var(--db-text)', whiteSpace: 'nowrap' },
+    }, ...[...HEADLINE].map((ch, i) => createElement('span', {
+      'key': i,
+      'aria-hidden': true,
+      'className': 'dbdy-hero-char',
+      'style': { animationDelay: `${i * 0.22}s` },
+    }, ch))),
+  )
 }
 
 /**

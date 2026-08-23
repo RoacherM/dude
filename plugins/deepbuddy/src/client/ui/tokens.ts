@@ -164,6 +164,33 @@ const CSS = `
 .dbdy-fade { animation: dbdy-fade var(--db-in); }
 .dbdy-pulse { animation: dbdy-pulse 1.1s var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1)) infinite; }
 
+/* ── hero headline animation ───────────────────────────────────────────── */
+/* The official hero's static headline + preview badge give way to the
+   DeepBuddy brand slot's animated headline (dsh/adapter.ts). Their class
+   names carry a build hash prefix, so the match is on the stable semantic
+   suffix; officials are locked at 0.1.1-rc.2, revisit on upgrade. */
+.dbdy div[class*="_headline"] > span[class*="_headlineText"],
+.dbdy div[class*="_headline"] > span[class*="_previewBadge"] { display: none; }
+
+/* One character per span, popping in sequence and waving out; fill-mode
+   backwards keeps a char invisible through its stagger delay. */
+.dbdy-hero-char {
+  display: inline-block;
+  animation: dbdy-hero-char-pop 3.8s cubic-bezier(.2, .9, .3, 1.2) infinite;
+  animation-fill-mode: backwards;
+}
+@keyframes dbdy-hero-char-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(.3); }
+  6% { opacity: 1; transform: translateY(-2px) scale(1.12); }
+  9% { transform: translateY(0) scale(1); }
+  80% { opacity: 1; transform: none; }
+  90% { opacity: 0; transform: translateY(-6px); }
+  100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dbdy-hero-char { animation: none; }
+}
+
 /* The frame contract's 'shell.overlay' layer: above every column, outside
    their scroll containers, and click-through — an entry opts back into
    pointer events, exactly as the official frame's layer does. Above the
