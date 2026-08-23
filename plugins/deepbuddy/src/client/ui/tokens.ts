@@ -182,6 +182,11 @@ const CSS = `
 .dbdy div[class*="_headline"] > span[class*="_headlineText"],
 .dbdy div[class*="_headline"] > span[class*="_previewBadge"] { display: none; }
 
+/* The official session-log export button cedes its right-edge header spot to
+   DeepBuddy's dock toggle (app/App.tsx registers it into the same utilities
+   cluster). Same hash-prefix caveat as above. */
+.dbdy button[class*="_sessionLogButton"] { display: none; }
+
 /* One character per span, popping in sequence and waving out; fill-mode
    backwards keeps a char invisible through its stagger delay. */
 .dbdy-hero-char {

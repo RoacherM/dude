@@ -214,11 +214,11 @@ test('the window drag surfaces are exactly the three declared ones', async () =>
   // The shell runs `titleBarStyle: 'hiddenInset'`, so the only thing that
   // moves the window is a declared drag region: a column that forgets one
   // leaves a dead strip the user cannot grab. Three surfaces declare drag:
-  // the shared ColumnFrame top bar, the sidebar's Electron traffic-light
-  // inset band, and the main column's strip (the official ConversationRoot
-  // declares no app-region of its own).
+  // the shared ColumnFrame top bar, the frame-wide Electron traffic-light
+  // band above the columns, and the main column's strip (the official
+  // ConversationRoot declares no app-region of its own).
   const drag = bundle.match(/WebkitAppRegion: "drag"/g) ?? []
-  assert.equal(drag.length, 3, 'top bar + lights inset + main-column strip')
+  assert.equal(drag.length, 3, 'top bar + lights band + main-column strip')
   assert.match(bundle, /height: METRICS\.topbar/)
   // Controls sitting inside those rows must opt back out, or they stop
   // answering clicks and drag the window instead.

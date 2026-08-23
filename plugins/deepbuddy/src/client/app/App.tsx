@@ -42,9 +42,11 @@ export const inject = ['slots', 'connection', 'sessions', 'workspaces', 'theme']
  * The dock-toggle action in the official session header. The old dock toggle
  * lived in DeepBuddy's retired main-column header; with the official
  * ConversationRoot owning the main column, the toggle rides the official
- * `conversation.session.header.actions` slot (additive list). It opens the
- * DeepBuddy files/media column (the dock) — the toggle is gated to a started
- * session by the official header only rendering for one.
+ * `conversation.session.header.utilities` slot — the header's right-edge
+ * cluster, where a panel toggle belongs (the left `actions` cluster crowds
+ * the title). It opens the DeepBuddy files/media column (the dock) — the
+ * toggle is gated to a started session by the official header only rendering
+ * for one.
  */
 function DeepBuddyDockToggle(): ReactNode {
   const { layout } = useAppDeps()
@@ -125,17 +127,18 @@ export function apply(ctx: ClientContext): void {
     'deepbuddy: sidebar column',
   )
 
-  // The dock-file-column toggle rides the official session header's additive
-  // action list, so it appears only for a started session (the official
-  // header renders per-session). It forwards to DeepBuddy's layout store.
+  // The dock-file-column toggle rides the official session header's
+  // right-edge utilities cluster, so it appears only for a started session
+  // (the official header renders per-session). It forwards to DeepBuddy's
+  // layout store.
   const headerSlot = ctx.slots as unknown as {
     inject(key: string, cb: () => (() => void) | void): () => void
     register(options: { name: string; id: string; order?: number }, comp: () => ReactNode): () => void
   }
   ctx.effect(() =>
-    headerSlot.inject('conversation.session.header.actions', () =>
-      headerSlot.register({ name: 'conversation.session.header.actions', id: 'deepbuddy-dock', order: 30 }, DeepBuddyDockToggle),
+    headerSlot.inject('conversation.session.header.utilities', () =>
+      headerSlot.register({ name: 'conversation.session.header.utilities', id: 'deepbuddy-dock', order: 30 }, DeepBuddyDockToggle),
     ),
-  'deepbuddy: dock toggle header action')
+  'deepbuddy: dock toggle header utility')
 }
 

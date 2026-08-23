@@ -51,7 +51,6 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
     <ColumnFrame
       rootRef={layout.sideRef}
       headerPad={12}
-      topInset={IN_ELECTRON ? 34 : 0}
       style={{
         width: METRICS.sidebar,
         flex: '0 0 auto',
@@ -280,6 +279,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
           style={{
             position: 'relative',
             display: 'flex',
+            flexDirection: 'column',
             height: '100vh',
             width: '100%',
             overflow: 'hidden',
@@ -290,6 +290,15 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             userSelect: 'none',
           }}
         >
+          {/* The Electron traffic lights get one frame-wide band above ALL
+              columns, so every column's status bar starts at the same y —
+              a per-column inset would stagger the header rows. The band is
+              a window drag surface; a browser has no native lights and no
+              band. */}
+          {IN_ELECTRON && (
+            <div aria-hidden style={{ flex: '0 0 34px', WebkitAppRegion: 'drag' } as CSSProperties} />
+          )}
+          <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, display: 'flex' }}>
           {s.sidebar && (
             <>
               {/* DeepBuddy unmounts the column instead of keeping the official
@@ -319,12 +328,11 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               style={{ position: 'absolute', top: 0, left: 0, right: 0, height: METRICS.topbar, zIndex: -1, pointerEvents: 'none', WebkitAppRegion: 'drag' } as CSSProperties}
             />
             {/* Collapsing the sidebar unmounts its column — and the toggle
-                inside it. The way back lives here: pinned where the sidebar's
-                toggle sat, shifted right of the native traffic lights under
-                Electron (they overlay this corner once the sidebar's inset
-                band is gone). */}
+                inside it. The way back lives here, pinned where the sidebar's
+                toggle sat. The Electron lights sit in the frame-wide band
+                above, so this corner is clear in both shells. */}
             {!s.sidebar && (
-              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: IN_ELECTRON ? 78 : 12, zIndex: 6 }}>
+              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6 }}>
                 <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
                   <PanelLeft size={16} />
                 </KIT.IconButton>
@@ -349,6 +357,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             }}
           >
             {renderSlot('details', {})}
+          </div>
           </div>
           {/* Frame-wide floating layer: click-through, entries opt back in. */}
           <div className="dbdy-overlay">{renderSlot('shell.overlay', {})}</div>
