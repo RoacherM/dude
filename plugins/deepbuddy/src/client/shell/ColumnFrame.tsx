@@ -14,16 +14,17 @@ import type { CSSProperties, ReactNode, Ref } from 'react'
 import { METRICS } from '../ui/tokens.ts'
 
 /** Inside the Electron shell the native inset controls draw the lights. */
-const IN_ELECTRON = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron')
+export const IN_ELECTRON = typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron')
 
 /**
- * macOS traffic lights: a reservation under Electron's `hiddenInset` native
- * controls, simulated circles in a browser so the layout reads the same in
- * both.
- * @returns the lights row.
+ * macOS traffic lights: simulated circles in a browser so the layout reads
+ * right without the native controls. Inside Electron this renders nothing —
+ * the native lights sit in the column's `topInset` band (their own row, so
+ * they never crowd the brand line).
+ * @returns the lights row, or null under Electron.
  */
 export function TrafficLights(): ReactNode {
-  if (IN_ELECTRON) return <span style={{ width: 52, height: 12, flex: '0 0 52px', display: 'block' }} />
+  if (IN_ELECTRON) return null
   return (
     <div style={{ display: 'flex', gap: 8, flex: '0 0 auto' }}>
       <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />
@@ -90,11 +91,16 @@ export function Handle({ onDown, onReset, title }: {
  * provide their own status-bar content through `header`; `rootRef` lets the
  * layout store's drag machinery reach the column element.
  */
-export function ColumnFrame({ header, headerPad = 14, rootRef, style, children }: {
+export function ColumnFrame({ header, headerPad = 14, topInset = 0, rootRef, style, children }: {
   /** The status bar's content — identity, state and structural actions only. */
   header: ReactNode
   /** Status bar horizontal padding (columns align their bars by it). */
   headerPad?: number
+  /**
+   * A drag-region band above the status bar — the Electron shell's native
+   * traffic lights live there so the brand line below stays clear of them.
+   */
+  topInset?: number
   /** Attach the column element (drag measurements, width writes). */
   rootRef?: Ref<HTMLElement>
   /** Column box style: width, flex, ground. */
@@ -107,6 +113,9 @@ export function ColumnFrame({ header, headerPad = 14, rootRef, style, children }
       ref={rootRef as Ref<HTMLDivElement>}
       style={{ display: 'flex', flexDirection: 'column', minWidth: 0, ...style }}
     >
+      {topInset > 0 && (
+        <div style={{ height: topInset, flex: `0 0 ${topInset}px`, WebkitAppRegion: 'drag' } as CSSProperties} />
+      )}
       <TopBar pad={headerPad}>{header}</TopBar>
       <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {children}

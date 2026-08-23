@@ -18,7 +18,7 @@
  * re-declares it in the disabled ui-layout row's place
  * (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -26,7 +26,7 @@ import { INSPECTOR_VIEW_TYPES, SIDEBAR_SECTIONS, pickEntry } from '../app/catalo
 import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutStore } from './layout-store.ts'
-import { ColumnFrame, Handle, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
+import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
 import { Close, Glyph, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
@@ -51,6 +51,7 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
     <ColumnFrame
       rootRef={layout.sideRef}
       headerPad={12}
+      topInset={IN_ELECTRON ? 34 : 0}
       style={{
         width: METRICS.sidebar,
         flex: '0 0 auto',
@@ -305,7 +306,18 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               growing column-flex wrapper (and its `overflow: hidden`) the
               conversation would size to its content max-width and leave the
               rest of the frame black (wave8-fix D1). */}
-          <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* The main column's window-drag strip: the official
+                ConversationRoot declares no app-region, so without this the
+                window can only be moved by the 268px sidebar bar. It sits
+                behind the content (negative z, no pointer events) — Electron
+                collects app-region rects independent of paint order, and the
+                interactive elements above it opt out via the global no-drag
+                rule in tokens.ts. */}
+            <div
+              aria-hidden
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, height: METRICS.topbar, zIndex: -1, pointerEvents: 'none', WebkitAppRegion: 'drag' } as CSSProperties}
+            />
             {renderSlot('conversation', {})}
           </div>
           {s.dock && s.sessionStarted && (

@@ -164,6 +164,16 @@ const CSS = `
 .dbdy-fade { animation: dbdy-fade var(--db-in); }
 .dbdy-pulse { animation: dbdy-pulse 1.1s var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1)) infinite; }
 
+/* ── window drag opt-outs ──────────────────────────────────────────────── */
+/* Interactive elements anywhere in the shell opt out of window-drag regions
+   (the column top bars and the main column's drag strip). Inert outside
+   Electron — browsers ignore app-region. */
+.dbdy button, .dbdy a, .dbdy input, .dbdy textarea, .dbdy select,
+.dbdy [role="tab"], .dbdy [role="button"], .dbdy [role="menuitem"],
+.dbdy [contenteditable] {
+  -webkit-app-region: no-drag;
+}
+
 /* ── hero headline animation ───────────────────────────────────────────── */
 /* The official hero's static headline + preview badge give way to the
    DeepBuddy brand slot's animated headline (dsh/adapter.ts). Their class

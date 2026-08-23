@@ -209,14 +209,16 @@ test('client bundle reaches the preset plane without gating the root shadow', as
   assert.match(bundle, /\$on\("settings\/document-updated"/)
 })
 
-test('every column\'s top bar is one drag region, declared once', async () => {
+test('the window drag surfaces are exactly the three declared ones', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // The shell runs `titleBarStyle: 'hiddenInset'`, so the only thing that
   // moves the window is a declared drag region: a column that forgets one
-  // leaves a dead strip the user cannot grab. Every column now draws the same
-  // ColumnFrame top bar, so there is exactly ONE declaration.
+  // leaves a dead strip the user cannot grab. Three surfaces declare drag:
+  // the shared ColumnFrame top bar, the sidebar's Electron traffic-light
+  // inset band, and the main column's strip (the official ConversationRoot
+  // declares no app-region of its own).
   const drag = bundle.match(/WebkitAppRegion: "drag"/g) ?? []
-  assert.equal(drag.length, 1, 'the shared ColumnFrame top bar is the single drag surface')
+  assert.equal(drag.length, 3, 'top bar + lights inset + main-column strip')
   assert.match(bundle, /height: METRICS\.topbar/)
   // Controls sitting inside those rows must opt back out, or they stop
   // answering clicks and drag the window instead.

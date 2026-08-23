@@ -96,19 +96,15 @@ function ensureDesktopProfile(resourcesDir) {
   const profileDir = path.join(PROFILES_DIR, APP_PROFILE)
   const pluginDest = path.join(profileDir, 'node_modules', 'dsh-plugin-deepbuddy')
   const pluginSrc = path.join(resourcesDir, 'deepbuddy-plugin')
-  const seeded = fs.existsSync(path.join(pluginDest, 'package.json'))
-
   if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true })
   if (!fs.existsSync(pluginSrc)) {
     throw new Error(`[deepbuddy] packaged plugin resources missing at ${pluginSrc}`)
   }
-  // Copy the plugin into the profile (idempotent: re-copy each launch so the
-  // bundled plugin version is always the one running).
-  if (!seeded || process.env.DSH_DESKTOP_REFRESH_PLUGIN) {
-    fs.rmSync(path.join(profileDir, 'node_modules'), { recursive: true, force: true })
-    fs.mkdirSync(path.join(profileDir, 'node_modules'), { recursive: true })
-    fs.cpSync(pluginSrc, pluginDest, { recursive: true, force: true })
-  }
+  // Re-copy the plugin every launch: the bundled version must always be the
+  // one running, or an app upgrade would keep serving the seeded snapshot.
+  fs.rmSync(path.join(profileDir, 'node_modules'), { recursive: true, force: true })
+  fs.mkdirSync(path.join(profileDir, 'node_modules'), { recursive: true })
+  fs.cpSync(pluginSrc, pluginDest, { recursive: true, force: true })
 
   const manifest = {
     name: 'dsh-profile-desktop',
@@ -190,7 +186,7 @@ function waitForHttp(url, timeoutMs = 60000) {
 /** The URL the app currently targets (packaged: the spawned dsh; dev: DSH_WEB_URL). */
 let currentUrl = DSH_WEB_URL
 
-function createWindow(url, onKill) {
+function createWindow(url) {
   currentUrl = url
   const win = new BrowserWindow({
     width: 1440,
@@ -205,7 +201,11 @@ function createWindow(url, onKill) {
   win.removeMenu?.()
   win.loadURL(url)
   win.webContents.on('did-fail-load', () => {
-    setTimeout(() => { void win.loadURL(url) }, RETRY_MS)
+    // The retry can outlive the window (quit while the server is still
+    // coming up) — a loadURL on a destroyed window is an uncaught TypeError.
+    setTimeout(() => {
+      if (!win.isDestroyed()) void win.loadURL(url)
+    }, RETRY_MS)
   })
   win.webContents.setWindowOpenHandler(({ url: u }) => {
     void shell.openExternal(u)
@@ -225,10 +225,9 @@ function createWindow(url, onKill) {
     })
   }
 
-  // No orphan dsh: when the window closes, tear the child down too.
-  win.on('closed', () => {
-    if (onKill) onKill()
-  })
+  // The dsh child is NOT torn down here: on macOS closing the window keeps
+  // the app (and its server) alive, so `activate` can reopen against the same
+  // URL. The child dies with the app on `before-quit`.
   return win
 }
 
@@ -256,12 +255,12 @@ app.whenReady().then(async () => {
       killChild(child)
       throw e
     }
-    createWindow(url, () => killChild(child))
+    createWindow(url)
   } else {
     // Dev mode: no packaged runtime — fall back to the old behavior (external
     // DSH_WEB_URL / default 3080).
     console.log('[deepbuddy] dev mode: no packaged runtime, loading %s', DSH_WEB_URL)
-    createWindow(DSH_WEB_URL, undefined)
+    createWindow(DSH_WEB_URL)
   }
 }).catch((e) => {
   console.error('[deepbuddy] startup failed:', e)
@@ -273,7 +272,8 @@ app.on('window-all-closed', () => {
 })
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    // Re-open against the same URL (packaged: the spawned dsh; dev: DSH_WEB_URL).
-    createWindow(currentUrl, undefined)
+    // Re-open against the same URL — the dsh child is still alive (it only
+    // dies on before-quit), so this reconnects instead of erroring out.
+    createWindow(currentUrl)
   }
 })
