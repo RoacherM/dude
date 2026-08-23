@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Dsh, SessionId, SessionSummary } from '../../dsh/adapter.ts'
-import { basename, fmtRel, topSessions } from '../../dsh/adapter.ts'
+import { basename, fmtRel, sessionTitle, topSessions } from '../../dsh/adapter.ts'
 import { useSnapshot } from '../../dsh/hooks.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { KIT } from '../../ui/kit.tsx'
@@ -33,7 +33,7 @@ function SessionRow({ onOpen, row, indent, current }: {
     <KIT.Row
       current={current}
       indent={indent === true}
-      title={row.displayTitle}
+      title={sessionTitle(row)}
       onClick={() => { onOpen(row.id) }}
       dense
       trailing={row.running
@@ -42,7 +42,7 @@ function SessionRow({ onOpen, row, indent, current }: {
           </span>
         : fmtRel(row.updatedAt)}
     >
-      {row.displayTitle}
+      {sessionTitle(row)}
     </KIT.Row>
   )
 }
@@ -163,7 +163,7 @@ export function SessionList(): ReactNode {
         const id = ws.workspaceId as string
         const open = expanded[id] ?? (currentId !== undefined && (ws.sessionIds as readonly string[]).includes(currentId))
         const limit = shownMore.has(id) ? members.length : PER_GROUP
-        const visible = q === '' ? members.slice(0, limit) : members.filter(m => m.displayTitle.toLowerCase().includes(q))
+        const visible = q === '' ? members.slice(0, limit) : members.filter(m => sessionTitle(m).toLowerCase().includes(q))
         const overflow = members.length - Math.min(members.length, limit)
         return (
           <TreeGroup

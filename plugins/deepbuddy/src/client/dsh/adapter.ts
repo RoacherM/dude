@@ -30,6 +30,7 @@ import type { WorkspaceFilesWire } from './files.ts'
 import { createPluginsWire, createPresetsWire } from './presets.ts'
 import type { PluginsWire, PresetsWire } from './presets.ts'
 import { installStyles } from '../ui/tokens.ts'
+import { FONT_CSS } from '../ui/fonts.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 
 // ── service faces, derived from the client context ──────────────────────────
@@ -247,7 +248,7 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
     }
   }, 'deepbuddy: theme presenter')
 
-  ctx.effect(() => installStyles(), 'deepbuddy: styles')
+  ctx.effect(() => installStyles(FONT_CSS), 'deepbuddy: styles')
 
 
   // DeepBuddy's brand in the revived official conversation hero. The
@@ -376,6 +377,16 @@ export function fmtRel(ts: number): string {
  * @param path - absolute or ~-relative path.
  * @returns final segment, or the input when it has none.
  */
+/**
+ * Sidebar display title. The runtime's `displayTitle` projection falls back to
+ * the cwd basename before a session earns a durable title, so a blank
+ * (never-prompted) session would read exactly like its workspace row; it reads
+ * 「新任务」 instead until the first turn names it.
+ */
+export function sessionTitle(row: SessionSummary): string {
+  return row.blank ? '新任务' : row.displayTitle
+}
+
 export function basename(path: string): string {
   const seg = path.split(/[\\/]/).filter(Boolean).pop()
   return seg ?? path

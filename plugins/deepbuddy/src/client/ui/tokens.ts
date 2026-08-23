@@ -90,8 +90,8 @@ const CSS = `
   --db-offline: var(--dsw-alias-label-caption, #81858c);
 
   /* ── type ──────────────────────────────────────────────────────────────── */
-  --db-font: -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --db-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --db-font: var(--dsw-font-family);
+  --db-mono: var(--ds-font-family-code);
 
   /* ── radii: official row 8px, cards/pills 22px / 999px ─────────────────── */
   --db-r-badge: 8px;
@@ -180,12 +180,14 @@ const CSS = `
 
 /**
  * Install the stylesheet.
+ * @param extra - additional CSS appended after the tokens (the font-face
+ * block lives in ui/fonts.ts so this module stays loadable under plain Node).
  * @returns disposer removing the style element (rides the plugin fiber).
  */
-export function installStyles(): () => void {
+export function installStyles(extra = ''): () => void {
   const el = document.createElement('style')
   el.dataset['owner'] = 'dsh-plugin-deepbuddy'
-  el.textContent = CSS
+  el.textContent = CSS + extra
   document.head.append(el)
   return () => { el.remove() }
 }
