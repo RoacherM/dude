@@ -1,13 +1,13 @@
 /**
- * The three-column frame: the root occupant, the sidebar column, the main
- * (workbench) column and the inspector column.
+ * The three-column frame: the root occupant, the sidebar column and the
+ * inspector column. The main (workbench) column is the `conversation` slot,
+ * now owned by the enabled ui-conversation row's `ConversationRoot`.
  *
  * The shell owns the window box, the column geometry, the two drag handles,
  * the official slot contract rendering and the window-level overlay — and
  * nothing about sessions, files or presets. Business content arrives through
  * the static catalogs (app/catalog.ts): the sidebar composes the conversation
- * entry plus every SIDEBAR_SECTIONS row, the main column dispatches
- * WORKBENCH_APPS by the layout store's selection, and the inspector draws
+ * entry plus every SIDEBAR_SECTIONS row, and the inspector draws
  * INSPECTOR_VIEW_TYPES with the shell-owned tab ledger. There is no
  * `if (app.id === …)` anywhere — the shell renders whichever entry the
  * catalog and the layout state name (deepbuddy-design-current/
@@ -22,15 +22,15 @@ import type { ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
-import { INSPECTOR_VIEW_TYPES, SIDEBAR_SECTIONS, WORKBENCH_APPS, pickEntry } from '../app/catalog.ts'
+import { INSPECTOR_VIEW_TYPES, SIDEBAR_SECTIONS, pickEntry } from '../app/catalog.ts'
 import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutStore } from './layout-store.ts'
 import { ColumnFrame, Handle, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
-import { Close, Gear, Glyph, PanelLeft, PanelRight } from '../ui/icons.tsx'
+import { Close, Glyph, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
-import { ChatNav, ConversationAppDefinition } from '../features/conversation/index.ts'
+import { ChatNav, CONVERSATION_APP_ID } from '../features/conversation/index.ts'
 
 /** Details column width when `ctx.layout` opens it (ui-layout's DETAILS_DEFAULT). */
 const DETAILS_WIDTH = 480
@@ -70,9 +70,14 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
       )}
     >
       {/* 14.5/600, left edge flush with the row text below it (gutter 8 +
-          row pad 8), so the brand and the nav share one optical margin. */}
+          row pad 8), so the brand and the nav share one optical margin. The
+          slogan rides here because the official hero's 34px brand cell (and
+          its single-occupant locale) cannot host the DeepBuddy identity —
+          the hero brand mark shows the name; the slogan lives with the
+          sidebar brand. */}
       <div style={{ padding: `2px ${ROW_METRICS.gutter + ROW_METRICS.pad}px 14px` }}>
-        <span style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-.01em', color: 'var(--db-text)' }}>DeepBuddy</span>
+        <div style={{ fontSize: 14.5, fontWeight: 600, letterSpacing: '-.01em', color: 'var(--db-text)' }}>DeepBuddy</div>
+        <div style={{ marginTop: 2, fontSize: 11, color: 'var(--db-text-4)', lineHeight: 1.4 }}>向着未知出发，把每一步都变成脚印。</div>
       </div>
 
       {/* The conversation entry is the app's own full-width new-task button —
@@ -80,7 +85,7 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
           with the shell. The 14px below gives the card breathing room before
           the workspace section. */}
       <nav style={{ display: 'flex', flexDirection: 'column', padding: `0 ${ROW_METRICS.gutter}px 14px` }}>
-         <ChatNav current={layout.state.view === ConversationAppDefinition.id} />
+         <ChatNav current={layout.state.view === CONVERSATION_APP_ID} />
       </nav>
 
       <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: `0 ${ROW_METRICS.gutter}px 12px` }}>
@@ -98,71 +103,6 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
 }
 
 // ── the main column ─────────────────────────────────────────────────────────
-
-/**
- * The 'conversation' occupant: the workbench column. The status bar carries
- * the window controls (when the sidebar is gone), the current page or session
- * title, and the structural actions; the body is whichever WORKBENCH_APPS
- * entry the layout state selects — or settings, which is a workbench page
- * like any other.
- */
-export function DeepBuddyMain({ renderSlot }: { renderSlot: RenderSlot }): ReactNode {
-  const { layout } = useAppDeps()
-  useLayoutStore(layout)
-  const s = layout.state
-  const active = pickEntry(WORKBENCH_APPS, s.view)
-  const firstView = INSPECTOR_VIEW_TYPES[0]
-  return (
-    <ColumnFrame
-      headerPad={14}
-      style={{ flex: '1 1 auto', minWidth: 0, background: 'var(--db-window)' }}
-      header={(
-        <>
-          {!s.sidebar && (
-            <div style={{ ...NO_DRAG, display: 'flex', alignItems: 'center', gap: 10, paddingRight: 4 }}>
-              <TrafficLights />
-              <KIT.IconButton title="展开侧栏" onClick={layout.toggleSidebar}>
-                <PanelLeft size={16} />
-              </KIT.IconButton>
-            </div>
-          )}
-          <span style={{
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: 13.5,
-            color: 'var(--db-text)',
-          }}
-          >
-            {s.title ?? active?.title ?? ''}
-          </span>
-          <span style={{ marginLeft: 'auto' }} />
-          {/* The dock toggle only appears for a started session — a blank/new
-              task page has no session to inspect (wave 4 §4). */}
-          {firstView !== undefined && s.sessionStarted && !s.dock && (
-            <div style={NO_DRAG}>
-              <KIT.IconButton
-                title="打开停靠栏"
-                onClick={() => { layout.toggleDock(firstView.id) }}
-              >
-                <PanelRight size={16} />
-              </KIT.IconButton>
-            </div>
-          )}
-        </>
-      )}
-    >
-      {active === undefined
-        ? (
-            <div style={{ padding: 32 }}>
-              <KIT.EmptyState>没有装配任何主视图。</KIT.EmptyState>
-            </div>
-          )
-        : <active.Component renderSlot={renderSlot} />}
-    </ColumnFrame>
-  )
-}
 
 // ── the inspector column ────────────────────────────────────────────────────
 
@@ -350,7 +290,15 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               <Handle onDown={deps.layout.startSideDrag} onReset={deps.layout.resetSideWidth} title="拖拽调整侧栏宽度 · 双击重置" />
             </>
           )}
-          {renderSlot('conversation', {})}
+          {/* The main (`conversation`) region grows to fill the frame, mirroring
+              the official AppFrame's `minmax(0, 1fr)` center column. The
+              official ConversationRoot is `flex: 0 1 auto`, so without this
+              growing column-flex wrapper (and its `overflow: hidden`) the
+              conversation would size to its content max-width and leave the
+              rest of the frame black (wave8-fix D1). */}
+          <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {renderSlot('conversation', {})}
+          </div>
           {s.dock && s.sessionStarted && (
             <>
               <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />

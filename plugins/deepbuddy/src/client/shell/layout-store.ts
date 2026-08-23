@@ -16,6 +16,7 @@
  * divider. The state object carries booleans and ids; the geometry lives where
  * the browser already keeps it.
  */
+import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { createRef, useSyncExternalStore } from 'react'
 import {
   DOCK_BREAKPOINT, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
@@ -89,6 +90,22 @@ export class LayoutStore {
    * disabled), so it stays closed.
    */
   detailsOpen = false
+
+  /**
+   * The outward `ctx.layout` face (ILayout) that the enabled ui-conversation
+   * row injects. DeepBuddy owns the layout store, so the stub forwards the
+   * three panel verbs to it. `openDetails`/`closeDetails` are the only
+   * panel-transition verbs the official row calls; the details column width
+   * itself is a DeepBuddy file/media column, not the official `details` slot,
+   * so the verbs stay off {@link LayoutState} (the frame renders its width).
+   */
+  layoutFace(): ILayout {
+    return {
+      toggleSidebar: () => { this.toggleSidebar() },
+      openDetails: () => { this.detailsOpen = true; this.bump() },
+      closeDetails: () => { this.detailsOpen = false; this.bump() },
+    }
+  }
 
   readonly sideRef = createRef<HTMLElement>()
   readonly dockRef = createRef<HTMLElement>()

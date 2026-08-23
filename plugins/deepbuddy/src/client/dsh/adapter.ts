@@ -14,6 +14,7 @@
  * here derives from `ClientContext` instead of naming runtime exports, which
  * keeps the plugin compiling across harness release drift.
  */
+import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
@@ -172,27 +173,12 @@ export const SIDEBAR_SLOT_MAP = {
   'sidebar.settings': { kind: 'single', scope: 'root' },
 } as const
 
-/**
- * The conversation input slots DeepBuddy's composer declares so the official
- * composer seats (model, attachments, plan) can mount. `conversation.input.*`
- * was declared by the disabled ui-conversation row; each registrant's inject
- * factory resolves the per-session directory and the owner share passes only
- * the seat-lock truth.
- */
-export const CONVERSATION_INPUT_SLOT_MAP = {
-  'conversation.input.attachments': { kind: 'single', scope: 'session-maybe' },
-  'conversation.input.plan': { kind: 'single', scope: 'session' },
-  'conversation.input.model': { kind: 'single', scope: 'session' },
-} as const
-
-/** The conversation input slot keys DeepBuddy's composer declares and renders. */
-export type ConversationInputSlotKey = keyof typeof CONVERSATION_INPUT_SLOT_MAP
 
 /**
  * The runtime render-slot face DeepBuddy's column occupants receive for their
  * declared child slots. Untyped per-key (the SlotMap type-merge for the
- * disabled `conversation.input.*` seats is not in this bundle's type graph),
- * but the owner object is whatever the official registrant's slot declares.
+ * revived `conversation.*` seats is not in this bundle's type graph), but the
+ * owner object is whatever the official registrant's slot declares.
  */
 export type RenderSlot = (key: string, owner: Record<string, unknown>) => ReactNode
 
@@ -208,16 +194,47 @@ export const ROOT_PRIORITY = -1
 const PRESET_SETTINGS_NS = 'agent-presets'
 
 /**
+ * The DeepBuddy identity rendered in the official conversation hero's
+ * `conversation.hero.brand.mark` seat. Replaces the official fish logo
+ * (registered at priority 0 by ui-brand-official) at priority -1, so the
+ * brand area shows the DeepBuddy identity instead of the official fish.
+ * The hero headline/preview texts are ui-conversation-owned (one occupant per
+ * locale NS), so the DeepBuddy slogan rides the headline via a locale override
+ * (see {@link mountDeepbuddyConversationLocale}) rather than here.
+ *
+ * The mark is a compact wordmark: the official hero's brand column is a fixed
+ * 34px cell, so a stacked name+slogan would overflow into the headline and
+ * overlap it (wave8-fix D2). The name renders on one line; the slogan is the
+ * headline's own text.
+ */
+function DeepBuddyBrandMark(): ReactNode {
+  return createElement('span', {
+    style: { fontSize: 11, fontWeight: 600, letterSpacing: '-.01em', color: 'var(--db-text)', whiteSpace: 'nowrap', marginRight: 10 },
+  }, 'DeepBuddy')
+}
+
+/**
  * Mount every DSH-facing service this distribution owns, each riding its own
  * effect at PLUGIN scope. The theme presenter and the styles are the disabled
- * ui-layout row's former duties; the layout face (`ctx.layout`) no longer has
- * a cordis consumer once ui-sidebar / ui-conversation are disabled, so it is
- * dropped with them. The Remote plane rides sub-scopes so a deployment
- * without api-remotes still gets a UI.
+ * ui-layout row's former duties. The `layout` service is provided here: the
+ * ui-layout row that used to own it is disabled, but ui-conversation (now
+ * enabled) injects it, so DeepBuddy's store face stands in. The Remote plane
+ * rides sub-scopes so a deployment without api-remotes still gets a UI.
  * @param ctx - the client root context.
  * @param dsh - the fiber's wire bundle (its roster listeners are fired here).
  */
 export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: LayoutStore): void {
+
+  // `ctx.layout` before the ui-conversation row's apply: it injects `layout`,
+  // and ui-layout (the original provider) is disabled. Provide DeepBuddy's
+  // store face, so the official apply activates (registering the chat-fold
+  // definitions) instead of parking on "waiting for service: layout".
+  // The official `layout` consumers only call toggleSidebar/openDetails/
+  // closeDetails, which layoutFace() forwards to DeepBuddy's store.
+  ctx.effect(() => {
+    const disposeService = ctx.reflect.provide('layout', layout.layoutFace())
+    return () => { void disposeService() }
+  }, 'deepbuddy: layout service')
 
   // Theme presentation: pure DOM writes from resolved snapshots — initial
   // state through the getter once, then event-driven only.
@@ -233,12 +250,65 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
 
   ctx.effect(() => installStyles(), 'deepbuddy: styles')
 
+
+  // DeepBuddy's brand in the revived official conversation hero. The
+  // ui-brand-official row registers a `FishLogo` into
+  // `conversation.hero.brand.mark` at priority 0; DeepBuddy registers at -1
+  // so the single slot renders the DeepBuddy name (lowest priority wins).
+  // The hero's headline/preview texts are ui-conversation-owned (one occupant
+  // per locale NS), so the DeepBuddy slogan is carried by the sidebar brand
+  // line rather than a locale override here.
+  const slots = ctx.slots as unknown as {
+    inject(key: string, cb: () => (() => void) | void): () => void
+    register(options: { name: string; priority?: number }, comp: () => ReactNode): () => void
+  }
+  slots.inject('conversation.hero.brand.mark', () => slots.register({
+    name: 'conversation.hero.brand.mark',
+    priority: -1,
+  }, DeepBuddyBrandMark))
+
+
   // Window listeners and the live subscriptions ride the fiber, not a React
   // mount: the state outlives any single entry's tree.
   ctx.effect(() => {
     layout.mount()
     return () => { layout.dispose() }
   }, 'deepbuddy: layout store')
+
+  // The dock renders only for a started session. The conversation view that
+  // used to contribute `sessionStarted` is gone (the official ConversationRoot
+  // owns the main column), so DeepBuddy observes the current session itself:
+  // a real (non-blank) session sets the dock gate; a blank or no session
+  // clears it. The official session service is the single record.
+  let watchedSessionId: string | undefined
+  let sessionOff: (() => void) | undefined
+  const syncSessionStarted = (): void => {
+    const list = ctx.sessions.list.getSnapshot()
+    const cur = list.current
+    const session = cur === undefined ? undefined : ctx.sessions.binding(cur)?.session
+    const snapshot = session?.getSnapshot()
+    const started = snapshot !== undefined && snapshot.blank !== true
+    layout.setSessionStarted(started)
+    // Follow the current session's own snapshot: a blank session that starts
+    // (blank flips false on the first send) must open the dock gate without a
+    // list notification. Re-subscribe on a current-id change.
+    if (cur !== watchedSessionId || (cur !== undefined && session !== undefined && sessionOff === undefined)) {
+      sessionOff?.()
+      sessionOff = undefined
+      watchedSessionId = cur
+      if (cur !== undefined && session !== undefined) {
+        sessionOff = session.subscribe(syncSessionStarted)
+      }
+      else if (cur !== undefined && session === undefined) {
+        // Binding not hydrated yet: re-check on the next tick — the session
+        // hydration does not re-notify `list`, so poll once shortly after.
+        queueMicrotask(syncSessionStarted)
+      }
+    }
+  }
+  const offList = ctx.sessions.list.subscribe(syncSessionStarted)
+  syncSessionStarted()
+  ctx.effect(() => () => { offList(); sessionOff?.() }, 'deepbuddy: session-started watch')
 
   // The Remote plane rides sub-scopes, never the plugin's own `inject`: a
   // deployment without api-remotes must still get the frame, and gating the

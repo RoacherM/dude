@@ -72,20 +72,23 @@ test('client bundle keeps only platform modules external', async () => {
   }
 })
 
-test('the bundle patch disables the frame and column rows it replaces', async () => {
+test('the bundle patch disables the frame/sidebar rows but enables ui-conversation', async () => {
   const patch = await readFile(join(root, 'cordis.patch.yml'), 'utf8')
   // R1「换行不改包」: the takeover is disabled rows in our own patch layer,
   // never an edit to @deepseek-ai/dsh-web-app. Slot declaration admits one
   // declarer, so leaving ui-layout on would make the frame re-declaration throw.
   assert.match(patch, /^- id: ui-layout\n {2}disabled: true$/m)
-  // ui-sidebar / ui-conversation inject `layout`, which lived in the disabled
-  // ui-layout row — they could never activate, so they are disabled too.
+  // ui-sidebar injects `layout`, which lived in the disabled ui-layout row —
+  // it can never activate, so it stays disabled; DeepBuddy renders the sidebar.
   assert.match(patch, /^- id: ui-sidebar\n {2}disabled: true$/m)
-  assert.match(patch, /^- id: ui-conversation\n {2}disabled: true$/m)
+  // ui-conversation is ENABLED (wave 8): DeepBuddy provides the `layout`
+  // service it injects, so the official apply activates and registers the
+  // chat-fold definitions. the row must not be disabled.
+  assert.match(patch, /^- id: ui-conversation\n {2}name: '@deepseek-ai\/dsh-client-ui-conversation'$/m)
+  assert.doesNotMatch(patch, /id: ui-conversation\n {2}disabled: true/)
   // The plugin's own row still rides the same patch.
   assert.match(patch, /- insert:\n {4}- id: deepbuddy\n {6}name: dsh-plugin-deepbuddy/)
 })
-
 test('client bundle takes over the frame contract and renders all four seats', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // Resident mount: one root registration, no dual-shell switch machinery.
@@ -112,38 +115,40 @@ test('client bundle takes over the frame contract and renders all four seats', a
   assert.match(bundle, /\.dbdy-overlay \{[^}]*pointer-events: none;/)
 })
 
-test('client bundle seats its own columns without a shadow priority', async () => {
+test('client bundle seats its own sidebar and lets the official column own conversation', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // ui-sidebar / ui-conversation are disabled rows, so the sidebar and
-  // conversation seats are occupied only by DeepBuddy's columns — no shadow
-  // rank is needed. Single slots render the LOWEST priority, but with the
-  // official occupants gone the default 0 is the only occupant. DeepBuddy
-  // re-declares the child slots those rows used to own (sidebar.settings,
-  // conversation.input.*) so the official registrants revive.
+  // ui-sidebar is a disabled row, so DeepBuddy's sidebar column is the sole
+  // occupant of the `sidebar` seat. The `conversation` seat is now owned by
+  // the enabled ui-conversation row's `ConversationRoot` (its apply declares
+  // the whole conversation slot family) — DeepBuddy no longer registers a
+  // `conversation` occupant, only re-declares the frame's four child slots.
   assert.doesNotMatch(bundle, /OCCUPANT_SHADOW_PRIORITY/)
   assert.match(bundle, /name: "sidebar"[\s\S]{0,120}?DeepBuddySidebar/)
-  assert.match(bundle, /name: "conversation"[\s\S]{0,200}?DeepBuddyMain/)
+  assert.doesNotMatch(bundle, /name: "conversation"[\s\S]{0,200}?DeepBuddyMain/)
 })
 
 test('client bundle composes first-party surfaces from the static catalogs', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // The dbdy.* seat contract is retired: no seat is declared, injected or
-  // rendered — surfaces are thin Definitions in three static arrays.
+  // rendered — surfaces are thin Definitions in the static arrays.
   assert.doesNotMatch(bundle, /dbdy\./, 'no dbdy.* seat remains in the bundle')
   assert.doesNotMatch(bundle, /seatFace|dockPaneFace|useSeatEntries|SlotReader/, 'no seat-face plumbing remains')
-  // The catalogs exist and hold the shipped definitions (ARCHITECTURE §3).
-  assert.match(bundle, /WORKBENCH_APPS = \[\s*\n\s*ConversationAppDefinition\s*\n\]/)
+  // The workbench-app catalog is retired with DeepBuddyMain (wave 8): the
+  // main column is the official ConversationRoot, so no WORKBENCH_APPS array
+  // remains. Sidebar and inspector catalogs still compose the shipped
+  // surfaces (ARCHITECTURE §3).
+  assert.doesNotMatch(bundle, /WORKBENCH_APPS = \[/)
   assert.match(bundle, /SIDEBAR_SECTIONS = \[\s*\n\s*SessionListSectionDefinition\s*\n\]/)
   assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition\s*\n\]/)
   // The definitions carry their ids — the catalog is the single composition
   // point the shell renders from. Settings is no longer a workbench app (it
   // is a dialog overlay, wave 4 §5), so it is deliberately absent here.
-  assert.doesNotMatch(bundle, /SettingsAppDefinition = \{\s*\n\s*id: "settings",/)
   assert.match(bundle, /SessionListSectionDefinition = \{\s*\n\s*id: "sessions",/)
   assert.match(bundle, /FilesViewDefinition = \{\s*\n\s*id: "explorer",/)
-  // The shell dispatches components generically from the catalogs — no
-  // feature-id branch exists (DEVELOPMENT_RULES §4).
-  assert.match(bundle, /jsx\)\(active\.Component/)
+  // The sidebar and inspector dispatch generically from the catalogs — no
+  // feature-id branch exists (DEVELOPMENT_RULES §4). `active.Component` (the
+  // retired workbench dispatch) is gone.
+  assert.doesNotMatch(bundle, /jsx\)\(active\.Component/)
   assert.match(bundle, /jsx\)\(section\.Component/)
   // Layout sovereignty holds without the seat face: no geometry setter is
   // reachable from a surface. (`\b` matters: the store's own private
@@ -151,16 +156,16 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /\bsetDockWidth|\bsetSidebarWidth|\bsetColumnWidth/)
 })
 
-test('conversation renders the shipping chat snapshot, not the legacy nodes projection', async () => {
+test('conversation folding is the official apply\'s job; DeepBuddy only provides layout', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // The deprecated legacy `conv.nodes` projection drops running and interrupted
-  // assistant steps, so a transcript with streamed-but-unfinalized steps would
-  // render blank from it. The story is read from the authoritative `conv.chat`
-  // snapshot (order + nodes) the harness's own body uses, with `conv.nodes`
-  // only as a fallback when `chat` holds nothing.
-  assert.match(bundle, /conv\.chat\.order/)
-  assert.match(bundle, /chat\.nodes\.get/)
-  assert.match(bundle, /hasChat/)
+  // The chat-fold definitions (conv.chat.order / chat.nodes.get) are registered
+  // by the enabled ui-conversation row's `registerConversationNodes`, not by
+  // DeepBuddy. DeepBuddy supports that lifecycle by providing the `layout`
+  // service the row injects — the one thing ui-layout used to own.
+  assert.doesNotMatch(bundle, /conv\.chat\.order/)
+  assert.doesNotMatch(bundle, /\bhasChat\b/)
+  assert.match(bundle, /reflect\.provide\("layout"/)
+  assert.match(bundle, /layoutFace\(\)/)
 })
 
 test('the list row is the kit\'s fact, not each surface\'s', async () => {
@@ -177,11 +182,11 @@ test('the list row is the kit\'s fact, not each surface\'s', async () => {
   assert.match(bundle, /KIT = Object\.freeze\(\{[\s\S]{0,400}?GroupLabel/)
 })
 
-test('client bundle carries the services the disabled layout row used to own', async () => {
+test('client bundle provides the layout service the enabled ui-conversation injects', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // ui-sidebar / ui-conversation are disabled, so `ctx.layout` has no cordis
-  // consumer left — the adapter no longer provides a layout face.
-  assert.doesNotMatch(bundle, /reflect\.provide\("layout"/)
+  // ui-conversation is enabled and injects `layout`; ui-layout (the original
+  // provider) is disabled, so the adapter provides DeepBuddy's store face.
+  assert.match(bundle, /reflect\.provide\("layout"/)
   // Theme projection: without a presenter every --dsw-* consumer in an open
   // seat reads the light base palette forever.
   assert.match(bundle, /theme\.getTheme\(\)/)
@@ -217,7 +222,7 @@ test('every column\'s top bar is one drag region, declared once', async () => {
   // answering clicks and drag the window instead.
   assert.match(bundle, /NO_DRAG = \{ WebkitAppRegion: "no-drag" \}/)
   const optOut = bundle.match(/NO_DRAG/g) ?? []
-  assert.ok(optOut.length >= 6, `controls opt out of the drag rows: ${optOut.length}`)
+  assert.ok(optOut.length >= 4, `controls opt out of the drag rows: ${optOut.length}`)
 })
 
 test('presets: the roster folds to what each surface may offer', async () => {
@@ -314,16 +319,18 @@ test('geometry: the dock opens at 30% and drags between 30% and 70%', async () =
   assert.equal(g.dockFits(1145, 269), true)
 })
 
-test('slots: DeepBuddy re-declares the disabled rows\' child seats', async () => {
+test('slots: DeepBuddy declares sidebar.settings; the official apply owns conversation.*', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // ui-sidebar / ui-conversation are disabled, so their child-seat declarations
-  // (sidebar.settings, conversation.input.*) are gone. DeepBuddy re-declares
-  // them and renders the official registrants, which park on slots.inject
-  // until a declarer appears.
+  // ui-sidebar is a disabled row, so DeepBuddy re-declares its `sidebar.settings`
+  // child seat and renders the official settings registrants, which park on
+  // slots.inject until a declarer appears.
   assert.match(bundle, /"sidebar\.settings"\s*:\s*\{ kind: "single", scope: "root" \}/)
-  assert.match(bundle, /"conversation\.input\.attachments"\s*:\s*\{ kind: "single", scope: "session-maybe" \}/)
-  assert.match(bundle, /"conversation\.input\.plan"\s*:\s*\{ kind: "single", scope: "session" \}/)
-  assert.match(bundle, /"conversation\.input\.model"\s*:\s*\{ kind: "single", scope: "session" \}/)
+  // The conversation input seats (`conversation.input.attachments/plan/model`)
+  // are now declared by the enabled ui-conversation row's own apply, not by
+  // DeepBuddy — DeepBuddy no longer declares them.
+  assert.doesNotMatch(bundle, /"conversation\.input\.attachments"/)
+  assert.doesNotMatch(bundle, /"conversation\.input\.plan"/)
+  assert.doesNotMatch(bundle, /"conversation\.input\.model"/)
 })
 
 test('slots: the sidebar renders the official settings seat and the new-task button', async () => {
@@ -337,23 +344,20 @@ test('slots: the sidebar renders the official settings seat and the new-task but
   assert.match(bundle, /\\u65B0\\u5EFA\\u4EFB\\u52A1/)
 })
 
-test('slots: the composer projects the official model and permission seats', async () => {
+test('slots: DeepBuddy registers its brand into the official hero mark', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // The official model selector rides conversation.input.model; the composer
-  // passes only `locked` to it.
-  assert.match(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
-  // The permission chip is DeepBuddy's own: it reads the session permissions
-  // projection and writes back through the /permission command.
-  assert.match(bundle, /faceOf\("permissions"\)/)
-  assert.match(bundle, /\/permission \$\{option\.value\}/)
-  // Self-built ModelChip is gone.
+  // The official hero brand mark seat is filled by DeepBuddy at priority -1
+  // (the ui-brand-official fish registers at 0). The mark carries the
+  // DeepBuddy name. The official hero's brand cell is a fixed 34px grid
+  // column and its headline/preview texts are a single-occupant locale NS
+  // (ui-conversation owns it), so the DeepBuddy slogan cannot replace the
+  // official headline without breaking ui-conversation — the name is the
+  // achievable override.
+  assert.match(bundle, /name: "conversation\.hero\.brand\.mark"/)
+  assert.match(bundle, /priority: -1/)
+  assert.match(bundle, /DeepBuddy/)
+  // DeepBuddy no longer renders the composer chrome (the official apply does).
+  assert.doesNotMatch(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
   assert.doesNotMatch(bundle, /ModelChip/)
 })
 
-test('composer: the permission chip hides when no permission service composes', async () => {
-  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  assert.match(bundle, /rawValue\.options\.length === 0/)
-  // Hide rather than fake it: an absent permission projection (or an empty
-  // options list) renders nothing, so the chip carries no dead control.
-  assert.match(bundle, /options = value\.options\.filter\(\(o\) => o\.value !== "custom"\)/)
-})

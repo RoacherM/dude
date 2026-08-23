@@ -10,17 +10,22 @@
  * root/frame takeover (dsh/adapter.ts), which is the DSH boundary and stays
  * (deepbuddy-design-current/ARCHITECTURE.md §3/§4).
  */
+import type { ReactNode } from 'react'
 import type { ChildrenDecl } from '@deepseek-ai/dsh-client-ui-slots'
 
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY, SIDEBAR_SLOT_MAP, CONVERSATION_INPUT_SLOT_MAP } from '../dsh/adapter.ts'
+import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY, SIDEBAR_SLOT_MAP } from '../dsh/adapter.ts'
 import { PresetPlane } from '../dsh/presets.ts'
 import { LayoutStore } from '../shell/layout-store.ts'
-import { DeepBuddyMain, DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
+import { DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
 import { ConversationStore } from '../features/conversation/index.ts'
 import { FilesStore } from '../features/files/index.ts'
+import { INSPECTOR_VIEW_TYPES } from './catalog.ts'
+import { useAppDeps } from './context.tsx'
 import type { AppDeps } from './context.tsx'
+import { KIT } from '../ui/kit.tsx'
+import { PanelRight } from '../ui/icons.tsx'
 
 /** Entry name; matches the package name the boot graph addresses. */
 export const name = 'dsh-plugin-deepbuddy'
@@ -32,6 +37,27 @@ export const name = 'dsh-plugin-deepbuddy'
  * so a deployment missing one still gets a UI.
  */
 export const inject = ['slots', 'connection', 'sessions', 'workspaces', 'theme']
+
+/**
+ * The dock-toggle action in the official session header. The old dock toggle
+ * lived in DeepBuddy's retired main-column header; with the official
+ * ConversationRoot owning the main column, the toggle rides the official
+ * `conversation.session.header.actions` slot (additive list). It opens the
+ * DeepBuddy files/media column (the dock) — the toggle is gated to a started
+ * session by the official header only rendering for one.
+ */
+function DeepBuddyDockToggle(): ReactNode {
+  const { layout } = useAppDeps()
+  const firstView = INSPECTOR_VIEW_TYPES[0]
+  return (
+    <KIT.IconButton
+      title="打开停靠栏"
+      onClick={() => { layout.toggleDock(firstView?.id) }}
+    >
+      <PanelRight size={15} />
+    </KIT.IconButton>
+  )
+}
 
 /**
  * Mount the distribution as the shell.
@@ -76,9 +102,11 @@ export function apply(ctx: ClientContext): void {
   // ── the containers ────────────────────────────────────────────────────────
   //
   // The root registration re-declares the official frame slots from
-  // dsh/adapter.ts. ui-sidebar and ui-conversation are disabled (their rows
-  // injected the now-absent layout service), so these are the only sidebar /
-  // conversation occupants — no shadow priority is needed.
+  // dsh/adapter.ts. ui-layout and ui-sidebar are disabled (ui-sidebar
+  // injected the now-absent layout service), so DeepBuddy's sidebar column is
+  // the only sidebar occupant. ui-conversation is ENABLED (wave 8) — DeepBuddy
+  // provides its `layout` service, and its ConversationRoot owns the
+  // `conversation` seat, so DeepBuddy registers no conversation occupant.
 
   ctx.effect(
     () => ctx.slots.register({
@@ -97,12 +125,17 @@ export function apply(ctx: ClientContext): void {
     'deepbuddy: sidebar column',
   )
 
-  ctx.effect(
-    () => ctx.slots.register({
-      name: 'conversation',
-      children: CONVERSATION_INPUT_SLOT_MAP as unknown as ChildrenDecl,
-    }, DeepBuddyMain as never),
-    'deepbuddy: main column',
-  )
+  // The dock-file-column toggle rides the official session header's additive
+  // action list, so it appears only for a started session (the official
+  // header renders per-session). It forwards to DeepBuddy's layout store.
+  const headerSlot = ctx.slots as unknown as {
+    inject(key: string, cb: () => (() => void) | void): () => void
+    register(options: { name: string; id: string; order?: number }, comp: () => ReactNode): () => void
+  }
+  ctx.effect(() =>
+    headerSlot.inject('conversation.session.header.actions', () =>
+      headerSlot.register({ name: 'conversation.session.header.actions', id: 'deepbuddy-dock', order: 30 }, DeepBuddyDockToggle),
+    ),
+  'deepbuddy: dock toggle header action')
 }
 

@@ -144,9 +144,26 @@
 
 ## 6. Workbench 行为
 
-v1 Workbench 页面：
+v1 Workbench 页面只有 Conversation，且整列由官方 `ui-conversation` 的
+`ConversationRoot` 接管（wave 8）。DeepBuddy 不渲染自研消息流 / Composer /
+权限 chip：官方 apply 全量运行（注册 chat 折叠定义 + 官方会话列），
+DeepBuddy 提供它所需的 `layout` 服务（ui-layout 行禁用）。
 
-- Conversation。
+```text
+主列 = 官方 ConversationRoot
+  ├─ 会话头（标题 / 视图 Tab：对话 / 轨迹 / 详情）
+  ├─ 消息流（官方 chat 折叠：user / assistant / tool / command / …）
+  └─ Composer（官方 input-bar：模型 / 附件 / 计划 / 权限；DeepBuddy 不接管）
+```
+
+DeepBuddy 在官方列上保留的接线：
+
+- `conversation.hero.brand.mark`：注册 DeepBuddy 品牌 + slogan（优先级 -1，
+  取代官方 fish logo）；
+- `conversation.hero.workspace` / `.agentPreset`：官方工作空间 / 模式 chip
+  （由官方 hero 渲染，DeepBuddy 不重复声明）；
+- 提供 `ctx.layout`（`toggleSidebar` / `openDetails` / `closeDetails`），
+  让官方 apply 激活、不再 parked。
 
 Settings 不再是主列页面，也不再是 DeepBuddy 自研对话框 —— 官方 `settings-general` 的整个
 设置外壳复活：DeepBuddy 声明 `sidebar.settings` 槽并渲染官方 `SettingsRoot`，官方各分区
@@ -217,24 +234,24 @@ return <><Tabs items={items} /><Body item={active} /></>
 | # | 动作 / 状态 | 位置 |
 |---|---|---|
 | 1 | 开关左列 / 右列 | 两侧状态栏 |
-| 2 | 新建任务（全宽主按钮） | Sidebar 品牌行下 |
+| 2 | 新建任务（全宽主按钮） | Sidebar 品牌行下（DeepBuddy `ChatNav`） |
 | 3 | 打开 Settings（官方覆盖式设置面板） | Sidebar 底部 `sidebar.settings` 槽 |
-| 4 | 复制消息 | 消息局部动作 |
-| 5 | 重试失败或停止的轮次 | 消息局部动作 |
-| 6 | 权限档 | Composer 左侧（DeepBuddy 自研 chip） |
+| 4 | 复制消息 | 消息局部动作（官方） |
+| 5 | 重试失败或停止的轮次 | 消息局部动作（官方） |
+| 6 | 权限档 | Composer 左侧（官方 input-bar + permission 投影） |
 | 7 | 模型 | Composer 右侧（官方 `conversation.input.model` 槽） |
-| 8 | 附件 / 计划 | Composer 工具行（官方 `conversation.input.attachments` / `.plan` 槽） |
-| 9 | 发送 / 停止 | Composer 主动作 |
+| 8 | 附件 / 计划 | Composer 工具行（官方 `conversation.input.*` 槽） |
+| 9 | 发送 / 停止 | Composer 主动作（官方） |
 | 10 | 搜索 / 添加工作空间 | 「工作空间」区头 |
 
 规则：
 
-- 权限档和模型同时是状态显示器。权限档读会话 `permissions` projection、经 `/permission`
-  命令写回（官方机制）；模型选择器是官方 `ModelSelect`（Model → 档位两级面板），经
-  `sessions.selectModel` 应用到会话（含运行中）。
-- 设置与 composer chrome 复活官方实现：`sidebar.settings` 与 `conversation.input.*`
-  槽由 DeepBuddy 声明并渲染，官方 registrant（settings-general / model-selection /
-  attachment）据此挂载。DeepBuddy 只是槽的声明者与渲染者，不重写官方面板。
+- 消息流与 composer chrome 全部由官方 `ui-conversation` 渲染
+  （wave 8 官方接管）：模型选择器是官方 `ModelSelect`，权限档走官方
+  `permissions` 投影 + `/permission` 命令，附件/计划走官方 `conversation.input.*`
+  槽。DeepBuddy 不再声明/渲染这些槽，只保留 `sidebar.settings` 声明。
+- DeepBuddy 在官方 hero 注册品牌 + slogan（`conversation.hero.brand.mark`，
+  优先级 -1），工作空间 / 模式 chip 由官方 hero 渲染。
 - 发送与停止复用同一个位置。
 - 正常完成的消息不显示重试。
 - 复制成功就地短暂反馈，不额外弹 Toast。
@@ -327,8 +344,9 @@ DeepBuddy 当前只承诺统一暗色体验。
 
 Empty State 用一句话说明当前缺少什么，以及用户下一步能做什么。
 
-空白 / 新会话页：DeepBuddy 品牌 + slogan（居中），下方一行工作空间 chip + 模式 chip，
-再下方 Composer（官方槽 + DeepBuddy 权限档）。整组垂直居中于主列（对齐官方 DSH 布局）；
+空白 / 新会话页：官方 hero（DeepBuddy 品牌 + slogan 经 `conversation.hero.brand.mark`
+注册，工作空间 / 模式 chip 走官方 `conversation.hero.workspace` / `.agentPreset`），
+下方官方 Composer。整组由官方 `ConversationRoot` 渲染（对齐官方 DSH 布局）；
 发出第一条消息后切换为常规布局（消息流 + 底部 Composer）。
 
 Error 不只显示技术错误；在可恢复时给出明确操作。

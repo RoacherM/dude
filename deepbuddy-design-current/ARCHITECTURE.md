@@ -54,8 +54,8 @@ Renderer
 │
 ├── ThreeColumnFrame
 │   ├── SidebarColumn
-│   ├── WorkbenchColumn
-│   └── InspectorColumn
+│   ├── (主列 = 官方 ConversationRoot，`conversation` 槽)
+│   └── InspectorColumn (Dock)
 │
 ├── Feature Modules
 │   ├── sessions
@@ -79,11 +79,6 @@ v1 的第一方 UI 使用普通 TypeScript 目录组合：
 
 ```ts
 // app/catalog.ts
-export const WORKBENCH_APPS = [
-  ConversationAppDefinition,
-  SettingsAppDefinition,
-] as const
-
 export const SIDEBAR_SECTIONS = [
   SessionListDefinition,
 ] as const
@@ -93,6 +88,10 @@ export const INSPECTOR_VIEW_TYPES = [
   TerminalViewDefinition,
 ] as const
 ```
+
+主列（`conversation` 槽）由官方 `ui-conversation` 的 `ConversationRoot` 接管
+（wave 8），不再走 DeepBuddy 的 workbench-app 目录；`WORKBENCH_APPS` 随之移除。
+DeepBuddy 保留侧栏 / inspector 两个静态目录。
 
 新增第一方功能的默认流程是：
 
@@ -177,6 +176,13 @@ useWorkspaceFiles(workspaceId)
 ```
 
 禁止每个 Feature 自己解析官方事件或自行维护第二份 Session 状态。
+
+Adapter 还承担 **layout 服务 stub**：ui-layout 行被禁用后，`ctx.layout` 原本没有
+消费方（wave6 据此删除 provide）；`ui-conversation` 启用后（wave 8）注入
+`layout`，Adapter 重新 `ctx.reflect.provide('layout', layoutFace())`。stub 的边界：
+只实作官方 `ILayout` 的三个动词（`toggleSidebar` / `openDetails` /
+`closeDetails`）并转发到 DeepBuddy 的 LayoutStore；不接管官方 layout 内部
+的面板几何，也不把 DeepBuddy 的 dock 与官方 `details` 槽混为一谈。
 
 ### 5.3 Feature Module
 

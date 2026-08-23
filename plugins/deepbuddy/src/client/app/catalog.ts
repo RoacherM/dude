@@ -11,23 +11,10 @@
  * them only if the Definitions stay exactly this thin.
  */
 import type { ComponentType } from 'react'
-import type { RenderSlot } from '../dsh/adapter.ts'
-import { ConversationAppDefinition } from '../features/conversation/index.ts'
 import { SessionListSectionDefinition } from '../features/sessions/index.ts'
 import { FilesViewDefinition } from '../features/files/index.ts'
 import type { IconName } from '../ui/icons.tsx'
 import type { TabRef } from '../shell/layout-store.ts'
-
-/** One main-column page: the Conversation and Settings surfaces. */
-export interface WorkbenchAppDefinition {
-  id: string
-  title: string
-  icon?: IconName
-  /** The app renders inside the main column; the shell hands it the frame's
-   *  conversation render slot so it can project the official composer seats it
-   *  declares (`conversation.input.*`). */
-  Component: ComponentType<{ renderSlot?: RenderSlot }>
-}
 
 /** One sidebar group below the nav rows (session list, projects, …). */
 export interface SidebarSectionDefinition {
@@ -66,10 +53,6 @@ export interface InspectorViewTypeDefinition {
   Component: ComponentType<InspectorViewProps>
 }
 
-/** Workbench apps, in nav order. */
-export const WORKBENCH_APPS = [
-  ConversationAppDefinition,
-] as const
 /** Sidebar sections, in display order. */
 export const SIDEBAR_SECTIONS = [
   SessionListSectionDefinition,

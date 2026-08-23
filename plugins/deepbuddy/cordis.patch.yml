@@ -20,20 +20,23 @@
 - id: ui-layout
   disabled: true
 
-# ui-sidebar and ui-conversation inject the `layout` service, which the
-# disabled ui-layout row used to provide. With ui-layout out of the graph
-# they could never activate, and DeepBuddy renders the sidebar / conversation
-# columns itself — the official rows are dead weight reserved for services
-# that never arrive. Disabling them removes the boot-time "pending" noise and
-# drops them from the client manifest entirely (processOne skips disabled
-# rows). The other official UI plugins that list these packages as module
-# dependencies (dsh.client.inject) only use them for load ordering; an absent
-# row is a no-op there.
+# ui-sidebar injects the `layout` service, which the disabled ui-layout row
+# used to provide. DeepBuddy renders the sidebar column itself, so ui-sidebar
+# stays disabled (removing the boot-time "pending" noise and dropping it from
+# the client manifest). The other official UI plugins that list this package
+# as a module dependency (dsh.client.inject) only use it for load ordering; an
+# absent row is a no-op there.
 - id: ui-sidebar
   disabled: true
 
+# ui-conversation is ENABLED (wave 8): its row injects `layout`, which
+# DeepBuddy now provides as a stub (dsh/adapter.ts `mountOfficialServices`), so
+# the official apply activates and registers the chat-fold definitions (the
+# cold-session transcript fix) plus the official conversation column. ui-layout
+# stays disabled, so DeepBuddy's stub is the only `layout` face; the official
+# frame's slot occupants are replaced by DeepBuddy's sidebar / main column.
 - id: ui-conversation
-  disabled: true
+  name: '@deepseek-ai/dsh-client-ui-conversation'
 
 - insert:
     - id: deepbuddy

@@ -1,20 +1,11 @@
 /**
- * The conversation feature: the workbench's chat app and its sidebar entry.
- *
- * Everything public lives behind this index — the thin definition the catalog
- * composes, the nav row the sidebar draws, and the store the assembly
- * instantiates. Internals (the stream components) stay inside the feature
- * (deepbuddy-design-current/DEVELOPMENT_RULES.md §3).
+ * The conversation feature: the sidebar's new-task entry and the store the
+ * assembly instantiates. The main-column chat render is the official
+ * ui-conversation `ConversationRoot` (wave 8), so DeepBuddy contributes only
+ * the new-task button (which starts a session) and the store's session-list
+ * observation.
  */
-import type { WorkbenchAppDefinition } from '../../app/catalog.ts'
-import { ChatNav, ChatView, CONVERSATION_APP_ID } from './Chat.tsx'
+import { ChatNav, CONVERSATION_APP_ID } from './Chat.tsx'
 
-/** The conversation app's catalog definition. */
-export const ConversationAppDefinition: WorkbenchAppDefinition = {
-  id: CONVERSATION_APP_ID,
-  title: '对话',
-  Component: ChatView,
-}
-
-export { ChatNav, ChatView }
+export { ChatNav, CONVERSATION_APP_ID }
 export { ConversationStore } from './store.ts'

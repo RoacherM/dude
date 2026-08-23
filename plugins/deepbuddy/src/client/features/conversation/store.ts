@@ -12,26 +12,17 @@
 import type {
   Conversation, Dsh, SessionId, SessionList, SessionSummary, WorkspaceId, WorkspaceList,
 } from '../../dsh/adapter.ts'
-import { workspaceOf } from '../../dsh/adapter.ts'
 
-/** Everything the conversation surface renders from. */
+/** Everything the conversation feature's sidebar entry observes. */
 export interface ConversationState {
   /** Live session snapshot. */
   list: SessionList | null
-  /** Live workspace snapshot (composer picker, current workspace). */
+  /** Live workspace snapshot (current workspace). */
   wsList: WorkspaceList | null
   /** The open conversation snapshot. */
   conv: Conversation | null
-  /** Composer draft. */
-  draft: string
-  /** The failure of the last send. */
-  sendError: string | null
   /** Workspace chosen in the composer picker for the NEXT session. */
   pickedWs: WorkspaceId | null
-  /** Resolved host home dir — the default workspace path (wave 4 §3). */
-  homePath: string | null
-  /** Per-callId expansion of tool blocks (default collapsed). */
-  openCalls: Record<string, boolean>
 }
 
 /** A state update in the shape the ported actions were written against. */
@@ -43,11 +34,7 @@ export class ConversationStore {
     list: null,
     wsList: null,
     conv: null,
-    draft: '',
-    sendError: null,
     pickedWs: null,
-    homePath: null,
-    openCalls: {},
   }
 
   /** The wire bundle every action dispatches through. */
@@ -119,36 +106,6 @@ export class ConversationStore {
   }
 
 
-  /** Resolve (once) the host home directory for the default workspace. */
-  async resolveHome(): Promise<string | null> {
-    if (this.state.homePath !== null) return this.state.homePath
-    const home = await this.dsh.resolveHome()
-    this.patch({ homePath: home })
-    return home
-  }
-
-  /**
-   * The default workspace for a send with no explicit pick: an existing
-   * workspace over the host home, or a freshly created one, or null when
-   * neither the home nor any workspace is reachable.
-   */
-  async defaultWorkspace(): Promise<WorkspaceId | null> {
-    const { wsList } = this.state
-    const home = await this.resolveHome()
-    // Re-read the list after resolving home (a mount may have settled it).
-    const items = this.state.wsList?.items ?? []
-    const byHome = home === null ? undefined : items.find(w => w.path === home)
-    if (byHome !== undefined) return byHome.workspaceId
-    const recent = this.state.wsList?.recentWorkspaceId
-    if (recent !== undefined) return recent
-    const first = items[0]?.workspaceId
-    if (first !== undefined) return first
-    // No workspace at all: create one over the host home. If home is also
-    // unreachable there is nothing to open a session in.
-    if (home === null) return null
-    const created = await this.dsh.workspaces.create({ path: home })
-    return created.workspaceId
-  }
   // ── lifecycle ─────────────────────────────────────────────────────────────
 
   mount(): void {
@@ -181,7 +138,7 @@ export class ConversationStore {
     this.offConv = undefined
     this.watchedId = id
     // Session switch: the conversation belongs to the new fence.
-    this.setState({ conv: null, sendError: null })
+    this.setState({ conv: null })
     if (id === undefined) return
     const binding = this.dsh.sessions.binding(id)
     if (!binding) {
@@ -200,81 +157,4 @@ export class ConversationStore {
     this.dsh.workspaces.startSession(this.state.pickedWs ?? undefined)
   }
 
-  /** Send the draft to the live session (steering while it runs). */
-  send = (): void => {
-    const text = this.state.draft.trim()
-    if (!text) return
-    this.setState({ draft: '', sendError: null })
-    void (async () => {
-      try {
-        const cur = this.state.list?.current
-        const armed = this.state.pickedWs
-        const own = cur === undefined ? undefined : workspaceOf(this.state.wsList, cur)?.workspaceId
-        // A blank session re-targets to the armed workspace on the next prompt;
-        // a started session is locked to its own. A blank session started in a
-        // workspace the user then picked is reconnected there (connectWorkspace
-        // reuses its blank session), so the first message land in the picked one.
-        const blank = cur !== undefined && this.state.conv?.blank === true
-        const reTarget = blank && armed !== undefined && armed !== own
-        if (cur === undefined || reTarget) {
-          const wsId = armed ?? (await this.defaultWorkspace())
-          if (wsId == null) throw new Error('没有可用的工作空间')
-          const id = await this.dsh.workspaces.connectWorkspace(wsId)
-          this.dsh.sessions.open(id)
-          const binding = this.dsh.sessions.binding(id)
-          if (!binding) throw new Error('会话尚未就绪')
-          await binding.session.prompt([{ type: 'text', text }], 'queue')
-          // The armed pick was consumed by the session it opened.
-          this.patch({ pickedWs: null })
-          return
-        }
-        const binding = this.dsh.sessions.binding(cur)
-        if (!binding) throw new Error('会话尚未就绪')
-        const mode: 'queue' | 'steer' = this.state.conv?.running ? 'steer' : 'queue'
-        await binding.session.prompt([{ type: 'text', text }], mode)
-      }
-      catch (e) {
-        this.setState({ sendError: e instanceof Error ? e.message : String(e) })
-      }
-    })()
-  }
-
-  /** Cancel the running turn of the current session. */
-  stop = (): void => {
-    const cur = this.state.list?.current
-    if (cur === undefined) return
-    void this.dsh.sessions.binding(cur)?.session.cancel()
-  }
-
-  /** Pull one more page of history into the open conversation. */
-  loadOlder = (): void => {
-    const cur = this.state.list?.current
-    if (cur === undefined) return
-    void this.dsh.sessions.binding(cur)?.session.loadOlder()
-  }
-
-  toggleCall = (callId: string): void => {
-    this.setState(x => ({ openCalls: { ...x.openCalls, [callId]: !x.openCalls[callId] } }))
-  }
-
-  /**
-   * Composer picker: arms the workspace the NEXT prompt opens a session in.
-   * A started session (blank === false) is locked to its workspace and never
-   * offers this; before that, the chip reflects the armed pick and a blank or
-   * no-session `send` connects it (see {@link send}).
-   */
-  pickWorkspace = (id: WorkspaceId): void => {
-    this.patch({ pickedWs: id })
-  }
-
-  /** Directory picker → workspace record → connected session. */
-  openLocalFolder = (): void => {
-    void (async () => {
-      const path = await this.dsh.workspaces.pickDirectory()
-      if (path === null) return
-      const view = await this.dsh.workspaces.create({ path })
-      const sessionId = await this.dsh.workspaces.connectWorkspace(view.workspaceId)
-      this.dsh.sessions.open(sessionId)
-    })()
-  }
 }
