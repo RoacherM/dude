@@ -165,12 +165,15 @@ const CSS = `
 .dbdy-pulse { animation: dbdy-pulse 1.1s var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1)) infinite; }
 
 /* ── window drag opt-outs ──────────────────────────────────────────────── */
-/* Interactive elements anywhere in the shell opt out of window-drag regions
-   (the column top bars and the main column's drag strip). Inert outside
+/* Interactive elements opt out of window-drag regions (the column top bars
+   and the main column's drag strip). Unscoped on purpose: Electron collects
+   app-region rects viewport-globally, so a surface PORTALED outside .dbdy —
+   the official settings dialog — floats over the drag strips and its
+   controls would drag the window instead of answering clicks. Inert outside
    Electron — browsers ignore app-region. */
-.dbdy button, .dbdy a, .dbdy input, .dbdy textarea, .dbdy select,
-.dbdy [role="tab"], .dbdy [role="button"], .dbdy [role="menuitem"],
-.dbdy [contenteditable] {
+button, a, input, textarea, select,
+[role="tab"], [role="button"], [role="menuitem"],
+[contenteditable], [role="dialog"] {
   -webkit-app-region: no-drag;
 }
 
@@ -186,6 +189,21 @@ const CSS = `
    DeepBuddy's dock toggle (app/App.tsx registers it into the same utilities
    cluster). Same hash-prefix caveat as above. */
 .dbdy button[class*="_sessionLogButton"] { display: none; }
+
+/* The official session header stacks 12px padding + a 32px title row + the
+   view tabs, so its title floats 2px below the neighbours' and its bottom
+   edge lands at 76px while every other column rules off at 52px. Reshape it
+   to the shell's two-tier pattern (the inspector's top bar + tab strip): the
+   title row becomes the aligned 52px bar with the full-bleed rule, the tabs
+   a strip below it. Same hash-prefix caveat as above. */
+.dbdy header[class*="_header"] { padding-top: 0; }
+.dbdy header[class*="_header"] > div[class*="_titleRow"] {
+  min-height: 52px;
+  margin: 0 -28px 0 -20px;
+  padding: 0 28px 0 20px;
+  border-bottom: 1px solid var(--db-line);
+}
+.dbdy header[class*="_header"] > div[class*="_titleRow"] + [class*="_tabs"] { margin-top: 10px; }
 
 /* One character per span, popping in sequence and waving out; fill-mode
    backwards keeps a char invisible through its stagger delay. */

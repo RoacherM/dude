@@ -17,7 +17,7 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY, SIDEBAR_SLOT_MAP } from '../dsh/adapter.ts'
 import { PresetPlane } from '../dsh/presets.ts'
-import { LayoutStore } from '../shell/layout-store.ts'
+import { LayoutStore, useLayoutStore } from '../shell/layout-store.ts'
 import { DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
 import { ConversationStore } from '../features/conversation/index.ts'
 import { FilesStore } from '../features/files/index.ts'
@@ -46,10 +46,14 @@ export const inject = ['slots', 'connection', 'sessions', 'workspaces', 'theme']
  * cluster, where a panel toggle belongs (the left `actions` cluster crowds
  * the title). It opens the DeepBuddy files/media column (the dock) — the
  * toggle is gated to a started session by the official header only rendering
- * for one.
+ * for one, and it yields while the dock is open: the dock column's own
+ * close control is then the one panel toggle on screen, not a twin icon
+ * one column over.
  */
 function DeepBuddyDockToggle(): ReactNode {
   const { layout } = useAppDeps()
+  useLayoutStore(layout)
+  if (layout.state.dock && layout.state.sessionStarted) return null
   const firstView = INSPECTOR_VIEW_TYPES[0]
   return (
     <KIT.IconButton

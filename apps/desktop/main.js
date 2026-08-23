@@ -19,7 +19,7 @@
  * behavior: it loads DSH_WEB_URL (default http://127.0.0.1:3080) without
  * spawning or migrating anything.
  */
-const { app, BrowserWindow, shell } = require('electron')
+const { app, BrowserWindow, nativeTheme, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
@@ -196,9 +196,10 @@ function createWindow(url) {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 14, y: 18 },
     // The compositor shows this during fast drag/resize before the web
-    // content repaints — it must match the UI's darkest ground
-    // (--dsw-alias-bg-base), or the window flashes white.
-    backgroundColor: '#151517',
+    // content repaints — it must match the UI's ground (--dsw-alias-bg-base
+    // per scheme; the theme presenter follows the system by default), or the
+    // window flashes the wrong shade.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
     title: 'DeepBuddy',
   })
   win.removeMenu?.()

@@ -12,16 +12,16 @@
  *
  * Re-implemented rather than imported: cross-plugin VALUE imports are a build
  * error (client bundle purity, build.mjs), so the official file is a read-only
- * reference. Behaviour is deliberately identical, including the retraction
- * discipline — the presenter only ever removes what it wrote itself, so
- * foreign attributes, inline styles, and metadata survive.
+ * reference. Behaviour is identical, including the retraction discipline —
+ * the presenter only ever removes what it wrote itself, so foreign
+ * attributes, inline styles, and metadata survive.
  *
- * One deliberate divergence: the scheme is PINNED to dark. DeepBuddy's own
- * surfaces are a single dark design (styles.ts), and an ecosystem seat that
- * resolved the light `--dsw-*` palette would render a white card inside a
- * #0f0f0f window. Pinning here is what makes the two token systems agree —
- * it pays off the R3 theme-bridging debt for the ecosystem ring rather than
- * leaving each seat to discover the mismatch on its own.
+ * The scheme follows the snapshot, light included: every DeepBuddy `--db-*`
+ * token resolves through the official `--dsw-alias-*` variables (ui/tokens.ts
+ * — the dark literals there are fallbacks, not values), so removing the dark
+ * palette attribute restyles DeepBuddy's own surfaces and the ecosystem seats
+ * from the same switch. The settings dialog offers 浅色/深色/跟随系统 — a
+ * presenter that pinned dark would turn that control into a no-op.
  */
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 
@@ -43,26 +43,23 @@ export class ThemePresenter {
   }
 
   /**
-   * Project a snapshot onto the document: the pinned dark `color-scheme` and
-   * palette attribute, then swap the previously applied token variables for
-   * `active.tokens`. Browser theme-color metadata follows the computed body
-   * background after those writes, so the rendered palette stays the color
-   * authority.
-   *
-   * A theme resolving to `light` contributes its attribute-independent alias
-   * tokens only through this pin's filter: those overrides are authored
-   * against a light base, and writing them over the dark palette produces a
-   * half-inverted UI — worse than the theme simply not applying.
+   * Project a snapshot onto the document: set root `color-scheme` and the
+   * body palette attribute from `active.colorScheme` (never the id —
+   * `system` is resolved upstream), then swap the previously applied token
+   * variables for `active.tokens`. Browser theme-color metadata follows the
+   * computed body background after those writes, so the rendered palette
+   * stays the color authority.
    * @param snapshot - resolved theme snapshot from ctx.theme.
    */
   apply(snapshot: ThemeSnapshot): void {
-    document.documentElement.style.colorScheme = 'dark'
+    const scheme = snapshot.active.colorScheme
+    document.documentElement.style.colorScheme = scheme
     const body = document.body
-    body.setAttribute(DARK_ATTRIBUTE, '')
+    if (scheme === 'dark') body.setAttribute(DARK_ATTRIBUTE, '')
+    else body.removeAttribute(DARK_ATTRIBUTE)
     for (const name of this.appliedTokens) body.style.removeProperty(name)
     this.appliedTokens = []
-    const tokens = snapshot.active.colorScheme === 'dark' ? snapshot.active.tokens : {}
-    for (const [name, value] of Object.entries(tokens)) {
+    for (const [name, value] of Object.entries(snapshot.active.tokens)) {
       body.style.setProperty(name, value)
       this.appliedTokens.push(name)
     }
