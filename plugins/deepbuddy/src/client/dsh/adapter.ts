@@ -173,6 +173,13 @@ export const FRAME_SLOT_MAP = {
  */
 export const SIDEBAR_SLOT_MAP = {
   'sidebar.settings': { kind: 'single', scope: 'root' },
+  // The official workspace browser (ui-workspace's WorkspaceBrowser: search,
+  // view options, add-directory, rename/fork/archive/delete). Its registration
+  // waits on this declaration; it in turn declares
+  // `sidebar.workspaces.directoryFlow`, which the directory-picker-browse
+  // plugin's nested inject needs before it fills BOTH directoryFlow seats —
+  // so this one line also lights up 「选择其他目录」 in the hero picker.
+  'sidebar.workspaces': { kind: 'single', scope: 'root' },
 } as const
 
 
@@ -372,51 +379,14 @@ export function textOfParts(content: unknown): string {
 }
 
 /**
- * Relative time for the session list rows. Matches the official sidebar's
- * zh short format: `刚刚` / `X分钟` / `X小时` / `X天` — no space, no 「前」.
- * @param ts - epoch ms.
- * @returns Chinese relative label.
- */
-export function fmtRel(ts: number): string {
-  const mins = Math.floor((Date.now() - ts) / 60_000)
-  if (mins < 1) return '刚刚'
-  if (mins < 60) return `${mins}分钟`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}小时`
-  return `${Math.floor(hours / 24)}天`
-}
-
-/**
  * Path tail for workspace display names, same rule the runtime's
  * workspaceTitleOf applies (last non-empty segment).
  * @param path - absolute or ~-relative path.
  * @returns final segment, or the input when it has none.
  */
-/**
- * Sidebar display title. The runtime's `displayTitle` projection falls back to
- * the cwd basename before a session earns a durable title, so a blank
- * (never-prompted) session would read exactly like its workspace row; it reads
- * 「新任务」 instead until the first turn names it.
- */
-export function sessionTitle(row: SessionSummary): string {
-  return row.blank ? '新任务' : row.displayTitle
-}
-
 export function basename(path: string): string {
   const seg = path.split(/[\\/]/).filter(Boolean).pop()
   return seg ?? path
-}
-
-/** Top-level (non-subagent) sessions in list order. */
-export function topSessions(list: SessionList): SessionSummary[] {
-  const rows: SessionSummary[] = []
-  for (const id of list.ids) {
-    const s = (list.byId as Partial<Record<string, SessionSummary>>)[id as string]
-    if (!s) continue
-    if (s.parentId !== undefined || s.origin === 'subagent') continue
-    rows.push(s)
-  }
-  return rows
 }
 
 /** The workspace holding a session, resolved through WorkspaceView.sessionIds. */

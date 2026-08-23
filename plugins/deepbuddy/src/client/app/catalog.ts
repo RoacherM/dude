@@ -1,6 +1,6 @@
 /**
  * The static composition catalog: every surface DeepBuddy ships, as thin
- * definitions in three flat arrays.
+ * definitions in flat arrays.
  *
  * A feature owns its component and exports a Definition (features/<name>/
  * index.ts); the catalog imports them all and hands the arrays to the shell.
@@ -11,17 +11,9 @@
  * them only if the Definitions stay exactly this thin.
  */
 import type { ComponentType } from 'react'
-import { SessionListSectionDefinition } from '../features/sessions/index.ts'
 import { FilesViewDefinition } from '../features/files/index.ts'
 import type { IconName } from '../ui/icons.tsx'
 import type { TabRef } from '../shell/layout-store.ts'
-
-/** One sidebar group below the nav rows (session list, projects, …). */
-export interface SidebarSectionDefinition {
-  id: string
-  Component: ComponentType
-}
-
 
 /**
  * What a view type's component receives from the shell: its own id and the
@@ -52,11 +44,6 @@ export interface InspectorViewTypeDefinition {
   icon?: IconName
   Component: ComponentType<InspectorViewProps>
 }
-
-/** Sidebar sections, in display order. */
-export const SIDEBAR_SECTIONS = [
-  SessionListSectionDefinition,
-] as const
 
 /** Inspector view types, in segment order. */
 export const INSPECTOR_VIEW_TYPES = [

@@ -7,7 +7,7 @@
  * the official slot contract rendering and the window-level overlay — and
  * nothing about sessions, files or presets. Business content arrives through
  * the static catalogs (app/catalog.ts): the sidebar composes the conversation
- * entry plus every SIDEBAR_SECTIONS row, and the inspector draws
+ * entry plus the official `sidebar.workspaces` seat, and the inspector draws
  * INSPECTOR_VIEW_TYPES with the shell-owned tab ledger. There is no
  * `if (app.id === …)` anywhere — the shell renders whichever entry the
  * catalog and the layout state name (deepbuddy-design-current/
@@ -22,7 +22,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
-import { INSPECTOR_VIEW_TYPES, SIDEBAR_SECTIONS, pickEntry } from '../app/catalog.ts'
+import { INSPECTOR_VIEW_TYPES, pickEntry } from '../app/catalog.ts'
 import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutStore } from './layout-store.ts'
@@ -40,9 +40,9 @@ const DETAILS_WIDTH = 480
 /**
  * The sidebar occupant: a 268px rail on the darkest ground. The status bar
  * carries the window controls and the left-column toggle; below it the
- * conversation's own entry row, every SIDEBAR_SECTIONS section, and the
- * settings footer. The column draws the container and nothing inside it —
- * each row and section is a feature component from the catalogs.
+ * conversation's own entry row, the official workspace browser
+ * (`sidebar.workspaces`), and the settings footer. The column draws the
+ * container and nothing inside it.
  */
 export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlot: RenderSlot }): ReactNode {
   const { layout } = useAppDeps()
@@ -101,8 +101,13 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
          <ChatNav current={layout.state.view === CONVERSATION_APP_ID} />
       </nav>
 
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: `0 ${ROW_METRICS.gutter}px 12px` }}>
-        {SIDEBAR_SECTIONS.map(section => <section.Component key={section.id} />)}
+      {/* The official workspace browser rides the revived `sidebar.workspaces`
+          slot (search, view options, add-directory, per-row menus). It owns
+          its own scrolling, so the region clips instead of scrolling — the
+          official regionArea contract. `expandSidebar` is a no-op: DeepBuddy
+          unmounts this column when collapsed, so it can never fire here. */}
+      <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: `0 ${ROW_METRICS.gutter}px` }}>
+        {renderSlot('sidebar.workspaces', { wide: true, expandSidebar: () => {} })}
       </div>
 
       {/* The official settings root rides the revived `sidebar.settings`

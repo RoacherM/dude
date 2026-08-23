@@ -133,23 +133,25 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   // rendered — surfaces are thin Definitions in the static arrays.
   assert.doesNotMatch(bundle, /dbdy\./, 'no dbdy.* seat remains in the bundle')
   assert.doesNotMatch(bundle, /seatFace|dockPaneFace|useSeatEntries|SlotReader/, 'no seat-face plumbing remains')
-  // The workbench-app catalog is retired with DeepBuddyMain (wave 8): the
-  // main column is the official ConversationRoot, so no WORKBENCH_APPS array
-  // remains. Sidebar and inspector catalogs still compose the shipped
-  // surfaces (ARCHITECTURE §3).
+  // The workbench-app catalog is retired with DeepBuddyMain (wave 8), and the
+  // sidebar-section catalog with the hand-rolled SessionList (the official
+  // WorkspaceBrowser owns the revived `sidebar.workspaces` seat instead). The
+  // inspector catalog still composes the shipped surfaces (ARCHITECTURE §3).
   assert.doesNotMatch(bundle, /WORKBENCH_APPS = \[/)
-  assert.match(bundle, /SIDEBAR_SECTIONS = \[\s*\n\s*SessionListSectionDefinition\s*\n\]/)
+  assert.doesNotMatch(bundle, /SIDEBAR_SECTIONS = \[/)
+  assert.doesNotMatch(bundle, /SessionListSectionDefinition/)
   assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition\s*\n\]/)
   // The definitions carry their ids — the catalog is the single composition
   // point the shell renders from. Settings is no longer a workbench app (it
   // is a dialog overlay, wave 4 §5), so it is deliberately absent here.
-  assert.match(bundle, /SessionListSectionDefinition = \{\s*\n\s*id: "sessions",/)
   assert.match(bundle, /FilesViewDefinition = \{\s*\n\s*id: "explorer",/)
-  // The sidebar and inspector dispatch generically from the catalogs — no
-  // feature-id branch exists (DEVELOPMENT_RULES §4). `active.Component` (the
-  // retired workbench dispatch) is gone.
+  // The workspace region is the official seat, not a first-party section list.
+  assert.match(bundle, /renderSlot\("sidebar\.workspaces"/)
+  assert.match(bundle, /"sidebar\.workspaces": \{ kind: "single", scope: "root" \}/)
+  // The inspector dispatches generically from the catalog — no feature-id
+  // branch exists (DEVELOPMENT_RULES §4). `active.Component` (the retired
+  // workbench dispatch) is gone.
   assert.doesNotMatch(bundle, /jsx\)\(active\.Component/)
-  assert.match(bundle, /jsx\)\(section\.Component/)
   // Layout sovereignty holds without the seat face: no geometry setter is
   // reachable from a surface. (`\b` matters: the store's own private
   // writeDockWidth / resetDockWidth are not verbs a surface may call.)
