@@ -59,17 +59,18 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
       }}
       header={(
         <>
-          {/* The sidebar toggle lives beside the lights in BOTH states (the
-              Electron shell parks both in the frame band instead), so
-              collapsing never teleports the control the user just clicked. */}
+          {/* Lights and the sidebar toggle share the ONE header line every
+              column draws, so the toggle sits level with the dock toggle
+              across the frame — and it keeps this exact spot in the collapsed
+              state (the corner cluster below), so collapsing never teleports
+              the control the user just clicked. The margin keeps it from
+              crowding the dots. */}
           <TrafficLights />
-          {!IN_ELECTRON && (
-            <div style={NO_DRAG}>
-              <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
-                <PanelLeft size={16} />
-              </KIT.IconButton>
-            </div>
-          )}
+          <div style={{ ...NO_DRAG, marginLeft: 6 }}>
+            <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
+              <PanelLeft size={16} />
+            </KIT.IconButton>
+          </div>
           <span style={{
             minWidth: 0,
             overflow: 'hidden',
@@ -284,7 +285,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
     return (
       <AppDepsProvider value={deps}>
         <div
-          className={s.sidebar || IN_ELECTRON ? 'dbdy' : 'dbdy dbdy-noside'}
+          className={s.sidebar ? 'dbdy' : 'dbdy dbdy-noside'}
           style={{
             position: 'relative',
             display: 'flex',
@@ -299,23 +300,6 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             userSelect: 'none',
           }}
         >
-          {/* The Electron traffic lights get one frame-wide band above ALL
-              columns, so every column's status bar starts at the same y —
-              a per-column inset would stagger the header rows. The band is
-              a window drag surface; a browser has no native lights and no
-              band. The sidebar toggle rides the band right after the lights
-              in BOTH states (their row, their centerline — main.js positions
-              the lights on the band's center), so collapsing never moves the
-              control the user just clicked. */}
-          {IN_ELECTRON && (
-            <div style={{ flex: '0 0 34px', display: 'flex', alignItems: 'center', WebkitAppRegion: 'drag' } as CSSProperties}>
-              <div style={{ marginLeft: 76 }}>
-                <KIT.IconButton size={26} title={s.sidebar ? '收起侧边栏' : '展开侧边栏'} onClick={deps.layout.toggleSidebar}>
-                  <PanelLeft size={15} />
-                </KIT.IconButton>
-              </div>
-            </div>
-          )}
           <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, display: 'flex' }}>
           {s.sidebar && (
             <>
@@ -345,18 +329,22 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               aria-hidden
               style={{ position: 'absolute', top: 0, left: 0, right: 0, height: METRICS.topbar, zIndex: -1, pointerEvents: 'none', WebkitAppRegion: 'drag' } as CSSProperties}
             />
-            {/* Collapsing the sidebar unmounts its column — with the toggle
-                AND the simulated traffic lights inside it. Under Electron the
-                way back rides the lights band (above); in a browser both
-                regroup here — lights first, toggle beside them, exactly the
-                lockup the sidebar header showed — and the dbdy-noside class
-                indents the official header title clear of them (tokens.ts). */}
-            {!s.sidebar && !IN_ELECTRON && (
-              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Collapsing the sidebar unmounts its column — with the lights
+                (or their Electron reservation) and the toggle inside it. Both
+                regroup here at the main column's top-left, the SAME lockup at
+                the SAME 52px centerline the sidebar header drew, so the
+                control never moves vertically; the dbdy-noside class indents
+                the official header title clear of them (tokens.ts). */}
+            {!s.sidebar && (
+              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center' }}>
                 <TrafficLights />
-                <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
-                  <PanelLeft size={16} />
-                </KIT.IconButton>
+                {/* 14 = the TopBar gap (8) + toggle margin (6) the expanded
+                    sidebar header uses, so the button lands on the same x. */}
+                <div style={{ marginLeft: 14 }}>
+                  <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
+                    <PanelLeft size={16} />
+                  </KIT.IconButton>
+                </div>
               </div>
             )}
             {renderSlot('conversation', {})}

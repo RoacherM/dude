@@ -18,13 +18,14 @@ export const IN_ELECTRON = typeof navigator !== 'undefined' && navigator.userAge
 
 /**
  * macOS traffic lights: simulated circles in a browser so the layout reads
- * right without the native controls. Inside Electron this renders nothing —
- * the native lights sit in the frame-wide band above the columns (their own
- * row, so they never crowd the brand line).
- * @returns the lights row, or null under Electron.
+ * right without the native controls. Inside Electron the native lights sit
+ * IN the 52px header row (main.js centers them there), so this renders a
+ * same-width spacer instead — whatever follows lands at the same x in both
+ * shells, and the native dots never collide with the header content.
+ * @returns the lights row, or the reservation spacer under Electron.
  */
 export function TrafficLights(): ReactNode {
-  if (IN_ELECTRON) return null
+  if (IN_ELECTRON) return <div style={{ width: 54, flex: '0 0 auto' }} />
   return (
     <div style={{ display: 'flex', gap: 8, flex: '0 0 auto' }}>
       <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />

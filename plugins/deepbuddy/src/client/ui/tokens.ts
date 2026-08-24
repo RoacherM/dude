@@ -211,11 +211,11 @@ button, a, input, textarea, select,
 }
 .dbdy header[class*="_header"] > div[class*="_titleRow"] + [class*="_tabs"] { margin-top: 10px; }
 
-/* Browser shell with the sidebar collapsed: the simulated lights + expand
-   toggle float at the main column's top-left (ThreeColumnFrame), so the
-   header title steps right of the lockup (12 + 52 lights + 10 + 28 toggle).
-   Electron parks the toggle in the lights band instead — no indent. */
-.dbdy-noside header[class*="_header"] > div[class*="_titleRow"] { padding-left: 112px; }
+/* Sidebar collapsed (both shells): the lights (native reservation under
+   Electron, simulated dots in a browser) + expand toggle float at the main
+   column's top-left on the 52px header line (ThreeColumnFrame), so the
+   header title steps right of the lockup (12 + ~54 lights + 14 + 28 toggle). */
+.dbdy-noside header[class*="_header"] > div[class*="_titleRow"] { padding-left: 122px; }
 
 /* One character per span, popping in sequence and waving out; fill-mode
    backwards keeps a char invisible through its stagger delay. */
