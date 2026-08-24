@@ -63,27 +63,40 @@ export function TopBar({ pad = 14, children, style }: { pad?: number; children: 
 /** Controls inside a top bar must opt out of the window drag region. */
 export const NO_DRAG = { WebkitAppRegion: 'no-drag' } as CSSProperties
 
-/** The 1px seam between two columns, doubling as a drag handle. */
+/** An 8px grab target whose negative margins preserve the 1px column seam. */
 export function Handle({ onDown, onReset, title }: {
-  onDown: (e: React.MouseEvent) => void
+  onDown: (e: React.PointerEvent<HTMLDivElement>) => void
   onReset: () => void
   title: string
 }): ReactNode {
   return (
     <div
-      onMouseDown={onDown}
+      onPointerDown={onDown}
       onDoubleClick={onReset}
       title={title}
       style={{
-        flex: '0 0 1px',
-        width: 1,
+        position: 'relative',
+        flex: '0 0 8px',
+        width: 8,
+        margin: '0 -3.5px',
         cursor: 'col-resize',
-        background: 'var(--db-line)',
-        // The seam stays 1px; the grab area is the padding drawn around it.
-        boxShadow: '0 0 0 3px transparent',
+        background: 'transparent',
+        touchAction: 'none',
         zIndex: 5,
       }}
-    />
+    >
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: '0 auto 0 50%',
+          width: 1,
+          transform: 'translateX(-0.5px)',
+          background: 'var(--db-line)',
+          pointerEvents: 'none',
+        }}
+      />
+    </div>
   )
 }
 

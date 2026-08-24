@@ -11,7 +11,7 @@
  *
  * Widths are the one thing deliberately kept OUT of the state object. A drag
  * writes the column's inline width directly and re-reads it from the DOM,
- * because routing sixty mousemove events per second through a store that every
+ * because routing sixty pointermove events per second through a store that every
  * column subscribes to would re-render every panel in the window to move one
  * divider. The state object carries booleans and ids; the geometry lives where
  * the browser already keeps it.
@@ -33,6 +33,14 @@ export interface TabRef {
 export interface PaneTabs {
   items: readonly TabRef[]
   active: string | null
+}
+
+/** The pointer facts a resize handle passes into the layout owner. */
+interface DragStartEvent {
+  readonly clientX: number
+  readonly pointerId: number
+  readonly currentTarget: HTMLElement
+  preventDefault(): void
 }
 
 /** The read-only layout facts every column renders from. */
@@ -218,14 +226,17 @@ export class LayoutStore {
     const embeds = [...el.querySelectorAll<HTMLElement>('webview, iframe')]
     if (embeds.length === 0) return () => {}
     const overflow = el.style.overflow
-    const frozen = embeds.map((embed) => ({
-      embed,
-      width: embed.style.width,
-      minWidth: embed.style.minWidth,
-      maxWidth: embed.style.maxWidth,
-      pointerEvents: embed.style.pointerEvents,
-      measuredWidth: embed.getBoundingClientRect().width,
-    }))
+    const frozen = embeds
+      .map((embed) => ({
+        embed,
+        width: embed.style.width,
+        minWidth: embed.style.minWidth,
+        maxWidth: embed.style.maxWidth,
+        pointerEvents: embed.style.pointerEvents,
+        measuredWidth: embed.getBoundingClientRect().width,
+      }))
+      .filter(item => Number.isFinite(item.measuredWidth) && item.measuredWidth > 0)
+    if (frozen.length === 0) return () => {}
     el.style.overflow = 'hidden'
     for (const item of frozen) {
       const width = `${item.measuredWidth}px`
@@ -234,7 +245,10 @@ export class LayoutStore {
       item.embed.style.maxWidth = width
       item.embed.style.pointerEvents = 'none'
     }
+    let thawed = false
     return () => {
+      if (thawed) return
+      thawed = true
       el.style.overflow = overflow
       for (const item of frozen) {
         item.embed.style.width = item.width
@@ -366,63 +380,72 @@ export class LayoutStore {
 
   // ── drag handles ──────────────────────────────────────────────────────────
 
-  private trackDrag(move: (e: MouseEvent) => void, done?: () => void): void {
-    // A Browser webview/iframe is a separate event surface. When the right
-    // divider moves into it, host-window mousemove events otherwise become
-    // intermittent; the transparent shield keeps the whole gesture in the
-    // shell regardless of which view is underneath the pointer.
-    const shield = document.createElement('div')
-    shield.dataset['deepbuddyResizeShield'] = ''
-    Object.assign(shield.style, {
-      position: 'fixed',
-      inset: '0',
-      zIndex: '2147483647',
-      cursor: 'col-resize',
-      background: 'transparent',
-      WebkitAppRegion: 'no-drag',
-    })
-    document.body.append(shield)
-
+  private trackDrag(handle: HTMLElement, pointerId: number, move: (e: PointerEvent) => void, done?: () => void): void {
     // Trackpads can emit faster than the display refreshes. Keep only the
     // latest pointer position and perform at most one layout write per frame.
-    let queued: MouseEvent | null = null
+    let queued: PointerEvent | null = null
     let frame: number | null = null
+    let finished = false
     const flush = (): void => {
       frame = null
       const next = queued
       queued = null
       if (next !== null) move(next)
     }
-    const onMove = (e: MouseEvent): void => {
+    const onMove = (e: PointerEvent): void => {
+      if (finished || e.pointerId !== pointerId) return
       queued = e
       if (frame === null) frame = window.requestAnimationFrame(flush)
     }
-    const up = (): void => {
+    const finish = (): void => {
+      if (finished) return
+      finished = true
       if (frame !== null) {
         window.cancelAnimationFrame(frame)
         frame = null
       }
       flush()
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', up)
-      window.removeEventListener('blur', up)
-      shield.remove()
+      handle.removeEventListener('pointermove', onMove)
+      handle.removeEventListener('pointerup', onUp)
+      handle.removeEventListener('pointercancel', onCancel)
+      handle.removeEventListener('lostpointercapture', onLostPointerCapture)
+      window.removeEventListener('blur', finish)
       document.body.style.cursor = ''
       done?.()
     }
+    const onUp = (e: PointerEvent): void => {
+      if (e.pointerId !== pointerId) return
+      queued = e
+      finish()
+    }
+    const onCancel = (e: PointerEvent): void => {
+      if (e.pointerId === pointerId) finish()
+    }
+    const onLostPointerCapture = (e: PointerEvent): void => {
+      if (e.pointerId === pointerId) finish()
+    }
     document.body.style.cursor = 'col-resize'
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', up)
-    window.addEventListener('blur', up)
+    handle.addEventListener('pointermove', onMove)
+    handle.addEventListener('pointerup', onUp)
+    handle.addEventListener('pointercancel', onCancel)
+    handle.addEventListener('lostpointercapture', onLostPointerCapture)
+    window.addEventListener('blur', finish)
+    try {
+      handle.setPointerCapture(pointerId)
+    }
+    catch (error) {
+      finish()
+      throw error
+    }
   }
 
-  startSideDrag = (e: { clientX: number; preventDefault(): void }): void => {
+  startSideDrag = (e: DragStartEvent): void => {
     e.preventDefault()
     const el = this.sideRef.current
     if (el === null) return
     const startX = e.clientX
     const startW = el.getBoundingClientRect().width
-    this.trackDrag((ev) => {
+    this.trackDrag(e.currentTarget, e.pointerId, (ev) => {
       el.style.width = `${clampSidebar(startW + (ev.clientX - startX))}px`
     }, () => { this.clampDockWidth() })
   }
@@ -432,14 +455,14 @@ export class LayoutStore {
     if (el !== null) el.style.width = `${SIDEBAR_DEFAULT}px`
   }
 
-  startDockDrag = (e: { clientX: number; preventDefault(): void }): void => {
+  startDockDrag = (e: DragStartEvent): void => {
     e.preventDefault()
     const el = this.dockRef.current
     if (el === null) return
     const startX = e.clientX
     const startW = el.getBoundingClientRect().width
     const thawEmbeds = this.freezeDockEmbeds(el)
-    this.trackDrag((ev) => {
+    this.trackDrag(e.currentTarget, e.pointerId, (ev) => {
       this.writeDockWidth(el, clampDock(startW + (startX - ev.clientX), window.innerWidth, this.sideWidth()))
     }, thawEmbeds)
   }

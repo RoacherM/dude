@@ -241,94 +241,163 @@ test('layout tab updates suppress no-ops and clear a pane in one notification', 
   off()
 })
 
-test('dock drag is shielded from webviews and coalesced to one write per frame', async () => {
+test('dock drag captures its pointer, coalesces writes, and terminates every gesture path', async () => {
   const previousWindow = globalThis.window
   const previousDocument = globalThis.document
-  const listeners = new Map()
+  const windowListeners = new Map()
   let nextFrame = null
-  let shield = null
-  let styleWrites = 0
-  const dockStyle = new Proxy({ width: '600px', flex: '0 0 600px', overflow: '' }, {
-    set(target, key, value) {
-      if (key === 'width' || key === 'flex') styleWrites += 1
-      target[key] = value
-      return true
-    },
-  })
 
   globalThis.window = {
     innerWidth: 1440,
-    addEventListener(type, listener) { listeners.set(type, listener) },
-    removeEventListener(type) { listeners.delete(type) },
-    requestAnimationFrame(callback) { nextFrame = callback; return 1 },
+    addEventListener(type, listener) { windowListeners.set(type, listener) },
+    removeEventListener(type, listener) {
+      if (windowListeners.get(type) === listener) windowListeners.delete(type)
+    },
+    requestAnimationFrame(callback) {
+      nextFrame = () => { nextFrame = null; callback() }
+      return 1
+    },
     cancelAnimationFrame() { nextFrame = null },
   }
   globalThis.document = {
-    body: {
-      style: { cursor: '' },
-      append(node) { shield = node },
-    },
-    createElement() {
-      return {
-        dataset: {},
-        style: {},
-        remove() { shield = null },
-      }
-    },
+    body: { style: { cursor: '' } },
   }
 
   try {
     const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
-    const layout = new LayoutStore()
-    layout.sideRef.current = { style: { width: '268px' } }
-    const webviewStyle = { width: '100%', minWidth: '', maxWidth: '', pointerEvents: '' }
-    const webview = {
-      style: webviewStyle,
-      getBoundingClientRect() { return { width: 584 } },
+    const beginGesture = (pointerId = 7) => {
+      let capturedPointer = null
+      let styleWrites = 0
+      const handleListeners = new Map()
+      const handle = {
+        addEventListener(type, listener) { handleListeners.set(type, listener) },
+        removeEventListener(type, listener) {
+          if (handleListeners.get(type) === listener) handleListeners.delete(type)
+        },
+        setPointerCapture(id) { capturedPointer = id },
+      }
+      const dockStyle = new Proxy({ width: '600px', flex: '0 0 600px', overflow: '' }, {
+        set(target, key, value) {
+          if (key === 'width' || key === 'flex') styleWrites += 1
+          target[key] = value
+          return true
+        },
+      })
+      const visibleStyle = { width: '100%', minWidth: '', maxWidth: '', pointerEvents: '' }
+      const hiddenStyle = { width: '0px', minWidth: '', maxWidth: '', pointerEvents: 'auto' }
+      const layout = new LayoutStore()
+      layout.sideRef.current = { style: { width: '268px' } }
+      layout.dockRef.current = {
+        style: dockStyle,
+        getBoundingClientRect() { return { width: 600 } },
+        querySelectorAll() {
+          return [
+            { style: visibleStyle, getBoundingClientRect() { return { width: 584 } } },
+            { style: hiddenStyle, getBoundingClientRect() { return { width: 0 } } },
+          ]
+        },
+      }
+      let prevented = false
+      layout.startDockDrag({
+        clientX: 800,
+        pointerId,
+        currentTarget: handle,
+        preventDefault() { prevented = true },
+      })
+      return {
+        capturedPointer,
+        dockStyle,
+        handleListeners,
+        hiddenStyle,
+        pointerId,
+        prevented,
+        styleWrites: () => styleWrites,
+        visibleStyle,
+      }
     }
-    layout.dockRef.current = {
-      style: dockStyle,
-      getBoundingClientRect() { return { width: 600 } },
-      querySelectorAll() { return [webview] },
-    }
-    let prevented = false
-    layout.startDockDrag({ clientX: 800, preventDefault() { prevented = true } })
 
-    assert.equal(prevented, true)
-    assert.equal(shield.dataset.deepbuddyResizeShield, '')
+    const drag = beginGesture()
+    assert.equal(drag.prevented, true)
+    assert.equal(drag.capturedPointer, drag.pointerId)
     assert.equal(document.body.style.cursor, 'col-resize')
-    assert.equal(dockStyle.overflow, 'hidden')
-    assert.deepEqual(webviewStyle, {
+    assert.equal(drag.dockStyle.overflow, 'hidden')
+    assert.deepEqual(drag.visibleStyle, {
       width: '584px', minWidth: '584px', maxWidth: '584px', pointerEvents: 'none',
     })
+    assert.deepEqual(drag.hiddenStyle, {
+      width: '0px', minWidth: '', maxWidth: '', pointerEvents: 'auto',
+    }, 'zero-width embeds are not frozen')
 
-    listeners.get('mousemove')({ clientX: 780 })
-    listeners.get('mousemove')({ clientX: 760 })
-    assert.equal(dockStyle.width, '600px', 'mousemove does not write ahead of the frame')
+    drag.handleListeners.get('pointermove')({ pointerId: 99, clientX: 700 })
+    drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 780 })
+    drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 760 })
+    assert.equal(drag.dockStyle.width, '600px', 'pointermove does not write ahead of the frame')
     nextFrame()
-    assert.equal(dockStyle.width, '640px', 'the frame applies only the latest pointer position')
-    assert.equal(styleWrites, 2)
+    assert.equal(drag.dockStyle.width, '640px', 'the frame applies only the latest matching pointer')
+    assert.equal(drag.styleWrites(), 2)
 
-    listeners.get('mousemove')({ clientX: 1200 })
+    drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1200 })
     nextFrame()
-    assert.equal(dockStyle.width, '432px', 'rightward shrink still respects the existing 30% floor')
-    assert.equal(styleWrites, 4)
-    listeners.get('mousemove')({ clientX: 1300 })
+    assert.equal(drag.dockStyle.width, '432px', 'rightward shrink still respects the existing 30% floor')
+    assert.equal(drag.styleWrites(), 4)
+    drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1300 })
     nextFrame()
-    assert.equal(styleWrites, 4, 'moves beyond the floor do not repeat identical style writes')
+    assert.equal(drag.styleWrites(), 4, 'moves beyond the floor do not repeat identical style writes')
 
-    listeners.get('mouseup')()
-    assert.equal(shield, null)
+    const staleCancel = drag.handleListeners.get('pointercancel')
+    const staleLostCapture = drag.handleListeners.get('lostpointercapture')
+    const staleBlur = windowListeners.get('blur')
+    drag.handleListeners.get('pointerup')({ pointerId: 7, clientX: 740 })
+    assert.equal(drag.dockStyle.width, '660px', 'pointerup flushes the final pointer position')
     assert.equal(document.body.style.cursor, '')
-    assert.equal(dockStyle.overflow, '')
-    assert.deepEqual(webviewStyle, {
+    assert.equal(drag.dockStyle.overflow, '')
+    assert.deepEqual(drag.visibleStyle, {
       width: '100%', minWidth: '', maxWidth: '', pointerEvents: '',
     })
+    assert.deepEqual([...drag.handleListeners.keys()], [])
+    assert.equal(windowListeners.has('blur'), false)
+
+    drag.visibleStyle.width = 'after-finish'
+    staleCancel({ pointerId: 7 })
+    staleLostCapture({ pointerId: 7 })
+    staleBlur()
+    assert.equal(drag.visibleStyle.width, 'after-finish', 'finish and thaw remain idempotent')
+
+    for (const terminalEvent of ['pointercancel', 'lostpointercapture', 'blur']) {
+      const ended = beginGesture(11)
+      ended.handleListeners.get('pointermove')({ pointerId: 11, clientX: 780 })
+      if (terminalEvent === 'blur') windowListeners.get('blur')()
+      else ended.handleListeners.get(terminalEvent)({ pointerId: 11 })
+      assert.equal(ended.dockStyle.width, '620px', `${terminalEvent} flushes the queued move`)
+      assert.equal(ended.dockStyle.overflow, '')
+      assert.equal(document.body.style.cursor, '')
+      assert.deepEqual([...ended.handleListeners.keys()], [])
+    }
   }
   finally {
     globalThis.window = previousWindow
     globalThis.document = previousDocument
   }
+})
+
+test('drag structure uses Pointer Events without a shield and keeps an 8px hit target', async () => {
+  const layout = await readFile(join(root, 'src/client/shell/layout-store.ts'), 'utf8')
+  const column = await readFile(join(root, 'src/client/shell/ColumnFrame.tsx'), 'utf8')
+
+  assert.match(layout, /setPointerCapture\(pointerId\)/)
+  assert.match(layout, /addEventListener\('pointercancel', onCancel\)/)
+  assert.match(layout, /addEventListener\('lostpointercapture', onLostPointerCapture\)/)
+  assert.match(layout, /if \(finished\) return/)
+  assert.match(layout, /item\.measuredWidth > 0/)
+  assert.doesNotMatch(layout, /deepbuddyResizeShield|ensureResizeShield|addEventListener\('mousemove'|addEventListener\('mouseup'/)
+
+  assert.match(column, /onPointerDown=\{onDown\}/)
+  assert.match(column, /flex: '0 0 8px'/)
+  assert.match(column, /width: 8/)
+  assert.match(column, /margin: '0 -3\.5px'/)
+  assert.match(column, /touchAction: 'none'/)
+  assert.match(column, /width: 1/)
+  assert.doesNotMatch(column, /boxShadow/)
 })
 
 test('files defer the root request until the visible view asks for it', async () => {
