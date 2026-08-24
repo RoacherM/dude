@@ -1,0 +1,1450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepBuddy UI Prototype</title>
+  <style>
+    :root {
+      /* 与 tokens.ts / tokens-computed.json 对应 */
+      --dsw-hovercard-bg: #2C2C2E;
+      --dsw-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-static-amber-100: #fef5e7;
+      --dsw-static-amber-400: #f7ad31;
+      --dsw-static-amber-500: #f59e0b;
+      --dsw-static-amber-600: #dd8629;
+      --dsw-static-amber-900: #27241f;
+      --dsw-static-blue-100: #dbeafe;
+      --dsw-static-blue-300: #93c5fd;
+      --dsw-static-blue-400: #60a5fa;
+      --dsw-static-blue-450: #4d93f8;
+      --dsw-static-blue-500: #3b82f6;
+      --dsw-static-blue-50: #eff6ff;
+      --dsw-static-blue-50p: #eaf3ff;
+      --dsw-static-blue-600: #2563eb;
+      --dsw-static-blue-75: #e5f0ff;
+      --dsw-static-blue-800: #1e40af;
+      --dsw-static-blue-900: #0e3074;
+      --dsw-static-blue-950: #172554;
+      --dsw-static-deepseek-100: #e4edfd;
+      --dsw-static-deepseek-200: #d3e2ff;
+      --dsw-static-deepseek-300: #b7c8fe;
+      --dsw-static-deepseek-400: #679efe;
+      --dsw-static-deepseek-450: #5686fe;
+      --dsw-static-deepseek-500: #4176e6;
+      --dsw-static-deepseek-50: #edf3fe;
+      --dsw-static-deepseek-600: #4868b2;
+      --dsw-static-deepseek-700-delete: #2f4c8f;
+      --dsw-static-deepseek-800: #34415b;
+      --dsw-static-deepseek-900: #283142;
+      --dsw-static-green-100: #e6faed;
+      --dsw-static-green-400: #4ed17e;
+      --dsw-static-green-500: #22c55e;
+      --dsw-static-green-900: #233c2c;
+      --dsw-static-neutral-00: #fff;
+      --dsw-static-neutral-1000: #000;
+      --dsw-static-neutral-100: #f5f5f5;
+      --dsw-static-neutral-150: #ededed;
+      --dsw-static-neutral-200: #e5e5e5;
+      --dsw-static-neutral-250: #dcdcdc;
+      --dsw-static-neutral-300: #d4d4d4;
+      --dsw-static-neutral-400: #a2a4a6;
+      --dsw-static-neutral-500: #7f8287;
+      --dsw-static-neutral-50: #fafafa;
+      --dsw-static-neutral-550: #65676b;
+      --dsw-static-neutral-600: #545557;
+      --dsw-static-neutral-700: #3c3c3d;
+      --dsw-static-neutral-800: #292929;
+      --dsw-static-neutral-850: #212123;
+      --dsw-static-neutral-900: #0f0f0f;
+      --dsw-static-neutral-bluish-00: #fff;
+      --dsw-static-neutral-bluish-1000: #0f1115;
+      --dsw-static-neutral-bluish-100: #ebeef2;
+      --dsw-static-neutral-bluish-150: #e9ecf2;
+      --dsw-static-neutral-bluish-200: #e1e5ee;
+      --dsw-static-neutral-bluish-300: #cfd3d6;
+      --dsw-static-neutral-bluish-400: #adb2b8;
+      --dsw-static-neutral-bluish-500: #979da6;
+      --dsw-static-neutral-bluish-50: #f9fafb;
+      --dsw-static-neutral-bluish-600: #81858c;
+      --dsw-static-neutral-bluish-60: #f9fafb;
+      --dsw-static-neutral-bluish-700: #61666b;
+      --dsw-static-neutral-bluish-750: #43454a;
+      --dsw-static-neutral-bluish-75: #f1f3f5;
+      --dsw-static-neutral-bluish-800: #353638;
+      --dsw-static-neutral-bluish-850: #2c2c2e;
+      --dsw-static-neutral-bluish-875: #232324;
+      --dsw-static-neutral-bluish-900: #1b1b1c;
+      --dsw-static-neutral-bluish-950: #151517;
+      --dsw-static-red-100: #fee2e2;
+      --dsw-static-red-400: #f25a5a;
+      --dsw-static-red-500: #ef4444;
+      --dsw-static-red-50: #fef2f2;
+      --dsw-static-red-600: #ec1313;
+      --dsw-static-red-900: #570c0c;
+      --dsw-alias-bg-base: #151517;
+      --dsw-alias-bg-layer-1: #232324;
+      --dsw-alias-bg-layer-2: #2c2c2e;
+      --dsw-alias-bg-layer-3: #353638;
+      --dsw-alias-bg-mask-1: #00000080;
+      --dsw-alias-bg-mask-2: #0003;
+      --dsw-alias-bg-mask-3: #0000007a;
+      --dsw-alias-bg-mask-photo: #000000e0;
+      --dsw-alias-bg-mask-drop: #272730b3;
+      --dsw-alias-bg-module-platform: #353638;
+      --dsw-alias-bg-multi-select: #212123;
+      --dsw-alias-bg-overlay: #61666b;
+      --dsw-alias-bg-skeleton: #ffffff14;
+      --dsw-alias-border-inverted2: #ffffff14;
+      --dsw-alias-border-inverted: #ffffff0f;
+      --dsw-alias-border-l1: #ffffff0f;
+      --dsw-alias-border-l2-darkmode-thin: #ffffff0f;
+      --dsw-alias-border-l2: #ffffff1f;
+      --dsw-alias-border-l3: #ffffff29;
+      --dsw-alias-border-l4: #fff3;
+      --dsw-alias-brand-primary-invert: #f9fafb;
+      --dsw-alias-brand-primary-new-colorprimary-new-color: #5686fe;
+      --dsw-alias-brand-primary: #f9fafb;
+      --dsw-alias-brand-text: #f9fafb;
+      --dsw-alias-button-contrast-fill: #f9fafb;
+      --dsw-alias-button-elevated-fill: #43454a;
+      --dsw-alias-button-floating-fill: #2c2c2e;
+      --dsw-alias-button-floating-hover: #353638;
+      --dsw-alias-button-ghost-active-border: #81858c;
+      --dsw-alias-button-ghost-active-fill: #43454a;
+      --dsw-alias-button-ghost-active-hover: #61666b;
+      --dsw-alias-button-info-fill: #679efe;
+      --dsw-alias-button-info-hover: #4176e6;
+      --dsw-alias-button-primary-dimmed: #43454a;
+      --dsw-alias-button-primary-fill: #f9fafb;
+      --dsw-alias-button-primary-hover: #ebeef2;
+      --dsw-alias-button-tool-bar-fill-invisible: #1f1f1f5c;
+      --dsw-alias-button-tool-bar-fill: #54555780;
+      --dsw-alias-button-tool-bar-hover: #54555799;
+      --dsw-alias-interactive-bg-active: #ffffff24;
+      --dsw-alias-interactive-bg-hover-accent: #ffffff3d;
+      --dsw-alias-interactive-bg-hover-danger: #f25a5a26;
+      --dsw-alias-interactive-bg-hover-solid: #353638;
+      --dsw-alias-interactive-bg-hover: #ffffff14;
+      --dsw-alias-label-caption: #81858c;
+      --dsw-alias-label-dimmed: #43454a;
+      --dsw-alias-label-primary-bluish: #f9fafb;
+      --dsw-alias-label-primary-dimmed: #ebeef2;
+      --dsw-alias-label-primary-foreground: #0f1115;
+      --dsw-alias-label-primary-inverted: #353638;
+      --dsw-alias-label-primary: #f9fafb;
+      --dsw-alias-label-secondary: #cfd3d6;
+      --dsw-alias-label-tertiary: #adb2b8;
+      --dsw-alias-markdown-citation: #353638;
+      --dsw-alias-markdown-code-block-banner: #2c2c2e;
+      --dsw-alias-markdown-code-block: #1b1b1c;
+      --dsw-alias-markdown-code-segment-selected: #353638;
+      --dsw-alias-markdown-code-segment-unselected: #1b1b1c;
+      --dsw-alias-markdown-inline-code: #2c2c2e;
+      --dsw-alias-markdown-placeholder: #2c2c2e;
+      --dsw-alias-markdown-tag: #2c2c2e;
+      --dsw-alias-scrollbar-bg-l1: #3c3c3d;
+      --dsw-alias-scrollbar-bg-l2: #545557;
+      --dsw-alias-scrollbar-hover-l1: #545557;
+      --dsw-alias-scrollbar-hover-l2: #65676b;
+      --dsw-alias-state-business-primary: #679efe;
+      --dsw-alias-state-business-tertiary: #34415b;
+      --dsw-alias-state-error-primary: #f25a5a;
+      --dsw-alias-state-error-secondary: #f25a5a;
+      --dsw-alias-state-success-primary: #22c55e;
+      --dsw-alias-state-success-secondary: #4ed17e;
+      --dsw-alias-state-success-tertiary: #233c2c;
+      --dsw-alias-state-warn-label: #dd8629;
+      --dsw-alias-state-warn-primary: #f59e0b;
+      --dsw-alias-state-warn-secondary: #f7ad31;
+      --dsw-alias-state-warn-tertiary: #27241f;
+      --dsw-alias-toast-bg: #43454a;
+      --dsw-alias-tooltip-bg: #43454a;
+      --dsw-specific-bubble-highlight: #43454a;
+      --dsw-specific-bubble: #2c2c2e;
+      --dsw-specific-input-major: #2c2c2e;
+      --dsw-specific-login-input: #1b1b1c;
+      --dsw-specific-menu: #353638;
+      --dsw-specific-selector: #353638;
+      --dsw-specific-sidebar-fill: #1b1b1c;
+      --dsw-specific-sidebar-nav-item-active-accent: #353638;
+      --dsw-specific-sidebar-nav-item-active: #43454a;
+      --dsw-specific-sidebar-nav-item-hover: #2c2c2e;
+      --dsw-specific-tip: #353638;
+      --dsw-linear-gradient-think: linear-gradient(180deg, #151517 20.19%, #15151700 100%);
+      --dsw-linear-think-select: linear-gradient(180deg, #232325 20.19%, #23232500 100%);
+      --dsw-shadow-lv1: 0 2px 4px 0 #0000000d;
+      --dsw-shadow-lv1-blur: 0 4px 12px 0 #00000005;
+      --dsw-shadow-lv2: 0 4px 12px 0 #00000005, 0 2px 8px 0 #0000000a;
+      --dsw-shadow-lv3: 0 0 1px 0 #0003, 0 0 4px 0 #00000005, 0 12px 32px 0 #00000014;
+      --dsw-mask-blur: blur(2px);
+      --dsw-font-markdown-h1: 700 24px/34px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h1-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h1-font-weight: 700;
+      --dsw-font-markdown-h1-line-height: 34px;
+      --dsw-font-markdown-h1-font-size: 24px;
+      --dsw-font-markdown-h1-font-style: normal;
+      --dsw-font-markdown-h2: 700 22px/32px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h2-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h2-font-weight: 700;
+      --dsw-font-markdown-h2-line-height: 32px;
+      --dsw-font-markdown-h2-font-size: 22px;
+      --dsw-font-markdown-h2-font-style: normal;
+      --dsw-font-markdown-h3: 700 20px/30px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h3-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h3-font-weight: 700;
+      --dsw-font-markdown-h3-line-height: 30px;
+      --dsw-font-markdown-h3-font-size: 20px;
+      --dsw-font-markdown-h3-font-style: normal;
+      --dsw-font-markdown-h4: 600 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h4-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h4-font-weight: 600;
+      --dsw-font-markdown-h4-line-height: 28px;
+      --dsw-font-markdown-h4-font-size: 16px;
+      --dsw-font-markdown-h4-font-style: normal;
+      --dsw-font-markdown-base: 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-font-weight: 400;
+      --dsw-font-markdown-base-line-height: 28px;
+      --dsw-font-markdown-base-font-size: 16px;
+      --dsw-font-markdown-base-font-style: normal;
+      --dsw-font-markdown-base-strong: 600 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-strong-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-strong-font-weight: 600;
+      --dsw-font-markdown-base-strong-line-height: 28px;
+      --dsw-font-markdown-base-strong-font-size: 16px;
+      --dsw-font-markdown-base-strong-font-style: normal;
+      --dsw-font-markdown-base-italic: italic 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-italic-font-weight: 400;
+      --dsw-font-markdown-base-italic-line-height: 28px;
+      --dsw-font-markdown-base-italic-font-size: 16px;
+      --dsw-font-markdown-base-italic-font-style: italic;
+      --dsw-font-markdown-base-strong-italic: italic 600 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-strong-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-strong-italic-font-weight: 600;
+      --dsw-font-markdown-base-strong-italic-line-height: 28px;
+      --dsw-font-markdown-base-strong-italic-font-size: 16px;
+      --dsw-font-markdown-base-strong-italic-font-style: italic;
+      --dsw-font-markdown-table: 15px/25px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-table-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-table-font-weight: 400;
+      --dsw-font-markdown-table-line-height: 25px;
+      --dsw-font-markdown-table-font-size: 15px;
+      --dsw-font-markdown-table-font-style: normal;
+      --dsw-font-markdown-table-head: 500 15px/25px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-table-head-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-table-head-font-weight: 500;
+      --dsw-font-markdown-table-head-line-height: 25px;
+      --dsw-font-markdown-table-head-font-size: 15px;
+      --dsw-font-markdown-table-head-font-style: normal;
+      --dsw-font-markdown-small: 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-font-weight: 400;
+      --dsw-font-markdown-small-line-height: 24px;
+      --dsw-font-markdown-small-font-size: 14px;
+      --dsw-font-markdown-small-font-style: normal;
+      --dsw-font-markdown-small-strong: 600 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-strong-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-strong-font-weight: 600;
+      --dsw-font-markdown-small-strong-line-height: 24px;
+      --dsw-font-markdown-small-strong-font-size: 14px;
+      --dsw-font-markdown-small-strong-font-style: normal;
+      --dsw-font-markdown-small-italic: italic 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-italic-font-weight: 400;
+      --dsw-font-markdown-small-italic-line-height: 24px;
+      --dsw-font-markdown-small-italic-font-size: 14px;
+      --dsw-font-markdown-small-italic-font-style: italic;
+      --dsw-font-markdown-small-strong-italic: italic 600 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-strong-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-strong-italic-font-weight: 600;
+      --dsw-font-markdown-small-strong-italic-line-height: 24px;
+      --dsw-font-markdown-small-strong-italic-font-size: 14px;
+      --dsw-font-markdown-small-strong-italic-font-style: italic;
+      --dsw-font-markdown-code: 14px/22px "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-font-family: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-font-weight: 400;
+      --dsw-font-markdown-code-line-height: 22px;
+      --dsw-font-markdown-code-font-size: 14px;
+      --dsw-font-markdown-code-font-style: normal;
+      --dsw-font-markdown-code-block: 13px/22px "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-block-font-family: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-block-font-weight: 400;
+      --dsw-font-markdown-code-block-line-height: 22px;
+      --dsw-font-markdown-code-block-font-size: 13px;
+      --dsw-font-markdown-code-block-font-style: normal;
+      --dsw-font-markdown-code-block-small: 12px/18px "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-block-small-font-family: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-block-small-font-weight: 400;
+      --dsw-font-markdown-code-block-small-line-height: 18px;
+      --dsw-font-markdown-code-block-small-font-size: 12px;
+      --dsw-font-markdown-code-block-small-font-style: normal;
+      --dsw-font-xl-24: 600 24px/32px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xl-24-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xl-24-font-weight: 600;
+      --dsw-font-xl-24-line-height: 32px;
+      --dsw-font-xl-24-font-size: 24px;
+      --dsw-font-xl-24-font-style: normal;
+      --dsw-font-l-20: 500 20px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-l-20-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-l-20-font-weight: 500;
+      --dsw-font-l-20-line-height: 28px;
+      --dsw-font-l-20-font-size: 20px;
+      --dsw-font-l-20-font-style: normal;
+      --dsw-font-m-18: 500 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-m-18-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-m-18-font-weight: 500;
+      --dsw-font-m-18-line-height: 28px;
+      --dsw-font-m-18-font-size: 16px;
+      --dsw-font-m-18-font-style: normal;
+      --dsw-font-base-16: 16px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-base-16-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-base-16-font-weight: 400;
+      --dsw-font-base-16-line-height: 24px;
+      --dsw-font-base-16-font-size: 16px;
+      --dsw-font-base-16-font-style: normal;
+      --dsw-font-base-strong-16: 500 16px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-base-strong-16-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-base-strong-16-font-weight: 500;
+      --dsw-font-base-strong-16-line-height: 24px;
+      --dsw-font-base-strong-16-font-size: 16px;
+      --dsw-font-base-strong-16-font-style: normal;
+      --dsw-font-s-14: 14px/22px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-s-14-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-s-14-font-weight: 400;
+      --dsw-font-s-14-line-height: 22px;
+      --dsw-font-s-14-font-size: 14px;
+      --dsw-font-s-14-font-style: normal;
+      --dsw-font-s-strong-14: 500 14px/22px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-s-strong-14-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-s-strong-14-font-weight: 500;
+      --dsw-font-s-strong-14-line-height: 22px;
+      --dsw-font-s-strong-14-font-size: 14px;
+      --dsw-font-s-strong-14-font-style: normal;
+      --dsw-font-xs-13: 13px/20px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xs-13-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xs-13-font-weight: 400;
+      --dsw-font-xs-13-line-height: 20px;
+      --dsw-font-xs-13-font-size: 13px;
+      --dsw-font-xs-13-font-style: normal;
+      --dsw-font-xs-strong-13: 500 13px/20px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xs-strong-13-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xs-strong-13-font-weight: 500;
+      --dsw-font-xs-strong-13-line-height: 20px;
+      --dsw-font-xs-strong-13-font-size: 13px;
+      --dsw-font-xs-strong-13-font-style: normal;
+      --dsw-font-xxs-12: 12px/18px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxs-12-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxs-12-font-weight: 400;
+      --dsw-font-xxs-12-line-height: 18px;
+      --dsw-font-xxs-12-font-size: 12px;
+      --dsw-font-xxs-12-font-style: normal;
+      --dsw-font-xxs-strong-12: 500 12px/18px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxs-strong-12-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxs-strong-12-font-weight: 500;
+      --dsw-font-xxs-strong-12-line-height: 18px;
+      --dsw-font-xxs-strong-12-font-size: 12px;
+      --dsw-font-xxs-strong-12-font-style: normal;
+      --dsw-font-xxxs-11: 11px/14px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxxs-11-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxxs-11-font-weight: 400;
+      --dsw-font-xxxs-11-line-height: 14px;
+      --dsw-font-xxxs-11-font-size: 11px;
+      --dsw-font-xxxs-11-font-style: normal;
+      --dsw-font-xxxs-strong-11: 500 11px/14px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxxs-strong-11-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxxs-strong-11-font-weight: 500;
+      --dsw-font-xxxs-strong-11-line-height: 14px;
+      --dsw-font-xxxs-strong-11-font-size: 11px;
+      --dsw-font-xxxs-strong-11-font-style: normal;
+      --db-window: #151517;
+      --db-rail: #1b1b1c;
+      --db-popover: #353638;
+      --db-dialog: #353638;
+      --db-fill-1: color-mix(in srgb, #ffffff14 40%, transparent);
+      --db-fill-2: #ffffff14;
+      --db-fill-3: color-mix(in srgb, #ffffff14 140%, transparent);
+      --db-fill-4: #ffffff24;
+      --db-fill-5: color-mix(in srgb, #ffffff24 130%, transparent);
+      --db-fill-6: color-mix(in srgb, #ffffff24 160%, transparent);
+      --db-text: #f9fafb;
+      --db-text-2: #cfd3d6;
+      --db-text-3: #adb2b8;
+      --db-text-4: #81858c;
+      --db-text-5: color-mix(in srgb, #81858c 78%, transparent);
+      --db-line: #ffffff0f;
+      --db-line-card: #ffffff0f;
+      --db-line-container: #ffffff1f;
+      --db-line-input: #ffffff1f;
+      --db-line-input-2: #ffffff29;
+      --db-line-emphasis: #ffffff29;
+      --db-line-focus: #fff3;
+      --db-line-hover: #ffffff24;
+      --db-line-dashed: #ffffff1f;
+      --db-run: #22c55e;
+      --db-run-soft: color-mix(in srgb, #22c55e 80%, #f9fafb);
+      --db-run-wash: color-mix(in srgb, #22c55e 14%, transparent);
+      --db-await: #d97757;
+      --db-await-wash: color-mix(in srgb, #d97757 13%, transparent);
+      --db-primary: #679efe;
+      --db-offline: #81858c;
+      --db-font: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --db-mono: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --db-r-badge: 8px;
+      --db-r-chip: 8px;
+      --db-r-swatch: 10px;
+      --db-r-row: 8px;
+      --db-r-input: 14px;
+      --db-r-card: 22px;
+      --db-r-surface: 22px;
+      --db-r-editor: 22px;
+      --db-in: .1s cubic-bezier(.4, 0, .2, 1);
+      --db-size: 0.2s cubic-bezier(.4, 0, .2, 1);
+      --db-tint: .1s cubic-bezier(.4, 0, .2, 1);
+      --db-shadow-popover: 0 22px 54px rgba(0, 0, 0, .68);
+      --db-shadow-menu: 0 24px 60px rgba(0, 0, 0, .70);
+      --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .74);
+      --proto-sidebar-width: 268px;
+      --proto-dock-width: 30vw;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: var(--db-window);
+      color: var(--db-text);
+      font-family: var(--db-font);
+      font-size: 13.5px;
+      user-select: none;
+    }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--db-primary);
+      outline-offset: 2px;
+    }
+    ::selection { background: color-mix(in srgb, var(--db-primary) 35%, transparent); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--dsw-alias-scrollbar-bg-l2);
+      border: 2px solid transparent;
+      background-clip: content-box;
+      border-radius: 99px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background-color: var(--dsw-alias-scrollbar-hover-l2); }
+    ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+
+    .app { position: relative; display: flex; width: 100%; height: 100%; overflow: hidden; background: var(--db-window); }
+    .column { min-width: 0; display: flex; flex-direction: column; }
+    .sidebar {
+      width: var(--proto-sidebar-width);
+      flex: 0 0 var(--proto-sidebar-width);
+      background: var(--db-rail);
+      overflow: hidden;
+    }
+    .main { position: relative; flex: 1 1 0; background: var(--db-window); overflow: hidden; }
+    .dock {
+      width: var(--proto-dock-width);
+      flex: 0 0 var(--proto-dock-width);
+      background: var(--db-window);
+      overflow: hidden;
+    }
+    .app.sidebar-off .sidebar, .app.sidebar-off .side-handle { display: none; }
+    .app:not(.dock-open) .dock, .app:not(.dock-open) .dock-handle { display: none; }
+    .app.dock-max .dock {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      width: auto;
+      flex-basis: auto;
+    }
+    .app.dock-max .dock-handle { display: none; }
+
+    .topbar {
+      height: 52px;
+      flex: 0 0 52px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--db-line);
+    }
+    .traffic { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+    .traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .traffic .red { background: #ff5f57; }
+    .traffic .amber { background: #febc2e; }
+    .traffic .green { background: #28c840; }
+    .brand { font-size: 16px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+    .grow { flex: 1 1 auto; min-width: 0; }
+    .truncate { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .muted { color: var(--db-text-4); }
+    .dim { color: var(--db-text-5); }
+    .mono { font-family: var(--db-mono); }
+
+    .icon-button {
+      width: 28px;
+      height: 28px;
+      flex: 0 0 28px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--db-text-3);
+      cursor: pointer;
+    }
+    .icon-button:hover, .icon-button.active { color: var(--db-text); background: var(--db-fill-5); }
+    .icon-button:disabled { opacity: .35; cursor: default; background: transparent; }
+    .icon { width: 15px; height: 15px; display: block; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.small { width: 13px; height: 13px; }
+
+    .resize-handle {
+      position: relative;
+      width: 8px;
+      flex: 0 0 8px;
+      margin: 0 -3.5px;
+      z-index: 10;
+      cursor: col-resize;
+      touch-action: none;
+      background: transparent;
+    }
+    .resize-handle::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 50%;
+      width: 1px;
+      transform: translateX(-.5px);
+      background: var(--db-line);
+      pointer-events: none;
+    }
+
+    .tagline { padding: 3px 16px 12px; color: var(--db-text-3); font-size: 12px; line-height: 1.4; }
+    .new-task {
+      height: 38px;
+      margin: 0 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--dsw-alias-bg-raised, #43454a);
+      color: var(--db-text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .new-task:hover { background: var(--db-fill-6); }
+    .sidebar-tools { height: 38px; display: flex; align-items: center; padding: 0 12px 0 14px; gap: 2px; }
+    .sidebar-tools .label { color: var(--db-text-4); font-size: 13px; }
+    .workspace-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 14px; }
+    .workspace { margin-bottom: 4px; }
+    .row {
+      height: 31px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      padding: 0 8px;
+      border-radius: 10px;
+      color: var(--db-text-2);
+      cursor: pointer;
+    }
+    .row:hover { background: var(--db-fill-2); }
+    .row.current { background: var(--db-fill-4); color: var(--db-text); }
+    .row.dense { height: 26px; font-size: 12.5px; }
+    .row .time { margin-left: auto; color: var(--db-text-5); font-size: 11.5px; flex: 0 0 auto; }
+    .workspace-title { color: var(--db-text-2); font-size: 13px; }
+    .workspace-title .folder { color: var(--db-primary); }
+    .session-row { padding-left: 28px; }
+    .more { height: 25px; padding-left: 28px; color: var(--db-text-4); font-size: 11.5px; cursor: pointer; display: flex; align-items: center; }
+    .settings-row { height: 48px; flex: 0 0 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--db-text-2); cursor: pointer; }
+    .settings-row:hover { background: var(--db-fill-2); }
+
+    .collapsed-lockup {
+      display: none;
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 12;
+      align-items: center;
+      gap: 14px;
+    }
+    .app.sidebar-off .collapsed-lockup { display: flex; }
+
+    .main-chrome { flex: 0 0 auto; }
+    .hero-mode .main-chrome { display: none; }
+    .main-title { padding-left: 16px; font-size: 13px; }
+    .app.sidebar-off .main-title { padding-left: 110px; }
+    .mode-label { display: flex; align-items: center; gap: 5px; color: var(--db-text-3); font-size: 12px; }
+    .view-tabs { height: 38px; display: flex; align-items: flex-end; gap: 28px; padding: 0 28px; border-bottom: 1px solid var(--db-line); }
+    .view-tab {
+      height: 38px;
+      position: relative;
+      border: 0;
+      background: transparent;
+      color: var(--db-text-3);
+      padding: 0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .view-tab.active { color: var(--db-primary); }
+    .view-tab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--db-primary); }
+
+    .main-body { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; }
+    .hero { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 4vh; }
+    .hero-card { width: min(760px, calc(100% - 64px)); transform: translateY(-2vh); }
+    .hero-mark { display: flex; justify-content: center; align-items: center; gap: 50px; margin-bottom: 24px; font-size: 31px; font-weight: 600; }
+    .hero-mark .accent { color: var(--db-primary); }
+    .hero-chips { display: flex; gap: 24px; margin: 0 12px 14px; color: var(--db-text-2); font-size: 12px; }
+    .composer {
+      width: 100%;
+      min-height: 112px;
+      padding: 15px 12px 10px;
+      border: 1px solid var(--db-line-input);
+      border-radius: 22px;
+      background: var(--dsw-specific-input-major);
+      box-shadow: 0 16px 36px #0002;
+    }
+    .composer textarea {
+      display: block;
+      width: 100%;
+      height: 48px;
+      resize: none;
+      padding: 0 5px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--db-text);
+      line-height: 1.5;
+    }
+    .composer textarea::placeholder { color: var(--db-text-4); }
+    .composer-actions { height: 32px; display: flex; align-items: center; gap: 8px; }
+    .pill-button {
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--db-text-2);
+      cursor: pointer;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    .pill-button:hover { background: var(--db-fill-4); color: var(--db-text); }
+    .send {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: color-mix(in srgb, var(--db-primary) 55%, var(--db-window));
+      color: var(--db-text);
+      cursor: pointer;
+    }
+    .send:hover { filter: brightness(1.12); }
+
+    .conversation { height: 100%; display: flex; flex-direction: column; }
+    .conversation-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 20px 0 10px; }
+    .chat-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
+    .app:not(.dock-open) .chat-column { width: min(880px, calc(100% - 48px)); }
+    .message-block { padding: 0 0 18px; user-select: text; }
+    .user-line { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+    .user-bubble { max-width: 78%; padding: 11px 17px; border-radius: 22px; background: var(--dsw-specific-bubble); font-size: 15px; }
+    .copy-user { display: flex; justify-content: flex-end; margin: 0 8px 22px; }
+    .context-row, .think-row { display: flex; align-items: center; gap: 8px; min-height: 39px; color: var(--db-text-3); font-size: 13px; }
+    .think-row { margin-top: 2px; }
+    .assistant-copy { color: var(--db-text); font-size: 15px; line-height: 1.7; }
+    .assistant-copy p { margin: 0 0 16px; }
+    .inline-code { padding: 2px 7px; border-radius: 7px; background: var(--dsw-alias-markdown-inline-code); }
+    .message-actions { display: flex; gap: 8px; margin-top: 17px; }
+    .composer-wrap { flex: 0 0 auto; padding: 0 0 8px; }
+    .composer-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
+    .app:not(.dock-open) .composer-column { width: min(880px, calc(100% - 48px)); }
+    .stats { height: 22px; text-align: center; color: var(--db-text-4); font: 11px/22px var(--db-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trace { display: none; height: 100%; padding: 28px; overflow: auto; }
+    .trace.active { display: block; }
+    .trace-line { max-width: 760px; margin: 0 auto 12px; padding: 12px 14px; border-radius: 12px; background: var(--db-fill-1); color: var(--db-text-3); }
+
+    .dock-topbar { padding: 0 10px; }
+    .segments { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--db-fill-1); }
+    .segment {
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--db-text-3);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .segment.active { color: var(--db-text); background: var(--db-fill-4); }
+    .dock-view { flex: 1 1 0; min-height: 0; display: none; flex-direction: column; }
+    .dock-view.active { display: flex; }
+    .resource-tabs {
+      height: 38px;
+      flex: 0 0 38px;
+      display: flex;
+      align-items: stretch;
+      gap: 2px;
+      padding: 0 8px;
+      border-bottom: 1px solid var(--db-line);
+      overflow-x: auto;
+    }
+    .resource-tab {
+      min-width: 74px;
+      max-width: 180px;
+      flex: 0 1 180px;
+      height: 28px;
+      margin: 5px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 6px 0 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--db-text-3);
+      cursor: pointer;
+    }
+    .resource-tab.active { background: var(--db-fill-4); color: var(--db-text); }
+    .resource-tab .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 12.5px; }
+    .tab-close { width: 20px; height: 20px; flex: 0 0 20px; border: 0; border-radius: 6px; background: transparent; color: var(--db-text-4); cursor: pointer; }
+    .tab-close:hover { background: var(--db-fill-5); color: var(--db-text); }
+    .tab-add { width: 28px; height: 28px; margin: 5px 0; border: 0; border-radius: 50%; background: transparent; color: var(--db-text-3); cursor: pointer; flex: 0 0 28px; }
+    .tab-add:hover { background: var(--db-fill-5); color: var(--db-text); }
+
+    .files-body { flex: 1 1 0; min-height: 0; display: flex; }
+    .file-tree { flex: 1 1 auto; min-width: 0; padding: 8px 6px 16px; overflow: auto; }
+    .files-body.split .file-tree { width: 232px; flex: 0 0 232px; border-right: 1px solid var(--db-line); }
+    .file-root { padding: 0 8px 6px; font: 11px var(--db-mono); color: var(--db-text-5); }
+    .tree-children { display: none; }
+    .tree-folder.open + .tree-children { display: block; }
+    .tree-row { padding-left: calc(8px + var(--depth, 0) * 14px); }
+    .tree-row.file { padding-left: calc(25px + var(--depth, 0) * 14px); font-family: var(--db-mono); font-size: 12px; }
+    .file-preview { flex: 1 1 0; min-width: 0; padding: 16px; overflow: auto; user-select: text; }
+    .file-preview pre { margin: 0; padding: 14px; border-radius: 22px; background: var(--db-fill-1); color: var(--db-text-2); font: 12px/1.7 var(--db-mono); white-space: pre-wrap; word-break: break-word; }
+
+    .terminal-meta { height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--db-line); font: 11.5px var(--db-mono); color: var(--db-text-4); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--db-run); flex: 0 0 6px; }
+    .terminal-panes, .browser-panes { flex: 1 1 0; min-height: 0; position: relative; }
+    .terminal-pane, .browser-pane { position: absolute; inset: 0; display: none; }
+    .terminal-pane.active, .browser-pane.active { display: flex; flex-direction: column; }
+    .terminal-screen { flex: 1 1 0; min-height: 0; overflow: auto; padding: 10px 12px; color: var(--db-text-2); background: var(--db-window); font: 13px/1.55 var(--db-mono); user-select: text; }
+    .terminal-line { min-height: 20px; white-space: pre-wrap; }
+    .terminal-command { display: flex; align-items: baseline; }
+    .prompt { color: #46c9f0; white-space: nowrap; }
+    .terminal-input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--db-text); font: inherit; caret-color: var(--db-text); }
+
+    .browser-toolbar { height: 42px; flex: 0 0 42px; display: flex; align-items: center; gap: 3px; padding: 0 8px; border-bottom: 1px solid var(--db-line); }
+    .address {
+      flex: 1 1 auto;
+      min-width: 80px;
+      height: 30px;
+      padding: 0 11px;
+      border: 1px solid var(--db-line-input);
+      border-radius: 8px;
+      outline: none;
+      background: var(--db-fill-3);
+      color: var(--db-text);
+      font: 13px var(--db-mono);
+    }
+    .address:focus { border-color: var(--db-line-focus); }
+    .fake-page { flex: 1 1 0; min-height: 0; overflow: auto; }
+    .browser-empty { height: 100%; display: grid; place-items: center; color: var(--db-text-5); }
+    .browser-empty div { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 12.5px; }
+    .example-page { min-height: 100%; background: #f0f0f0; color: #292929; padding: clamp(90px, 18vh, 180px) clamp(38px, 14%, 180px); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .example-page article { max-width: 650px; }
+    .example-page h1 { margin: 0 0 18px; font-size: 28px; }
+    .example-page p { font-size: 18px; line-height: 1.45; }
+    .example-page a { color: #465ea0; font-size: 17px; text-decoration: underline; }
+    .docs-page { min-height: 130%; padding: 42px; color: var(--db-text-2); background: #18191c; user-select: text; }
+    .docs-page h1 { color: var(--db-text); font-size: 26px; margin: 0 0 8px; }
+    .docs-page .hero-line { color: var(--db-text-4); margin-bottom: 30px; }
+    .docs-card { padding: 18px; margin-bottom: 12px; border: 1px solid var(--db-line-container); border-radius: 16px; background: var(--db-fill-1); }
+    .blocked-page { height: 100%; display: grid; place-items: center; padding: 24px; }
+    .blocked-card { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--db-text-3); }
+    .outline-button { height: 34px; padding: 0 16px; border: 1px solid var(--db-line-emphasis); border-radius: 17px; background: transparent; color: var(--db-text); cursor: pointer; }
+    .outline-button:hover { background: var(--db-fill-5); border-color: var(--db-line-hover); }
+
+    .toast { position: fixed; left: 50%; bottom: 26px; z-index: 100; transform: translate(-50%, 12px); padding: 9px 14px; border-radius: 12px; background: var(--db-popover); color: var(--db-text); box-shadow: var(--db-shadow-popover); opacity: 0; pointer-events: none; transition: .18s ease; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .hidden { display: none !important; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .cursor-block { display: inline-block; width: 7px; height: 15px; vertical-align: -2px; background: var(--db-text); animation: blink 1s steps(1) infinite; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+    <symbol id="i-compose" viewBox="0 0 24 24"><path d="M13 5h6v6"/><path d="m10 14 9-9"/><path d="M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/><path d="M3 7V5h7l2 2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+    <symbol id="i-max" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+    <symbol id="i-min" viewBox="0 0 24 24"><path d="M8 8H3V3M16 8h5V3M8 16H3v5M16 16h5v5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-like" viewBox="0 0 24 24"><path d="M8 10v10H4V10zM8 18l3 2h6a2 2 0 0 0 2-1.5l1-6A2 2 0 0 0 18 10h-5l1-4c.3-2-2-3-3-1l-3 5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-forward" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M19 12a7 7 0 1 1-2-5l3 3"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M12 12l8-8"/><path d="M18 13v6H5V6h6"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6z"/><path d="M12 9v4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7L10.5 2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7z" transform="scale(.82) translate(2.7 2.7)"/></symbol>
+  </svg>
+
+  <main id="app" class="app hero-mode">
+    <aside id="sidebar" class="sidebar column">
+      <header class="topbar">
+        <div class="traffic" aria-label="窗口控制"><i class="red"></i><i class="amber"></i><i class="green"></i></div>
+        <button id="collapseSidebar" class="icon-button" title="收起侧边栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
+        <strong class="brand">DeepBuddy</strong>
+      </header>
+      <div class="tagline">向着未知出发，把每一步都变成脚印。</div>
+      <button id="newTask" class="new-task"><svg class="icon"><use href="#i-compose"></use></svg>新建任务</button>
+      <div class="sidebar-tools">
+        <span class="label grow">工作区</span>
+        <button class="icon-button" title="搜索"><svg class="icon"><use href="#i-search"></use></svg></button>
+        <button class="icon-button" title="视图选项"><svg class="icon"><use href="#i-sliders"></use></svg></button>
+        <button class="icon-button" title="添加工作区"><svg class="icon"><use href="#i-plus"></use></svg></button>
+      </div>
+      <div class="workspace-list">
+        <section class="workspace">
+          <div class="row workspace-title"><svg class="icon folder"><use href="#i-folder"></use></svg><span class="truncate mono">film-studio</span></div>
+          <div class="row session-row current" data-session="Hello Greeting"><span class="truncate grow">Hello Greeting</span><span class="time">6小时</span></div>
+          <div class="row session-row" data-session="Hi Hi Hi Greeting..."><span class="truncate grow">Hi Hi Hi Greeting...</span><span class="time">8小时</span></div>
+        </section>
+        <section class="workspace">
+          <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate mono">GPT-Image2分享</span></div>
+          <div class="row session-row" data-session="Simple Greetings"><span class="truncate grow">Simple Greetings</span><span class="time">18小时</span></div>
+          <div class="row session-row" data-session="用 bash 运行 echo"><span class="truncate grow">用 bash 运行 echo …</span><span class="time">18小时</span></div>
+          <div class="row session-row" data-session="运行echo命令执行report"><span class="truncate grow">运行echo命令执行rep...</span><span class="time">18小时</span></div>
+          <div class="row session-row" data-session="Bash 运行 echo result"><span class="truncate grow">Bash 运行 echo re...</span><span class="time">18小时</span></div>
+          <div class="row session-row" data-session="问候与闲聊"><span class="truncate grow">问候与闲聊</span><span class="time">19小时</span></div>
+          <div class="more">展开其余 16 个会话</div>
+        </section>
+        <section class="workspace">
+          <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate mono">deepseek-harness</span></div>
+          <div class="row session-row" data-session="AI助手自我介绍"><span class="truncate grow">AI助手自我介绍</span><span class="time">1天</span></div>
+          <div class="row session-row" data-session="介绍自己"><span class="truncate grow">介绍自己</span><span class="time">1天</span></div>
+          <div class="row session-row" data-session="中文普通话学习助手介绍"><span class="truncate grow">中文普通话学习助手介绍</span><span class="time">1天</span></div>
+          <div class="row session-row" data-session="Happy Session"><span class="truncate grow">Happy Session</span><span class="time">7天</span></div>
+          <div class="row session-row" data-session="Session title request"><span class="truncate grow">Session title reque...</span><span class="time">7天</span></div>
+          <div class="more">展开其余 3 个会话</div>
+        </section>
+        <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>Docs</span></div>
+        <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>未分组</span></div>
+      </div>
+      <div class="settings-row"><svg class="icon"><use href="#i-settings"></use></svg><span>设置</span></div>
+    </aside>
+    <div id="sideHandle" class="resize-handle side-handle" title="拖拽调整侧栏宽度 · 双击重置"></div>
+
+    <section class="main column">
+      <div class="collapsed-lockup">
+        <div class="traffic"><i class="red"></i><i class="amber"></i><i class="green"></i></div>
+        <button id="expandSidebar" class="icon-button" title="展开侧边栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
+      </div>
+      <div class="main-chrome">
+        <header class="topbar">
+          <span id="mainTitle" class="main-title truncate">Hello Greeting</span>
+          <span class="mode-label"><span>♧</span>创造模式</span>
+          <span class="grow"></span>
+          <button id="toggleDock" class="icon-button" title="打开停靠栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
+        </header>
+        <nav class="view-tabs">
+          <button class="view-tab active" data-main-view="chat">对话</button>
+          <button class="view-tab" data-main-view="trace">轨迹</button>
+        </nav>
+      </div>
+      <div class="main-body">
+        <section id="hero" class="hero">
+          <div class="hero-card">
+            <div class="hero-mark"><span class="accent">◉</span><span>探索未至之境</span></div>
+            <div class="hero-chips"><span>▱ film-studio⌄</span><span>♧ 创造模式⌄</span></div>
+            <div class="composer hero-composer">
+              <textarea id="heroInput" placeholder="描述你想要构建的内容"></textarea>
+              <div class="composer-actions">
+                <button class="icon-button attach" title="添加附件"><svg class="icon"><use href="#i-plus"></use></svg></button>
+                <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
+                <span class="grow"></span>
+                <button class="pill-button model">DeepSeek-V4-Flash-Vision-Exp High⌄</button>
+                <button class="send hero-send" title="发送"><svg class="icon"><use href="#i-send"></use></svg></button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="conversation" class="conversation hidden">
+          <div id="chatPanel" class="conversation-scroll">
+            <div id="chatMessages" class="chat-column">
+              <div class="message-block">
+                <div class="user-line"><div class="user-bubble mono">hi hi hi</div></div>
+                <div class="copy-user"><button class="icon-button copy-action" title="复制"><svg class="icon"><use href="#i-copy"></use></svg></button></div>
+                <div class="context-row"><span>▣</span><span>上下文注入 · <span class="mono">@deepseek-ai/dsh-system-prompt</span></span></div>
+                <div class="context-row"><span>▣</span><span>上下文注入 · <span class="mono">skill-catalog</span></span></div>
+                <div class="think-row"><span>⌘</span><span>Think · The user just said "hi hi hi" - a casual greeting. There's no task here. …</span></div>
+                <div class="assistant-copy">
+                  <p>Hey! 👋 What can I help you with today?</p>
+                  <p>Looks like you're in the <span class="inline-code mono">film-studio</span> working directory — happy to dig<br>into code there, build something new, or just chat. What's on your mind?</p>
+                </div>
+                <div class="message-actions">
+                  <button class="icon-button copy-action" title="复制"><svg class="icon"><use href="#i-copy"></use></svg></button>
+                  <button class="icon-button" title="赞"><svg class="icon"><use href="#i-like"></use></svg></button>
+                  <button class="icon-button" title="踩"><svg class="icon" style="transform:rotate(180deg)"><use href="#i-like"></use></svg></button>
+                  <button class="icon-button" title="更多">⌁</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="composer-wrap">
+            <div class="composer-column">
+              <div class="composer">
+                <textarea id="chatInput" placeholder="给智能体发消息"></textarea>
+                <div class="composer-actions">
+                  <button class="icon-button attach" title="添加附件"><svg class="icon"><use href="#i-plus"></use></svg></button>
+                  <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
+                  <span class="grow"></span>
+                  <button class="pill-button model">DeepSeek-V4-Flash-Vision-Exp High⌄</button>
+                  <span class="dim">◯</span>
+                  <button class="send chat-send" title="发送"><svg class="icon"><use href="#i-send"></use></svg></button>
+                </div>
+              </div>
+              <div class="stats">1 轮 · 1 步 ｜ LLM 2s ｜ 首 token 平均 1.2s · 115 tok/s ｜ 缓存命中 0% ｜ 输入 12.5K tok · …</div>
+            </div>
+          </div>
+        </section>
+        <section id="tracePanel" class="trace">
+          <div class="trace-line mono">00:00.000 · session.open · film-studio</div>
+          <div class="trace-line mono">00:00.184 · context.inject · @deepseek-ai/dsh-system-prompt</div>
+          <div class="trace-line mono">00:00.231 · context.inject · skill-catalog</div>
+          <div class="trace-line mono">00:02.007 · assistant.complete · 115 tok/s</div>
+        </section>
+      </div>
+    </section>
+
+    <div id="dockHandle" class="resize-handle dock-handle" title="拖拽调整停靠栏宽度 · 双击重置"></div>
+    <aside id="dock" class="dock column">
+      <header class="topbar dock-topbar">
+        <div id="dockTraffic" class="traffic hidden"><i class="red"></i><i class="amber"></i><i class="green"></i></div>
+        <div class="segments">
+          <button class="segment active" data-dock-view="files"><svg class="icon"><use href="#i-panel"></use></svg>文件</button>
+          <button class="segment" data-dock-view="terminal"><svg class="icon"><use href="#i-terminal"></use></svg>终端</button>
+          <button class="segment" data-dock-view="browser"><svg class="icon"><use href="#i-globe"></use></svg>浏览器</button>
+        </div>
+        <span class="grow"></span>
+        <button id="toggleDockMax" class="icon-button" title="全屏显示"><svg class="icon"><use href="#i-max"></use></svg></button>
+        <button id="closeDock" class="icon-button" title="关闭停靠栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
+      </header>
+
+      <section id="filesView" class="dock-view active">
+        <div id="fileTabs" class="resource-tabs hidden"></div>
+        <div id="filesBody" class="files-body">
+          <div class="file-tree">
+            <div class="file-root">film-studio</div>
+            <div class="row dense tree-folder open tree-row" style="--depth:0"><span class="chevron">⌄</span><svg class="icon small"><use href="#i-folder"></use></svg><span>.agents</span></div>
+            <div class="tree-children" style="display:block">
+              <div class="row dense tree-folder tree-row" style="--depth:1"><span class="chevron">›</span><svg class="icon small"><use href="#i-folder"></use></svg><span>handoffs</span></div>
+              <div class="tree-children">
+                <div class="row dense tree-row file" style="--depth:2" data-file="2026-08-24-drag.md"><svg class="icon small"><use href="#i-file"></use></svg><span>2026-08-24-drag.md</span></div>
+              </div>
+              <div class="row dense tree-row file" style="--depth:1" data-file="AGENTS.md"><svg class="icon small"><use href="#i-file"></use></svg><span>AGENTS.md</span></div>
+            </div>
+            <div class="row dense tree-folder tree-row" style="--depth:0"><span class="chevron">›</span><svg class="icon small"><use href="#i-folder"></use></svg><span>deepbuddy-design-current</span></div>
+            <div class="tree-children">
+              <div class="row dense tree-row file" style="--depth:1" data-file="ARCHITECTURE.md"><svg class="icon small"><use href="#i-file"></use></svg><span>ARCHITECTURE.md</span></div>
+              <div class="row dense tree-row file" style="--depth:1" data-file="DESIGN_INTENT.md"><svg class="icon small"><use href="#i-file"></use></svg><span>DESIGN_INTENT.md</span></div>
+            </div>
+            <div class="row dense tree-folder tree-row" style="--depth:0"><span class="chevron">›</span><svg class="icon small"><use href="#i-folder"></use></svg><span>plugins</span></div>
+            <div class="tree-children">
+              <div class="row dense tree-row file" style="--depth:1" data-file="package.json"><svg class="icon small"><use href="#i-file"></use></svg><span>package.json</span></div>
+            </div>
+            <div class="row dense tree-row file" style="--depth:0" data-file="README.md"><svg class="icon small"><use href="#i-file"></use></svg><span>README.md</span></div>
+          </div>
+          <div id="filePreview" class="file-preview hidden"><pre></pre></div>
+        </div>
+      </section>
+
+      <section id="terminalView" class="dock-view">
+        <div id="terminalTabs" class="resource-tabs"></div>
+        <div id="terminalPanes" class="terminal-panes"></div>
+      </section>
+
+      <section id="browserView" class="dock-view">
+        <div id="browserTabs" class="resource-tabs"></div>
+        <div id="browserPanes" class="browser-panes"></div>
+      </section>
+    </aside>
+  </main>
+  <div id="toast" class="toast">已复制</div>
+
+  <script>
+    const $ = (selector, root) => (root || document).querySelector(selector);
+    const $$ = (selector, root) => Array.from((root || document).querySelectorAll(selector));
+    const app = $("#app");
+    const state = {
+      sidebar: true,
+      dock: false,
+      dockMax: false,
+      mainMode: "hero",
+      mainView: "chat",
+      dockView: "files",
+      sidebarWidth: 268,
+      dockWidth: 0,
+      permissions: ["Full access", "Ask first", "Read only"],
+      permissionIndex: 0,
+      models: ["DeepSeek-V4-Flash-Vision-Exp High", "DeepSeek-V3.2 High", "DeepSeek-R1"],
+      modelIndex: 0,
+      fileTabs: [],
+      activeFile: null,
+      terminalTabs: [],
+      activeTerminal: null,
+      browserTabs: [],
+      activeBrowser: null,
+      nextTerminal: 1,
+      nextBrowser: 1
+    };
+
+    function svg(id, className) {
+      return '<svg class="icon ' + (className || "") + '"><use href="#' + id + '"></use></svg>';
+    }
+    function toast(message) {
+      const el = $("#toast");
+      el.textContent = message;
+      el.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => el.classList.remove("show"), 1100);
+    }
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
+    }
+
+    // Layout and pointer-captured resize gestures.
+    function sideContribution() { return state.sidebar ? state.sidebarWidth + 1 : 0; }
+    function clampSidebar(width) { return Math.min(Math.max(width, 232), 380); }
+    function clampDock(width) {
+      const min = Math.max(window.innerWidth * .30, 416);
+      const max = Math.max(min, Math.min(window.innerWidth * .70, window.innerWidth - sideContribution() - 460));
+      return Math.min(Math.max(width, min), max);
+    }
+    function dockDefault() { return clampDock(Math.round(window.innerWidth * .30)); }
+    function applyLayout() {
+      app.classList.toggle("sidebar-off", !state.sidebar);
+      app.classList.toggle("dock-open", state.dock && state.mainMode === "conversation");
+      app.classList.toggle("dock-max", state.dockMax);
+      app.classList.toggle("hero-mode", state.mainMode === "hero");
+      document.documentElement.style.setProperty("--proto-sidebar-width", state.sidebarWidth + "px");
+      document.documentElement.style.setProperty("--proto-dock-width", state.dockWidth + "px");
+      $("#dockTraffic").classList.toggle("hidden", !state.dockMax);
+      $("#closeDock").classList.toggle("hidden", state.dockMax);
+      $("#toggleDockMax").title = state.dockMax ? "退出全屏" : "全屏显示";
+      $("#toggleDockMax").innerHTML = svg(state.dockMax ? "i-min" : "i-max");
+      $("#toggleDock").title = state.dock ? "关闭停靠栏" : "打开停靠栏";
+    }
+    function trackDrag(handle, pointerId, move, done) {
+      let queued = null;
+      let frame = null;
+      let finished = false;
+      const flush = () => {
+        frame = null;
+        const event = queued;
+        queued = null;
+        if (event) move(event);
+      };
+      const onMove = event => {
+        if (finished || event.pointerId !== pointerId) return;
+        queued = event;
+        if (frame === null) frame = requestAnimationFrame(flush);
+      };
+      const finish = event => {
+        if (finished || (event && "pointerId" in event && event.pointerId !== pointerId)) return;
+        finished = true;
+        if (frame !== null) cancelAnimationFrame(frame);
+        frame = null;
+        if (event && event.type === "pointerup") queued = event;
+        flush();
+        handle.removeEventListener("pointermove", onMove);
+        handle.removeEventListener("pointerup", finish);
+        handle.removeEventListener("pointercancel", finish);
+        handle.removeEventListener("lostpointercapture", finish);
+        window.removeEventListener("blur", finish);
+        document.body.style.cursor = "";
+        if (done) done();
+      };
+      document.body.style.cursor = "col-resize";
+      handle.addEventListener("pointermove", onMove);
+      handle.addEventListener("pointerup", finish);
+      handle.addEventListener("pointercancel", finish);
+      handle.addEventListener("lostpointercapture", finish);
+      window.addEventListener("blur", finish);
+      handle.setPointerCapture(pointerId);
+    }
+    $("#sideHandle").addEventListener("pointerdown", event => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startW = state.sidebarWidth;
+      trackDrag(event.currentTarget, event.pointerId, next => {
+        state.sidebarWidth = clampSidebar(startW + next.clientX - startX);
+        applyLayout();
+        if (state.dock) {
+          state.dockWidth = clampDock(state.dockWidth);
+          applyLayout();
+        }
+      });
+    });
+    $("#sideHandle").addEventListener("dblclick", () => { state.sidebarWidth = 268; applyLayout(); });
+    $("#dockHandle").addEventListener("pointerdown", event => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startW = state.dockWidth;
+      trackDrag(event.currentTarget, event.pointerId, next => {
+        state.dockWidth = clampDock(startW + startX - next.clientX);
+        applyLayout();
+      });
+    });
+    $("#dockHandle").addEventListener("dblclick", () => { state.dockWidth = dockDefault(); applyLayout(); });
+    $("#collapseSidebar").addEventListener("click", () => { state.sidebar = false; applyLayout(); });
+    $("#expandSidebar").addEventListener("click", () => { state.sidebar = true; applyLayout(); });
+    $("#toggleDock").addEventListener("click", () => {
+      state.dock = !state.dock;
+      if (state.dock) state.dockWidth = dockDefault();
+      state.dockMax = false;
+      applyLayout();
+    });
+    $("#closeDock").addEventListener("click", () => { state.dock = false; state.dockMax = false; applyLayout(); });
+    $("#toggleDockMax").addEventListener("click", () => { state.dockMax = !state.dockMax; applyLayout(); });
+    window.addEventListener("resize", () => {
+      if (window.innerWidth < 1100) { state.dock = false; state.dockMax = false; }
+      if (window.innerWidth < 860) state.sidebar = false;
+      state.dockWidth = clampDock(state.dockWidth || dockDefault());
+      applyLayout();
+    });
+
+    // Conversation, hero, composer controls, and fake replies.
+    function showHero() {
+      state.mainMode = "hero";
+      state.dock = false;
+      state.dockMax = false;
+      $("#hero").classList.remove("hidden");
+      $("#conversation").classList.add("hidden");
+      $("#tracePanel").classList.remove("active");
+      applyLayout();
+    }
+    function showConversation(title) {
+      state.mainMode = "conversation";
+      $("#mainTitle").textContent = title || "Hello Greeting";
+      $("#hero").classList.add("hidden");
+      $("#conversation").classList.remove("hidden");
+      selectMainView("chat");
+      $$(".session-row").forEach(row => row.classList.toggle("current", row.dataset.session === title));
+      applyLayout();
+    }
+    function selectMainView(view) {
+      state.mainView = view;
+      $$(".view-tab").forEach(tab => tab.classList.toggle("active", tab.dataset.mainView === view));
+      $("#chatPanel").classList.toggle("hidden", view !== "chat");
+      $(".composer-wrap").classList.toggle("hidden", view !== "chat");
+      $("#tracePanel").classList.toggle("active", view === "trace");
+    }
+    $("#newTask").addEventListener("click", showHero);
+    $$(".session-row").forEach(row => row.addEventListener("click", () => showConversation(row.dataset.session)));
+    $$(".view-tab").forEach(tab => tab.addEventListener("click", () => selectMainView(tab.dataset.mainView)));
+    function sendMessage(input, fromHero) {
+      const value = input.value.trim();
+      if (!value) return;
+      if (fromHero) showConversation("新会话");
+      const block = document.createElement("div");
+      block.className = "message-block";
+      block.innerHTML =
+        '<div class="user-line"><div class="user-bubble">' + escapeHtml(value) + '</div></div>' +
+        '<div class="copy-user"><button class="icon-button copy-action" title="复制">' + svg("i-copy") + '</button></div>' +
+        '<div class="think-row"><span>⌘</span><span>Think · 根据当前上下文整理请求并生成可执行回复。</span></div>' +
+        '<div class="assistant-copy"><p>收到。我会沿用当前工作区与权限设置继续处理：<span class="inline-code mono">' + escapeHtml(value) + '</span></p><p>这是设计原型中的假回复；交互状态已经完整保留。</p></div>' +
+        '<div class="message-actions"><button class="icon-button copy-action" title="复制">' + svg("i-copy") + '</button><button class="icon-button" title="赞">' + svg("i-like") + '</button></div>';
+      $("#chatMessages").append(block);
+      input.value = "";
+      block.querySelectorAll(".copy-action").forEach(button => button.addEventListener("click", () => toast("已复制")));
+      requestAnimationFrame(() => { $("#chatPanel").scrollTop = $("#chatPanel").scrollHeight; });
+    }
+    $(".hero-send").addEventListener("click", () => sendMessage($("#heroInput"), true));
+    $(".chat-send").addEventListener("click", () => sendMessage($("#chatInput"), false));
+    [$("#heroInput"), $("#chatInput")].forEach((input, index) => input.addEventListener("keydown", event => {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) sendMessage(input, index === 0);
+    }));
+    $$(".copy-action").forEach(button => button.addEventListener("click", () => toast("已复制")));
+    $$(".attach").forEach(button => button.addEventListener("click", () => toast("已添加假附件")));
+    $$(".permission").forEach(button => button.addEventListener("click", () => {
+      state.permissionIndex = (state.permissionIndex + 1) % state.permissions.length;
+      $$(".permission span").forEach(label => { label.textContent = state.permissions[state.permissionIndex]; });
+    }));
+    $$(".model").forEach(button => button.addEventListener("click", () => {
+      state.modelIndex = (state.modelIndex + 1) % state.models.length;
+      $$(".model").forEach(label => { label.textContent = state.models[state.modelIndex] + "⌄"; });
+    }));
+
+    // Inspector view switching and kept-alive file previews.
+    function selectDockView(view) {
+      state.dockView = view;
+      $$(".segment").forEach(button => button.classList.toggle("active", button.dataset.dockView === view));
+      $$(".dock-view").forEach(panel => panel.classList.toggle("active", panel.id === view + "View"));
+      if (view === "terminal" && !state.terminalTabs.length) addTerminal();
+      if (view === "browser" && !state.browserTabs.length) {
+        addBrowser("https://example.com/", "example.com");
+        addBrowser("", "新标签页");
+      }
+    }
+    $$(".segment").forEach(button => button.addEventListener("click", () => selectDockView(button.dataset.dockView)));
+    const fileBodies = {
+      "README.md": "# DeepBuddy\n\nDeepSeek Harness 的精选 Electron 客户端。\n\n- 三列两区\n- Files / Terminal / Browser\n- 资源 keep-alive",
+      "AGENTS.md": "# DeepBuddy 开发约束\n\n主列永远存在；左右列可收起。\nShell 只负责布局、Selection 与 Inspector View 实例。",
+      "ARCHITECTURE.md": "# DeepBuddy 架构\n\n能力属于 DSH，界面属于 DeepBuddy。\n当前形态：模块化单体 Electron Client。",
+      "DESIGN_INTENT.md": "# UI 设计意图\n\n分隔靠材质，不靠密集边框。\n层级靠透明度，不靠不断加粗。",
+      "package.json": '{\n  "name": "deepbuddy",\n  "private": true,\n  "packageManager": "pnpm@10.18.3"\n}',
+      "2026-08-24-drag.md": "# 拖拽手势生命周期\n\nPointer Events + setPointerCapture\n8px 命中区 / 1px 视觉线\nfinish 与 thaw 幂等。"
+    };
+    function renderFileTabs() {
+      const tabs = $("#fileTabs");
+      tabs.classList.toggle("hidden", !state.fileTabs.length);
+      tabs.innerHTML = state.fileTabs.map(name =>
+        '<button class="resource-tab ' + (name === state.activeFile ? "active" : "") + '" data-file-tab="' + escapeHtml(name) + '"><span class="title">' + escapeHtml(name) + '</span><span class="tab-close" data-close-file="' + escapeHtml(name) + '">×</span></button>'
+      ).join("");
+      $$("[data-file-tab]", tabs).forEach(tab => tab.addEventListener("click", event => {
+        if (event.target.closest("[data-close-file]")) return;
+        state.activeFile = tab.dataset.fileTab;
+        renderFileTabs();
+        renderFilePreview();
+      }));
+      $$("[data-close-file]", tabs).forEach(close => close.addEventListener("click", event => {
+        event.stopPropagation();
+        const name = close.dataset.closeFile;
+        const index = state.fileTabs.indexOf(name);
+        state.fileTabs.splice(index, 1);
+        if (state.activeFile === name) state.activeFile = state.fileTabs[index] || state.fileTabs[index - 1] || null;
+        renderFileTabs();
+        renderFilePreview();
+      }));
+    }
+    function renderFilePreview() {
+      const split = Boolean(state.activeFile);
+      $("#filesBody").classList.toggle("split", split);
+      $("#filePreview").classList.toggle("hidden", !split);
+      if (split) $("#filePreview pre").textContent = fileBodies[state.activeFile] || "// 文件预览\n\n" + state.activeFile;
+      $$(".tree-row.file").forEach(row => row.classList.toggle("current", row.dataset.file === state.activeFile));
+    }
+    $$(".tree-folder").forEach(folder => folder.addEventListener("click", () => {
+      folder.classList.toggle("open");
+      const open = folder.classList.contains("open");
+      folder.querySelector(".chevron").textContent = open ? "⌄" : "›";
+      const children = folder.nextElementSibling;
+      if (children && children.classList.contains("tree-children")) children.style.display = open ? "block" : "none";
+    }));
+    $$(".tree-row.file").forEach(file => file.addEventListener("click", () => {
+      const name = file.dataset.file;
+      if (!state.fileTabs.includes(name)) state.fileTabs.push(name);
+      state.activeFile = name;
+      renderFileTabs();
+      renderFilePreview();
+    }));
+
+    // Terminal multi-tab state and fake command echo.
+    function addTerminal() {
+      const number = state.nextTerminal++;
+      const tab = {
+        id: "term-" + number,
+        title: "终端 " + number,
+        cwd: "/Users/byron/Desktop/film-studio",
+        lines: number === 1 ? ["DeepBuddy terminal ready.", "Type help for available fake commands."] : ["Terminal " + number + " attached."]
+      };
+      state.terminalTabs.push(tab);
+      state.activeTerminal = tab.id;
+      renderTerminals();
+    }
+    function closeTerminal(id) {
+      const index = state.terminalTabs.findIndex(tab => tab.id === id);
+      state.terminalTabs.splice(index, 1);
+      if (state.activeTerminal === id) state.activeTerminal = (state.terminalTabs[index] || state.terminalTabs[index - 1] || {}).id || null;
+      renderTerminals();
+    }
+    function focusTerminal(id) {
+      state.activeTerminal = id;
+      $$("[data-terminal-tab]").forEach(tab => tab.classList.toggle("active", tab.dataset.terminalTab === id));
+      $$("[data-terminal-pane]").forEach(pane => pane.classList.toggle("active", pane.dataset.terminalPane === id));
+      const input = $('[data-terminal-pane="' + id + '"] .terminal-input');
+      if (input) input.focus();
+    }
+    function renderTerminals() {
+      $("#terminalTabs").innerHTML = state.terminalTabs.map(tab =>
+        '<button class="resource-tab ' + (tab.id === state.activeTerminal ? "active" : "") + '" data-terminal-tab="' + tab.id + '"><span class="title">' + escapeHtml(tab.title) + '</span><span class="tab-close" data-close-terminal="' + tab.id + '">×</span></button>'
+      ).join("") + '<button id="addTerminal" class="tab-add" title="新建终端">+</button>';
+      $("#terminalPanes").innerHTML = state.terminalTabs.map(tab =>
+        '<div class="terminal-pane ' + (tab.id === state.activeTerminal ? "active" : "") + '" data-terminal-pane="' + tab.id + '">' +
+          '<div class="terminal-meta"><span class="dot"></span><span class="truncate">' + escapeHtml(tab.cwd) + '</span></div>' +
+          '<div class="terminal-screen"><div class="terminal-output">' + tab.lines.map(line => '<div class="terminal-line">' + escapeHtml(line) + '</div>').join("") + '</div>' +
+            '<div class="terminal-command"><span class="prompt">~/Des/film-studio ❯&nbsp;</span><input class="terminal-input" autocomplete="off" spellcheck="false"></div>' +
+          '</div></div>'
+      ).join("");
+      $("#addTerminal").addEventListener("click", addTerminal);
+      $$("[data-terminal-tab]").forEach(tab => tab.addEventListener("click", event => {
+        if (event.target.closest("[data-close-terminal]")) return;
+        focusTerminal(tab.dataset.terminalTab);
+      }));
+      $$("[data-close-terminal]").forEach(close => close.addEventListener("click", event => { event.stopPropagation(); closeTerminal(close.dataset.closeTerminal); }));
+      $$(".terminal-input").forEach(input => input.addEventListener("keydown", event => {
+        if (event.key !== "Enter") return;
+        const pane = event.target.closest("[data-terminal-pane]");
+        const tab = state.terminalTabs.find(item => item.id === pane.dataset.terminalPane);
+        const command = input.value.trim();
+        if (!command) return;
+        const replies = {
+          help: "Available: help, pwd, ls, clear, echo <text>",
+          pwd: tab.cwd,
+          ls: ".agents  deepbuddy-design-current  plugins  apps  README.md"
+        };
+        tab.lines.push("~/Des/film-studio ❯ " + command);
+        if (command === "clear") tab.lines = [];
+        else if (command.startsWith("echo ")) tab.lines.push(command.slice(5));
+        else tab.lines.push(replies[command] || "zsh: command not found: " + command);
+        renderTerminals();
+        requestAnimationFrame(() => {
+          const active = $('[data-terminal-pane="' + tab.id + '"] .terminal-screen');
+          if (active) { active.scrollTop = active.scrollHeight; $(".terminal-input", active).focus(); }
+        });
+      }));
+    }
+
+    // Browser multi-tab navigation with DOM-backed offline pages.
+    function normalizeUrl(raw) {
+      const value = raw.trim();
+      if (!value) return "";
+      if (/^[a-z][a-z\d+.-]*:\/\//i.test(value)) return value;
+      if (/^(localhost|127(?:\.\d{1,3}){3})(?::\d+)?(?:[/?#]|$)/i.test(value)) return "http://" + value;
+      return "https://" + value;
+    }
+    function hostOf(url) {
+      try { return new URL(url).hostname || url; } catch { return url; }
+    }
+    function pageType(url) {
+      const host = hostOf(url);
+      if (!url) return "empty";
+      if (host.includes("blocked") || host.includes("refuse")) return "blocked";
+      if (host.includes("docs") || host.includes("deepbuddy")) return "docs";
+      return "example";
+    }
+    function addBrowser(url, title) {
+      const number = state.nextBrowser++;
+      const normalized = normalizeUrl(url);
+      const tab = { id: "browser-" + number, title: title || "新标签页", input: normalized, url: normalized, history: normalized ? [normalized] : [], historyIndex: normalized ? 0 : -1 };
+      state.browserTabs.push(tab);
+      state.activeBrowser = tab.id;
+      renderBrowsers();
+    }
+    function closeBrowser(id) {
+      const index = state.browserTabs.findIndex(tab => tab.id === id);
+      state.browserTabs.splice(index, 1);
+      if (state.activeBrowser === id) state.activeBrowser = (state.browserTabs[index] || state.browserTabs[index - 1] || {}).id || null;
+      renderBrowsers();
+    }
+    function focusBrowser(id) {
+      state.activeBrowser = id;
+      $$("[data-browser-tab]").forEach(tab => tab.classList.toggle("active", tab.dataset.browserTab === id));
+      $$("[data-browser-pane]").forEach(pane => pane.classList.toggle("active", pane.dataset.browserPane === id));
+    }
+    function browserPage(tab) {
+      const type = pageType(tab.url);
+      if (type === "empty") return '<div class="browser-empty"><div>' + svg("i-globe") + '<span>输入地址开始浏览</span></div></div>';
+      if (type === "blocked") return '<div class="blocked-page"><div class="blocked-card">' + svg("i-globe") + '<div>该站点拒绝嵌入</div><button class="outline-button preview-example">预览内置示例页</button></div></div>';
+      if (type === "docs") return '<div class="docs-page"><h1>DeepBuddy Design Notes</h1><div class="hero-line">Offline prototype · keep-alive scroll test</div>' +
+        Array.from({ length: 10 }, (_, index) => '<div class="docs-card"><strong>Section ' + (index + 1) + '</strong><p>三列两区保持稳定；切换 Files / Terminal / Browser 后回到此页，滚动位置不会丢失。</p></div>').join("") + '</div>';
+      return '<div class="example-page"><article><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><a href="#" class="learn-more">Learn more</a></article></div>';
+    }
+    function renderBrowsers() {
+      $$("[data-browser-pane]").forEach(pane => {
+        const previous = state.browserTabs.find(tab => tab.id === pane.dataset.browserPane);
+        const page = $(".fake-page", pane);
+        if (previous && page) previous.scrollTop = page.scrollTop;
+      });
+      $("#browserTabs").innerHTML = state.browserTabs.map(tab =>
+        '<button class="resource-tab ' + (tab.id === state.activeBrowser ? "active" : "") + '" data-browser-tab="' + tab.id + '"><span class="title">' + escapeHtml(tab.title) + '</span><span class="tab-close" data-close-browser="' + tab.id + '">×</span></button>'
+      ).join("") + '<button id="addBrowser" class="tab-add" title="新建浏览器标签">+</button>';
+      $("#browserPanes").innerHTML = state.browserTabs.map(tab => {
+        const canBack = tab.historyIndex > 0;
+        const canForward = tab.historyIndex >= 0 && tab.historyIndex < tab.history.length - 1;
+        return '<div class="browser-pane ' + (tab.id === state.activeBrowser ? "active" : "") + '" data-browser-pane="' + tab.id + '">' +
+          '<div class="browser-toolbar">' +
+            '<button class="icon-button browser-back" title="后退" ' + (canBack ? "" : "disabled") + '>' + svg("i-back", "small") + '</button>' +
+            '<button class="icon-button browser-forward" title="前进" ' + (canForward ? "" : "disabled") + '>' + svg("i-forward", "small") + '</button>' +
+            '<button class="icon-button browser-refresh" title="刷新" ' + (tab.url ? "" : "disabled") + '>' + svg("i-refresh", "small") + '</button>' +
+            '<input class="address" value="' + escapeHtml(tab.input) + '" placeholder="输入网址" spellcheck="false">' +
+            '<button class="icon-button browser-external" title="在系统浏览器打开" ' + (tab.url ? "" : "disabled") + '>' + svg("i-external", "small") + '</button>' +
+          '</div><div class="fake-page">' + browserPage(tab) + '</div></div>';
+      }).join("");
+      $("#addBrowser").addEventListener("click", () => addBrowser("", "新标签页"));
+      $$("[data-browser-tab]").forEach(tab => tab.addEventListener("click", event => {
+        if (event.target.closest("[data-close-browser]")) return;
+        focusBrowser(tab.dataset.browserTab);
+      }));
+      $$("[data-close-browser]").forEach(close => close.addEventListener("click", event => { event.stopPropagation(); closeBrowser(close.dataset.closeBrowser); }));
+      $$("[data-browser-pane]").forEach(pane => {
+        const tab = state.browserTabs.find(item => item.id === pane.dataset.browserPane);
+        const address = $(".address", pane);
+        $(".fake-page", pane).scrollTop = tab.scrollTop || 0;
+        address.addEventListener("input", () => { tab.input = address.value; });
+        address.addEventListener("keydown", event => {
+          if (event.key !== "Enter") return;
+          const next = normalizeUrl(address.value);
+          if (!next) return;
+          tab.input = next;
+          tab.url = next;
+          tab.history = tab.history.slice(0, tab.historyIndex + 1);
+          tab.history.push(next);
+          tab.historyIndex = tab.history.length - 1;
+          tab.title = hostOf(next);
+          renderBrowsers();
+        });
+        $(".browser-back", pane).addEventListener("click", () => {
+          if (tab.historyIndex <= 0) return;
+          tab.historyIndex -= 1; tab.url = tab.history[tab.historyIndex]; tab.input = tab.url; tab.title = hostOf(tab.url); renderBrowsers();
+        });
+        $(".browser-forward", pane).addEventListener("click", () => {
+          if (tab.historyIndex >= tab.history.length - 1) return;
+          tab.historyIndex += 1; tab.url = tab.history[tab.historyIndex]; tab.input = tab.url; tab.title = hostOf(tab.url); renderBrowsers();
+        });
+        $(".browser-refresh", pane).addEventListener("click", () => {
+          const scroll = $(".fake-page", pane).scrollTop;
+          $(".fake-page", pane).innerHTML = browserPage(tab);
+          $(".fake-page", pane).scrollTop = scroll;
+        });
+        $(".browser-external", pane).addEventListener("click", () => toast("原型不会打开外部网络"));
+        const preview = $(".preview-example", pane);
+        if (preview) preview.addEventListener("click", () => { address.value = "https://example.com/"; address.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })); });
+        const learn = $(".learn-more", pane);
+        if (learn) learn.addEventListener("click", event => { event.preventDefault(); toast("这是内置离线假页面"); });
+      });
+    }
+
+    state.dockWidth = dockDefault();
+    applyLayout();
+    showHero();
+    renderFileTabs();
+    renderFilePreview();
+  </script>
+</body>
+</html>
