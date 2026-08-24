@@ -488,6 +488,11 @@ test('terminal and browser views ship their required interaction paths', async (
   assert.match(client, /\\u8BE5\\u7AD9\\u70B9\\u62D2\\u7EDD\\u5D4C\\u5165/)
   assert.match(client, /local \? "http" : "https"/)
   assert.match(desktop, /webviewTag: true/)
+  // window.open/_blank inside a guest must navigate the same webview, never
+  // vanish (the webview default) and never spawn a popup.
+  assert.match(desktop, /contents\.getType\(\) !== "webview"|contents\.getType\(\) !== 'webview'/)
+  assert.match(desktop, /contents\.setWindowOpenHandler/)
+  assert.match(desktop, /void contents\.loadURL\(url\)/)
 })
 
 test('conversation folding is the official apply\'s job; DeepBuddy only provides layout', async () => {

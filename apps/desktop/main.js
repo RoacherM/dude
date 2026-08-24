@@ -255,6 +255,18 @@ function killChild(child) {
   }
 }
 
+// The dock browser's <webview> guests: without a handler, window.open and
+// target=_blank links are silently dropped (baidu-style result pages become
+// unclickable). A popup request navigates the SAME webview — the dock browser
+// is a single-document surface, and non-web schemes stay denied.
+app.on('web-contents-created', (_event, contents) => {
+  if (contents.getType() !== 'webview') return
+  contents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:/i.test(url)) void contents.loadURL(url)
+    return { action: 'deny' }
+  })
+})
+
 app.whenReady().then(async () => {
   const resourcesDir = process.resourcesPath ?? ''
   const runtimeBin = path.join(resourcesDir, 'dsh-runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')

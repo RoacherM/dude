@@ -189,7 +189,12 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
         : failed
           ? <EmbedRefusal url={url} />
           : IN_ELECTRON
-            ? <webview ref={webviewRef} src={url} style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }} />
+            // allowpopups lets window.open/_blank requests REACH the main
+            // process, where the desktop shell's setWindowOpenHandler denies
+            // the popup and navigates this same webview instead. Without it
+            // Electron drops the request before any handler runs — result
+            // links on search pages click dead.
+            ? <webview ref={webviewRef} src={url} allowpopups="true" style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }} />
             : (
                 <iframe
                   key={`${url}:${reload}`}
