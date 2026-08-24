@@ -18,19 +18,22 @@
  * re-declares it in the disabled ui-layout row's place
  * (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
+import { memo, useCallback } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { INSPECTOR_VIEW_TYPES, pickEntry } from '../app/catalog.ts'
+import type { InspectorViewTypeDefinition } from '../app/catalog.ts'
 import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
-import { useLayoutStore } from './layout-store.ts'
+import { useLayoutSelection } from './layout-store.ts'
+import type { LayoutStore, PaneTabs } from './layout-store.ts'
 import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
 import { Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
-import { ChatNav, CONVERSATION_APP_ID } from '../features/conversation/index.ts'
+import { ChatNav } from '../features/conversation/index.ts'
 
 /** Details column width when `ctx.layout` opens it (ui-layout's DETAILS_DEFAULT). */
 const DETAILS_WIDTH = 480
@@ -46,7 +49,6 @@ const DETAILS_WIDTH = 480
  */
 export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlot: RenderSlot }): ReactNode {
   const { layout } = useAppDeps()
-  useLayoutStore(layout)
   return (
     <ColumnFrame
       rootRef={layout.sideRef}
@@ -99,7 +101,7 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
           with the shell. The 14px below gives the card breathing room before
           the workspace section. */}
       <nav style={{ display: 'flex', flexDirection: 'column', padding: `0 ${ROW_METRICS.gutter}px 14px` }}>
-         <ChatNav current={layout.state.view === CONVERSATION_APP_ID} />
+         <ChatNav />
       </nav>
 
       {/* The official workspace browser rides the revived `sidebar.workspaces`
@@ -125,6 +127,42 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
 
 // ── the inspector column ────────────────────────────────────────────────────
 
+const EMPTY_TABS: readonly { id: string; label: string }[] = []
+
+/**
+ * One memoized keep-alive view. Stable callbacks and tab-slice identity mean
+ * a Browser title update cannot re-render Files or every Terminal pane.
+ */
+const InspectorViewMount = memo(function InspectorViewMount({ view, tabs, visible, layout }: {
+  view: InspectorViewTypeDefinition
+  tabs: PaneTabs | undefined
+  visible: boolean
+  layout: LayoutStore
+}): ReactNode {
+  const onOpenTab = useCallback((tab: { id: string; label: string }) => { layout.openTab(view.id, tab) }, [layout, view.id])
+  const onCloseTab = useCallback((id: string) => { layout.closeTab(view.id, id) }, [layout, view.id])
+  const onResetTabs = useCallback(() => { layout.clearTabs(view.id) }, [layout, view.id])
+  const onFocusTab = useCallback((id: string) => { layout.focusTab(view.id, id) }, [layout, view.id])
+  const Component = view.Component
+  return (
+    <div
+      data-inspector-view={view.id}
+      style={{ display: visible ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
+    >
+      <Component
+        viewId={view.id}
+        tabs={tabs?.items ?? EMPTY_TABS}
+        active={tabs?.active ?? null}
+        visible={visible}
+        onOpenTab={onOpenTab}
+        onCloseTab={onCloseTab}
+        onResetTabs={onResetTabs}
+        onFocusTab={onFocusTab}
+      />
+    </div>
+  )
+})
+
 /**
  * The inspector (dock) column: a segmented control over every registered view
  * type and every view's mounted body. A segment change only changes display;
@@ -132,15 +170,16 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
  */
 function InspectorColumn(): ReactNode {
   const { layout } = useAppDeps()
-  useLayoutStore(layout)
-  const s = layout.state
+  const dockMax = useLayoutSelection(layout, current => current.state.dockMax)
+  const pane = useLayoutSelection(layout, current => current.state.pane)
+  const tabsByView = useLayoutSelection(layout, current => current.state.tabs)
   const views = INSPECTOR_VIEW_TYPES
-  const active = pickEntry(views, s.pane)
+  const active = pickEntry(views, pane)
   return (
     <ColumnFrame
       rootRef={layout.dockRef}
       headerPad={10}
-      style={s.dockMax
+      style={dockMax
         // Maximized: an overlay over the whole frame. The columns underneath
         // stay mounted and laid out, so restoring loses no scroll or state —
         // and the header regains the lights cluster it now covers.
@@ -148,7 +187,7 @@ function InspectorColumn(): ReactNode {
         : { flex: '0 0 auto', minWidth: 0, background: 'var(--db-window)' }}
       header={(
         <>
-          {s.dockMax && (
+          {dockMax && (
             <>
               <TrafficLights />
               <span style={{ width: 2 }} />
@@ -179,10 +218,10 @@ function InspectorColumn(): ReactNode {
           )}
           <span style={{ marginLeft: 'auto' }} />
           <div style={{ ...NO_DRAG, display: 'flex', gap: 2 }}>
-            <KIT.IconButton title={s.dockMax ? '退出全屏' : '全屏显示'} onClick={layout.toggleDockMax}>
-              {s.dockMax ? <Minimize size={14} /> : <Maximize size={14} />}
+            <KIT.IconButton title={dockMax ? '退出全屏' : '全屏显示'} onClick={layout.toggleDockMax}>
+              {dockMax ? <Minimize size={14} /> : <Maximize size={14} />}
             </KIT.IconButton>
-            {!s.dockMax && (
+            {!dockMax && (
               <KIT.IconButton title="关闭停靠栏" onClick={layout.closeDock}>
                 <PanelRight size={15} />
               </KIT.IconButton>
@@ -198,38 +237,19 @@ function InspectorColumn(): ReactNode {
                 <KIT.EmptyState>没有装配任何停靠面板。</KIT.EmptyState>
               </div>
             )
-          : views.map((view) => {
-              const tabs = s.tabs[view.id]
-              const visible = view.id === active.id
-              const Component = view.Component
-              return (
-                <div
-                  key={view.id}
-                  data-inspector-view={view.id}
-                  style={{ display: visible ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
-                >
-                  <Component
-                    viewId={view.id}
-                    tabs={tabs?.items ?? EMPTY_TABS}
-                    active={tabs?.active ?? null}
-                    visible={visible}
-                    onOpenTab={(tab) => { layout.openTab(view.id, tab) }}
-                    onCloseTab={(id) => { layout.closeTab(view.id, id) }}
-                    onFocusTab={(id) => { layout.focusTab(view.id, id) }}
-                  />
-                </div>
-              )
-            })}
+          : views.map(view => (
+              <InspectorViewMount
+                key={view.id}
+                view={view}
+                tabs={tabsByView[view.id]}
+                visible={view.id === active.id}
+                layout={layout}
+              />
+            ))}
       </div>
     </ColumnFrame>
   )
 }
-
-/**
- * One stable empty array: a tab slice built per render would hand
- * useSyncExternalStore a fresh snapshot every time.
- */
-const EMPTY_TABS: readonly { id: string; label: string }[] = []
 
 // ── the root occupant ───────────────────────────────────────────────────────
 
@@ -246,12 +266,15 @@ type RootProps = PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shel
  */
 export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => ReactNode {
   return function DeepBuddyRoot({ renderSlot }: RootProps): ReactNode {
-    useLayoutStore(deps.layout)
-    const s = deps.layout.state
+    const sidebar = useLayoutSelection(deps.layout, current => current.state.sidebar)
+    const dock = useLayoutSelection(deps.layout, current => current.state.dock)
+    const dockMax = useLayoutSelection(deps.layout, current => current.state.dockMax)
+    const sessionStarted = useLayoutSelection(deps.layout, current => current.state.sessionStarted)
+    const detailsOpen = useLayoutSelection(deps.layout, current => current.detailsOpen)
     return (
       <AppDepsProvider value={deps}>
         <div
-          className={s.sidebar ? 'dbdy' : 'dbdy dbdy-noside'}
+          className={sidebar ? 'dbdy' : 'dbdy dbdy-noside'}
           style={{
             position: 'relative',
             display: 'flex',
@@ -267,7 +290,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
           }}
         >
           <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, display: 'flex' }}>
-          {s.sidebar && (
+          {sidebar && (
             <>
               {/* DeepBuddy unmounts the column instead of keeping the official
                   compact rail, so `collapsed` is false wherever this runs.
@@ -301,7 +324,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
                 the SAME 52px centerline the sidebar header drew, so the
                 control never moves vertically; the dbdy-noside class indents
                 the official header title clear of them (tokens.ts). */}
-            {!s.sidebar && (
+            {!sidebar && (
               <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center' }}>
                 <TrafficLights />
                 {/* 14 = the TopBar gap (8) + toggle margin (6) the expanded
@@ -315,10 +338,10 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             )}
             {renderSlot('conversation', {})}
           </div>
-          {s.dock && s.sessionStarted && (
+          {dock && sessionStarted && (
             <>
               {/* No seam to drag while the dock overlays the frame. */}
-              {!s.dockMax && <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />}
+              {!dockMax && <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />}
               <InspectorColumn />
             </>
           )}
@@ -326,10 +349,10 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               occupant keeps its state across open/close. */}
           <div
             style={{
-              flex: `0 0 ${deps.layout.detailsOpen ? DETAILS_WIDTH : 0}px`,
+              flex: `0 0 ${detailsOpen ? DETAILS_WIDTH : 0}px`,
               minWidth: 0,
               overflow: 'hidden',
-              borderLeft: deps.layout.detailsOpen ? '1px solid var(--db-line)' : 'none',
+              borderLeft: detailsOpen ? '1px solid var(--db-line)' : 'none',
             }}
           >
             {renderSlot('details', {})}

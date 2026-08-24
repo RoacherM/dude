@@ -12,7 +12,6 @@ import type { ReactNode } from 'react'
 import type { Dsh } from '../dsh/adapter.ts'
 import type { PresetPlane } from '../dsh/presets.ts'
 import type { LayoutStore } from '../shell/layout-store.ts'
-import type { ConversationStore } from '../features/conversation/index.ts'
 import type { FilesStore } from '../features/files/index.ts'
 
 /** The fiber's shared stores and wires. */
@@ -23,8 +22,6 @@ export interface AppDeps {
   layout: LayoutStore
   /** The shared agent-preset plane (adapter). */
   presets: PresetPlane
-  /** Conversation's data plane. */
-  conversation: ConversationStore
   /** Files' data plane. */
   files: FilesStore
 }

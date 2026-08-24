@@ -37,6 +37,8 @@ export interface InspectorViewProps {
   onOpenTab(tab: TabRef): void
   /** Close an instance; focus falls to its neighbour. */
   onCloseTab(id: string): void
+  /** Clear this view's instance ledger in one store update. */
+  onResetTabs(): void
   /** Focus an existing instance. */
   onFocusTab(id: string): void
 }

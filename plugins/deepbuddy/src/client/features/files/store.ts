@@ -115,23 +115,21 @@ export class FilesStore {
 
   private onSessions = (): void => {
     const list = this.dsh.sessions.list.getSnapshot()
-    this.setState({ sessionId: list.current })
-    // Re-watch when the current id changed, and retry a binding that was not
-    // hydrated yet (watchedId stays undefined until a subscription sticks).
+    // The file wire is session-id fenced by the host and does not need the
+    // renderer's conversation binding to hydrate first.
     if (list.current !== this.watchedId) this.watchSession(list.current)
   }
 
   private watchSession(id: SessionId | undefined): void {
     this.watchedId = id
     // Session switch: the file tree belongs to the old fence.
-    this.setState({ fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {}, mediaBodies: {} })
-    if (id === undefined) return
-    const binding = this.dsh.sessions.binding(id)
-    if (!binding) {
-      // Not hydrated yet: the next list notification retries.
-      this.watchedId = undefined
-      return
-    }
+    this.setState({ sessionId: id, fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {}, mediaBodies: {} })
+  }
+
+  /** Load the root only when the Files view is actually visible. */
+  ensureRootLoaded = (): void => {
+    const id = this.state.sessionId
+    if (id === undefined || this.state.fsChildren['root'] !== undefined) return
     void this.loadDir('')
   }
 
@@ -139,8 +137,7 @@ export class FilesStore {
 
   /** List one directory level ('' = the session's workspace root). */
   loadDir = async (path: string): Promise<void> => {
-    // watchedId, not state.sessionId: setState notifications are batched by
-    // React and this runs synchronously from watchSession.
+    // watchedId is the synchronous session fence set by watchSession.
     const id = this.watchedId
     const files = this.dsh.files
     if (id === undefined || files === null) return

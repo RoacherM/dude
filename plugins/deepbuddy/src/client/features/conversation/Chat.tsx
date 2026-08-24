@@ -7,7 +7,6 @@
  * composer, chips and hero) is retired with the official takeover.
  */
 import type { ReactNode } from 'react'
-import { useStore } from '../../dsh/hooks.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { Compose } from '../../ui/icons.tsx'
 
@@ -15,14 +14,13 @@ import { Compose } from '../../ui/icons.tsx'
 export const CONVERSATION_APP_ID = 'chat'
 
 /** The new-task button shown under the sidebar brand. */
-export function ChatNav({ current }: { current: boolean }): ReactNode {
-  const { conversation, layout } = useAppDeps()
-  useStore(conversation)
+export function ChatNav(): ReactNode {
+  const { dsh, layout } = useAppDeps()
   const newTask = (): void => {
     // Reveal the conversation the new session lands in — same rule as
     // clicking a session row (FEATURE_MAP §2).
     layout.setView(CONVERSATION_APP_ID)
-    conversation.newTask()
+    dsh.workspaces.startSession()
   }
   return (
     <button

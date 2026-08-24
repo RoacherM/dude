@@ -17,9 +17,8 @@ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY, SIDEBAR_SLOT_MAP } from '../dsh/adapter.ts'
 import { PresetPlane } from '../dsh/presets.ts'
-import { LayoutStore, useLayoutStore } from '../shell/layout-store.ts'
+import { LayoutStore, useLayoutSelection } from '../shell/layout-store.ts'
 import { DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
-import { ConversationStore } from '../features/conversation/index.ts'
 import { FilesStore } from '../features/files/index.ts'
 import { INSPECTOR_VIEW_TYPES } from './catalog.ts'
 import { useAppDeps } from './context.tsx'
@@ -52,8 +51,9 @@ export const inject = ['slots', 'connection', 'sessions', 'workspaces', 'theme']
  */
 function DeepBuddyDockToggle(): ReactNode {
   const { layout } = useAppDeps()
-  useLayoutStore(layout)
-  if (layout.state.dock && layout.state.sessionStarted) return null
+  const dock = useLayoutSelection(layout, current => current.state.dock)
+  const sessionStarted = useLayoutSelection(layout, current => current.state.sessionStarted)
+  if (dock && sessionStarted) return null
   const firstView = INSPECTOR_VIEW_TYPES[0]
   return (
     <KIT.IconButton
@@ -81,9 +81,8 @@ export function apply(ctx: ClientContext): void {
   const dsh = createDsh(ctx, connection)
   const layout = new LayoutStore()
   const presets = new PresetPlane(dsh)
-  const conversation = new ConversationStore(dsh)
   const files = new FilesStore(dsh)
-  const deps: AppDeps = { dsh, layout, presets, conversation, files }
+  const deps: AppDeps = { dsh, layout, presets, files }
 
   // The DSH-facing services and the layout store's own lifecycle: the
   // `ctx.layout` face, the theme presenter, the stylesheet, the Remote-plane
@@ -96,10 +95,6 @@ export function apply(ctx: ClientContext): void {
     presets.mount()
     return () => { presets.dispose() }
   }, 'deepbuddy: preset plane')
-  ctx.effect(() => {
-    conversation.mount()
-    return () => { conversation.dispose() }
-  }, 'deepbuddy: conversation store')
   ctx.effect(() => {
     files.mount()
     return () => { files.dispose() }
@@ -145,4 +140,3 @@ export function apply(ctx: ClientContext): void {
     ),
   'deepbuddy: dock toggle header utility')
 }
-

@@ -191,9 +191,10 @@ test('inspector views and resource tabs use display keep-alive instead of condit
 
   // All registered view components are mapped into the tree together; only
   // their display changes when the segmented control changes.
-  assert.match(shell, /views\.map\(\(view\) =>/)
+  assert.match(shell, /views\.map\(view =>/)
   assert.match(shell, /data-inspector-view=\{view\.id\}/)
   assert.match(shell, /display: visible \? 'flex' : 'none'/)
+  assert.match(shell, /InspectorViewMount = memo/)
   assert.doesNotMatch(shell, /<active\.Component/)
 
   // Resource tabs repeat that same keep-alive rule, so an inactive webview or
@@ -201,9 +202,185 @@ test('inspector views and resource tabs use display keep-alive instead of condit
   assert.match(terminal, /data-terminal-tab=\{tab\.id\}/)
   assert.match(terminal, /display: tab\.id === active \? 'flex' : 'none'/)
   assert.match(terminal, /if \(visible\) requestAnimationFrame\(\(\) => \{ fitRef\.current\(\) \}\)/)
-  assert.match(browser, /data-browser-tab=\{tab\.id\}/)
-  assert.match(browser, /display: tab\.id === active \? 'flex' : 'none'/)
+  assert.match(terminal, /if \(!visibleRef\.current\) return/)
+  assert.match(terminal, /new ResizeObserver\(scheduleFitAndResize\)/)
+  assert.match(terminal, /\}, 80\)/)
+  assert.match(browser, /data-browser-tab=\{tabId\}/)
+  assert.match(browser, /display: active \? 'flex' : 'none'/)
+  assert.match(browser, /BrowserTabMount = memo/)
+  assert.match(browser, /\}, \[webview, tabId\]\)/)
   assert.match(browser, /const browserResources = new Map/)
+})
+
+test('layout tab updates suppress no-ops and clear a pane in one notification', async () => {
+  const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+  const layout = new LayoutStore()
+  let notifications = 0
+  const off = layout.subscribe(() => { notifications += 1 })
+
+  layout.openTab('browser', { id: 'browser-1', label: '新标签页' })
+  assert.equal(notifications, 1)
+
+  // Title events and active-tab clicks are common hot-path duplicates. They
+  // must not repaint every layout subscriber when the ledger is unchanged.
+  layout.openTab('browser', { id: 'browser-1', label: '新标签页' })
+  layout.focusTab('browser', 'browser-1')
+  assert.equal(notifications, 1)
+
+  layout.openTab('browser', { id: 'browser-2', label: '新标签页' })
+  layout.focusTab('browser', 'browser-1')
+  assert.equal(notifications, 3)
+
+  // A session fence drops the whole Files ledger atomically, rather than
+  // closing N tabs and publishing N intermediate states.
+  layout.clearTabs('browser')
+  assert.equal(notifications, 4)
+  assert.deepEqual(layout.state.tabs.browser, { items: [], active: null })
+  layout.clearTabs('browser')
+  assert.equal(notifications, 4)
+  off()
+})
+
+test('dock drag is shielded from webviews and coalesced to one write per frame', async () => {
+  const previousWindow = globalThis.window
+  const previousDocument = globalThis.document
+  const listeners = new Map()
+  let nextFrame = null
+  let shield = null
+  let styleWrites = 0
+  const dockStyle = new Proxy({ width: '600px', flex: '0 0 600px', overflow: '' }, {
+    set(target, key, value) {
+      if (key === 'width' || key === 'flex') styleWrites += 1
+      target[key] = value
+      return true
+    },
+  })
+
+  globalThis.window = {
+    innerWidth: 1440,
+    addEventListener(type, listener) { listeners.set(type, listener) },
+    removeEventListener(type) { listeners.delete(type) },
+    requestAnimationFrame(callback) { nextFrame = callback; return 1 },
+    cancelAnimationFrame() { nextFrame = null },
+  }
+  globalThis.document = {
+    body: {
+      style: { cursor: '' },
+      append(node) { shield = node },
+    },
+    createElement() {
+      return {
+        dataset: {},
+        style: {},
+        remove() { shield = null },
+      }
+    },
+  }
+
+  try {
+    const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+    const layout = new LayoutStore()
+    layout.sideRef.current = { style: { width: '268px' } }
+    const webviewStyle = { width: '100%', minWidth: '', maxWidth: '', pointerEvents: '' }
+    const webview = {
+      style: webviewStyle,
+      getBoundingClientRect() { return { width: 584 } },
+    }
+    layout.dockRef.current = {
+      style: dockStyle,
+      getBoundingClientRect() { return { width: 600 } },
+      querySelectorAll() { return [webview] },
+    }
+    let prevented = false
+    layout.startDockDrag({ clientX: 800, preventDefault() { prevented = true } })
+
+    assert.equal(prevented, true)
+    assert.equal(shield.dataset.deepbuddyResizeShield, '')
+    assert.equal(document.body.style.cursor, 'col-resize')
+    assert.equal(dockStyle.overflow, 'hidden')
+    assert.deepEqual(webviewStyle, {
+      width: '584px', minWidth: '584px', maxWidth: '584px', pointerEvents: 'none',
+    })
+
+    listeners.get('mousemove')({ clientX: 780 })
+    listeners.get('mousemove')({ clientX: 760 })
+    assert.equal(dockStyle.width, '600px', 'mousemove does not write ahead of the frame')
+    nextFrame()
+    assert.equal(dockStyle.width, '640px', 'the frame applies only the latest pointer position')
+    assert.equal(styleWrites, 2)
+
+    listeners.get('mousemove')({ clientX: 1200 })
+    nextFrame()
+    assert.equal(dockStyle.width, '432px', 'rightward shrink still respects the existing 30% floor')
+    assert.equal(styleWrites, 4)
+    listeners.get('mousemove')({ clientX: 1300 })
+    nextFrame()
+    assert.equal(styleWrites, 4, 'moves beyond the floor do not repeat identical style writes')
+
+    listeners.get('mouseup')()
+    assert.equal(shield, null)
+    assert.equal(document.body.style.cursor, '')
+    assert.equal(dockStyle.overflow, '')
+    assert.deepEqual(webviewStyle, {
+      width: '100%', minWidth: '', maxWidth: '', pointerEvents: '',
+    })
+  }
+  finally {
+    globalThis.window = previousWindow
+    globalThis.document = previousDocument
+  }
+})
+
+test('files defer the root request until the visible view asks for it', async () => {
+  let listListener = () => {}
+  let directoryRequests = 0
+  const dsh = {
+    sessions: {
+      list: {
+        subscribe(listener) { listListener = listener; return () => {} },
+        getSnapshot() { return { current: 'session-a' } },
+      },
+    },
+    files: {
+      async listDirectory() {
+        directoryRequests += 1
+        return { path: '/workspace', entries: [] }
+      },
+    },
+  }
+  const { FilesStore } = await import(join(root, 'src/client/features/files/store.ts'))
+  const files = new FilesStore(dsh)
+  files.mount()
+
+  assert.equal(directoryRequests, 0, 'session changes alone do not list the workspace')
+  listListener()
+  assert.equal(directoryRequests, 0, 'duplicate session snapshots remain idle')
+
+  files.ensureRootLoaded()
+  files.ensureRootLoaded()
+  assert.equal(directoryRequests, 1, 'loading state coalesces duplicate visibility effects')
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(files.state.fsRoot, '/workspace')
+  files.ensureRootLoaded()
+  assert.equal(directoryRequests, 1, 'a loaded root is not fetched again')
+  files.dispose()
+})
+
+test('performance hot paths subscribe to narrow projections', async () => {
+  const app = await readFile(join(root, 'src/client/app/App.tsx'), 'utf8')
+  const shell = await readFile(join(root, 'src/client/shell/ThreeColumnFrame.tsx'), 'utf8')
+  const terminal = await readFile(join(root, 'src/client/features/terminal/TerminalView.tsx'), 'utf8')
+  const browser = await readFile(join(root, 'src/client/features/browser/BrowserView.tsx'), 'utf8')
+  const files = await readFile(join(root, 'src/client/features/files/store.ts'), 'utf8')
+
+  assert.doesNotMatch(app, /ConversationStore/)
+  assert.match(app, /useLayoutSelection/)
+  assert.match(shell, /useLayoutSelection/)
+  assert.doesNotMatch(shell, /useLayoutStore/)
+  assert.match(terminal, /useSyncExternalStore\(dsh\.sessions\.list\.subscribe/)
+  assert.match(browser, /const onLabelRef = useRef\(onLabel\)/)
+  const watchSessionBody = files.slice(files.indexOf('private watchSession'), files.indexOf('ensureRootLoaded'))
+  assert.doesNotMatch(watchSessionBody, /loadDir/)
 })
 
 test('terminal and browser views ship their required interaction paths', async () => {

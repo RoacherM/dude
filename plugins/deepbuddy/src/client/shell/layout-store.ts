@@ -17,7 +17,7 @@
  * the browser already keeps it.
  */
 import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
-import { createRef, useSyncExternalStore } from 'react'
+import { createRef, useCallback, useRef, useSyncExternalStore } from 'react'
 import {
   DOCK_BREAKPOINT, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
   clampDock, clampSidebar, dockDefault, dockFits,
@@ -117,10 +117,8 @@ export class LayoutStore {
   readonly sideRef = createRef<HTMLElement>()
   readonly dockRef = createRef<HTMLElement>()
 
-  /** uSES subscribers: one per slot tree rendering from this state. */
+  /** uSES projection subscribers from the independent slot trees. */
   private readonly listeners = new Set<() => void>()
-  /** uSES snapshot: a counter, because `state` is replaced on every update. */
-  private version = 0
 
   /** A hand-closed dock stays closed when the window grows back. */
   private userClosedDock = false
@@ -134,7 +132,6 @@ export class LayoutStore {
 
   /** Notify without replacing state — for the chrome-only facts above. */
   private bump(): void {
-    this.version += 1
     for (const listener of this.listeners) listener()
   }
 
@@ -142,8 +139,6 @@ export class LayoutStore {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
-
-  getVersion = (): number => this.version
 
   // ── lifecycle ─────────────────────────────────────────────────────────────
 
@@ -206,8 +201,48 @@ export class LayoutStore {
   }
 
   private writeDockWidth(el: HTMLElement, w: number): void {
-    el.style.flex = `0 0 ${w}px`
-    el.style.width = `${w}px`
+    const width = `${w}px`
+    const flex = `0 0 ${width}`
+    if (el.style.width === width && el.style.flex === flex) return
+    el.style.flex = flex
+    el.style.width = width
+  }
+
+  /**
+   * Keep loaded guest pages at one viewport size while their dock moves.
+   * Electron webviews and fallback iframes can relayout/repaint an entire page
+   * for every width tick; clipping a fixed viewport makes the divider cheap,
+   * then restoring the inline styles performs exactly one final resize.
+   */
+  private freezeDockEmbeds(el: HTMLElement): () => void {
+    const embeds = [...el.querySelectorAll<HTMLElement>('webview, iframe')]
+    if (embeds.length === 0) return () => {}
+    const overflow = el.style.overflow
+    const frozen = embeds.map((embed) => ({
+      embed,
+      width: embed.style.width,
+      minWidth: embed.style.minWidth,
+      maxWidth: embed.style.maxWidth,
+      pointerEvents: embed.style.pointerEvents,
+      measuredWidth: embed.getBoundingClientRect().width,
+    }))
+    el.style.overflow = 'hidden'
+    for (const item of frozen) {
+      const width = `${item.measuredWidth}px`
+      item.embed.style.width = width
+      item.embed.style.minWidth = width
+      item.embed.style.maxWidth = width
+      item.embed.style.pointerEvents = 'none'
+    }
+    return () => {
+      el.style.overflow = overflow
+      for (const item of frozen) {
+        item.embed.style.width = item.width
+        item.embed.style.minWidth = item.minWidth
+        item.embed.style.maxWidth = item.maxWidth
+        item.embed.style.pointerEvents = item.pointerEvents
+      }
+    }
   }
 
   // ── verbs ─────────────────────────────────────────────────────────────────
@@ -218,6 +253,7 @@ export class LayoutStore {
     // own (or falls back to its catalog title). The started-session fact also
     // belongs to the conversation view, so clearing it here keeps the dock
     // rule from leaking across apps.
+    if (this.state.view === view && !this.state.sessionStarted && this.state.title === null) return
     this.patch({ view, sessionStarted: false, title: null })
   }
 
@@ -293,10 +329,11 @@ export class LayoutStore {
   /** Open and focus a new tab, or update an existing tab's presentation. */
   openTab = (pane: string, tab: TabRef): void => {
     const cur = this.tabsOf(pane)
-    const exists = cur.items.some(t => t.id === tab.id)
+    const at = cur.items.findIndex(item => item.id === tab.id)
+    if (at >= 0 && cur.items[at]?.label === tab.label) return
     this.writeTabs(pane, {
-      items: exists ? cur.items.map(item => item.id === tab.id ? tab : item) : [...cur.items, tab],
-      active: exists ? cur.active : tab.id,
+      items: at >= 0 ? cur.items.map(item => item.id === tab.id ? tab : item) : [...cur.items, tab],
+      active: at >= 0 ? cur.active : tab.id,
     })
   }
 
@@ -315,22 +352,68 @@ export class LayoutStore {
   /** Focus an existing tab. */
   focusTab = (pane: string, id: string): void => {
     const cur = this.tabsOf(pane)
+    if (cur.active === id) return
     if (!cur.items.some(t => t.id === id)) return
     this.writeTabs(pane, { ...cur, active: id })
+  }
+
+  /** Drop one view's whole ledger in one notification (session fence change). */
+  clearTabs = (pane: string): void => {
+    const cur = this.tabsOf(pane)
+    if (cur.items.length === 0 && cur.active === null) return
+    this.writeTabs(pane, NO_TABS)
   }
 
   // ── drag handles ──────────────────────────────────────────────────────────
 
   private trackDrag(move: (e: MouseEvent) => void, done?: () => void): void {
+    // A Browser webview/iframe is a separate event surface. When the right
+    // divider moves into it, host-window mousemove events otherwise become
+    // intermittent; the transparent shield keeps the whole gesture in the
+    // shell regardless of which view is underneath the pointer.
+    const shield = document.createElement('div')
+    shield.dataset['deepbuddyResizeShield'] = ''
+    Object.assign(shield.style, {
+      position: 'fixed',
+      inset: '0',
+      zIndex: '2147483647',
+      cursor: 'col-resize',
+      background: 'transparent',
+      WebkitAppRegion: 'no-drag',
+    })
+    document.body.append(shield)
+
+    // Trackpads can emit faster than the display refreshes. Keep only the
+    // latest pointer position and perform at most one layout write per frame.
+    let queued: MouseEvent | null = null
+    let frame: number | null = null
+    const flush = (): void => {
+      frame = null
+      const next = queued
+      queued = null
+      if (next !== null) move(next)
+    }
+    const onMove = (e: MouseEvent): void => {
+      queued = e
+      if (frame === null) frame = window.requestAnimationFrame(flush)
+    }
     const up = (): void => {
-      window.removeEventListener('mousemove', move)
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame)
+        frame = null
+      }
+      flush()
+      window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', up)
+      window.removeEventListener('blur', up)
+      shield.remove()
       document.body.style.cursor = ''
       done?.()
     }
     document.body.style.cursor = 'col-resize'
-    window.addEventListener('mousemove', move)
+    window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', up)
+    window.addEventListener('blur', up)
   }
 
   startSideDrag = (e: { clientX: number; preventDefault(): void }): void => {
@@ -355,9 +438,10 @@ export class LayoutStore {
     if (el === null) return
     const startX = e.clientX
     const startW = el.getBoundingClientRect().width
+    const thawEmbeds = this.freezeDockEmbeds(el)
     this.trackDrag((ev) => {
       this.writeDockWidth(el, clampDock(startW + (startX - ev.clientX), window.innerWidth, this.sideWidth()))
-    })
+    }, thawEmbeds)
   }
 
   resetDockWidth = (): void => {
@@ -370,11 +454,13 @@ export class LayoutStore {
 // ── render-side helpers ─────────────────────────────────────────────────────
 
 /**
- * Re-render a column component whenever the layout state moves. Each slot
- * tree is a separate React boundary, so they subscribe rather than share a
- * parent.
- * @param store - the plugin-scope layout store.
+ * Subscribe to one layout projection. Notifications whose selected value is
+ * `Object.is`-equal do not re-render this tree, so tab metadata cannot repaint
+ * the conversation frame or sidebar.
  */
-export function useLayoutStore(store: LayoutStore): void {
-  useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion)
+export function useLayoutSelection<T>(store: LayoutStore, select: (store: LayoutStore) => T): T {
+  const selectRef = useRef(select)
+  selectRef.current = select
+  const getSnapshot = useCallback(() => selectRef.current(store), [store])
+  return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot)
 }

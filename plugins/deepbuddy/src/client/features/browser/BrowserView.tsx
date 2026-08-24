@@ -1,5 +1,5 @@
 /** Kept-alive multi-tab browser: desktop webviews with an iframe fallback. */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { TabRef } from '../../shell/layout-store.ts'
@@ -74,7 +74,7 @@ function EmbedRefusal({ url }: { url: string }): ReactNode {
   )
 }
 
-function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: string) => void }): ReactNode {
+const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: string) => void }): ReactNode {
   const initial = browserResources.get(tabId) ?? { input: '', url: '' }
   const [input, setInputState] = useState(initial.input)
   const [url, setUrlState] = useState(initial.url)
@@ -83,6 +83,8 @@ function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: strin
   const [history, setHistory] = useState({ back: false, forward: false })
   const [reload, setReload] = useState(0)
   const currentNavigation = useRef(initial.url)
+  const onLabelRef = useRef(onLabel)
+  onLabelRef.current = onLabel
   const webviewRef = useCallback((node: HTMLElement | null): void => {
     setWebview(node as WebviewElement | null)
   }, [])
@@ -102,7 +104,7 @@ function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: strin
     setInputState(next)
     setUrlState(next)
     persist(next, next)
-    if (!IN_ELECTRON) onLabel(hostnameOf(next))
+    if (!IN_ELECTRON) onLabelRef.current(hostnameOf(next))
   }
 
   useEffect(() => {
@@ -131,7 +133,7 @@ function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: strin
     }
     const title = (event: Event): void => {
       const next = (event as WebviewNavigationEvent).title?.trim()
-      if (next !== undefined && next !== '') onLabel(next)
+      if (next !== undefined && next !== '') onLabelRef.current(next)
     }
     webview.addEventListener('will-navigate', navigationStarted)
     webview.addEventListener('did-start-loading', navigationStarted)
@@ -147,7 +149,7 @@ function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: strin
       webview.removeEventListener('did-fail-load', fail)
       webview.removeEventListener('page-title-updated', title)
     }
-  }, [webview, tabId, onLabel])
+  }, [webview, tabId])
 
   const onAddressKeyDown = (event: KeyboardEvent<Element>): void => {
     if (event.key === 'Enter') navigate()
@@ -200,7 +202,24 @@ function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: strin
               )}
     </div>
   )
-}
+})
+
+/** Only the two tabs whose visibility changes re-render on a tab switch. */
+const BrowserTabMount = memo(function BrowserTabMount({ tabId, active, onOpenTab }: {
+  tabId: string
+  active: boolean
+  onOpenTab: InspectorViewProps['onOpenTab']
+}): ReactNode {
+  const onLabel = useCallback((label: string) => { onOpenTab({ id: tabId, label }) }, [onOpenTab, tabId])
+  return (
+    <div
+      data-browser-tab={tabId}
+      style={{ display: active ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
+    >
+      <BrowserPane tabId={tabId} onLabel={onLabel} />
+    </div>
+  )
+})
 
 export function BrowserView(props: InspectorViewProps): ReactNode {
   const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
@@ -215,10 +234,10 @@ export function BrowserView(props: InspectorViewProps): ReactNode {
     if (tabs.length === 0) add()
   }, [visible, tabs.length, add])
 
-  const close = (tabId: string): void => {
+  const close = useCallback((tabId: string): void => {
     browserResources.delete(tabId)
     onCloseTab(tabId)
-  }
+  }, [onCloseTab])
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -226,13 +245,7 @@ export function BrowserView(props: InspectorViewProps): ReactNode {
       {tabs.length === 0
         ? <div style={{ padding: 16 }}><KIT.EmptyState>点击 + 新建浏览器标签。</KIT.EmptyState></div>
         : tabs.map(tab => (
-            <div
-              key={tab.id}
-              data-browser-tab={tab.id}
-              style={{ display: tab.id === active ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
-            >
-              <BrowserPane tabId={tab.id} onLabel={(label) => { onOpenTab({ id: tab.id, label }) }} />
-            </div>
+            <BrowserTabMount key={tab.id} tabId={tab.id} active={tab.id === active} onOpenTab={onOpenTab} />
           ))}
     </div>
   )

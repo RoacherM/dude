@@ -1,5 +1,5 @@
 /** Multi-instance xterm client for host-owned, session-scoped PTYs. */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -7,7 +7,6 @@ import xtermCss from '@xterm/xterm/css/xterm.css'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { TabRef } from '../../shell/layout-store.ts'
 import { useAppDeps } from '../../app/context.tsx'
-import { useStore } from '../../dsh/hooks.ts'
 import { KIT } from '../../ui/kit.tsx'
 import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
 import { Refresh } from '../../ui/icons.tsx'
@@ -45,7 +44,7 @@ function nextTerminalTab(sessionId: string, tabs: readonly TabRef[]): TabRef {
   return { id: `term-${number}`, label: `终端 ${number}` }
 }
 
-function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
+const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
   sessionId: string
   termId: string
   visible: boolean
@@ -55,6 +54,8 @@ function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
   const mountRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<WebSocket | null>(null)
   const fitRef = useRef<() => void>(() => {})
+  const visibleRef = useRef(visible)
+  visibleRef.current = visible
   const [state, setState] = useState<ConnectionState>('connecting')
   const [detail, setDetail] = useState('')
   const [restart, setRestart] = useState(0)
@@ -84,6 +85,7 @@ function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
 
     let disposed = false
     let reconnectTimer: number | undefined
+    let resizeTimer: number | undefined
     let manuallyClosed = false
 
     const closeResource = (): void => {
@@ -104,13 +106,25 @@ function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
     onControl(termId, closeResource)
 
     const fitAndResize = (): void => {
+      if (!visibleRef.current) return
       try {
         fit.fit()
         send(socketRef.current, { type: 'resize', cols: terminal.cols, rows: terminal.rows })
       } catch { /* hidden panes and dock transitions can temporarily be 0x0 */ }
     }
     fitRef.current = fitAndResize
-    const resizeObserver = new ResizeObserver(fitAndResize)
+    // Shrinking an xterm reflows wrapped scrollback and is much more expensive
+    // than growing it. ResizeObserver fires throughout a divider gesture, so
+    // wait for the size to settle instead of reflowing the buffer every frame.
+    const scheduleFitAndResize = (): void => {
+      if (!visibleRef.current) return
+      if (resizeTimer !== undefined) window.clearTimeout(resizeTimer)
+      resizeTimer = window.setTimeout(() => {
+        resizeTimer = undefined
+        fitAndResize()
+      }, 80)
+    }
+    const resizeObserver = new ResizeObserver(scheduleFitAndResize)
     resizeObserver.observe(mount)
 
     const connect = (): void => {
@@ -160,6 +174,7 @@ function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
       disposed = true
       fitRef.current = () => {}
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
+      if (resizeTimer !== undefined) window.clearTimeout(resizeTimer)
       resizeObserver.disconnect()
       input.dispose()
       socketRef.current?.close()
@@ -190,14 +205,14 @@ function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
       <div ref={mountRef} style={{ flex: '1 1 auto', minHeight: 0, padding: '8px 8px 4px', userSelect: 'text', overflow: 'hidden' }} />
     </div>
   )
-}
+})
 
 /** One kept-alive xterm pane per tab; only an explicit tab close kills it. */
 export function TerminalView(props: InspectorViewProps): ReactNode {
   const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
-  const { conversation } = useAppDeps()
-  useStore(conversation)
-  const sessionId = conversation.state.list?.current as string | undefined
+  const { dsh } = useAppDeps()
+  const currentSession = useCallback(() => dsh.sessions.list.getSnapshot().current as string | undefined, [dsh])
+  const sessionId = useSyncExternalStore(dsh.sessions.list.subscribe, currentSession, currentSession)
   const controls = useRef(new Map<string, () => void>())
   const initializedSession = useRef<string | null>(null)
   const onControl = useCallback((termId: string, close: (() => void) | null): void => {

@@ -213,25 +213,27 @@ function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNo
  * view owns dropping its own tabs — each clears what it opened.
  */
 export function FilesView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, onOpenTab, onCloseTab, onFocusTab } = props
+  const { tabs, active, visible, onOpenTab, onCloseTab, onResetTabs, onFocusTab } = props
   const { files } = useAppDeps()
   useStore(files)
   const s = files.state
 
-  // Drop this view's tabs when the session changes. The open list rides a ref
-  // so the effect is subscribed once: it changes on every tab action, and
-  // re-running the effect on each would be churn.
+  // Drop this view's tabs when the session changes. The shell callback is
+  // stable, so ordinary tab actions do not retrigger the fence effect.
   const first = useRef(true)
-  const tabsRef = useRef(tabs)
-  tabsRef.current = tabs
   const sessionId = s.sessionId
   useEffect(() => {
     if (first.current) {
       first.current = false
       return
     }
-    for (const tab of tabsRef.current) onCloseTab(tab.id)
-  }, [sessionId])
+    onResetTabs()
+  }, [sessionId, onResetTabs])
+
+  const rootState = s.fsChildren['root']
+  useEffect(() => {
+    if (visible && sessionId !== undefined && rootState === undefined) files.ensureRootLoaded()
+  }, [files, visible, sessionId, rootState])
 
   const onOpen = (child: DirectoryChild): void => {
     files.openFile(child)
