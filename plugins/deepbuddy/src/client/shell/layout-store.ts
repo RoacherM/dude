@@ -69,8 +69,8 @@ export interface LayoutState {
    */
   title: string | null
   /**
-   * Tab state per inspector view type. The shell draws the strip from this
-   * fact; the view renders whatever its active tab means.
+   * Tab state per inspector view type. Each view draws the shared strip from
+   * this fact and renders whatever its active tab means.
    */
   tabs: Readonly<Record<string, PaneTabs>>
 }
@@ -290,13 +290,13 @@ export class LayoutStore {
     this.patch({ tabs: { ...this.state.tabs, [pane]: next } })
   }
 
-  /** Open a tab of a view type, or focus it when the id already exists. */
+  /** Open and focus a new tab, or update an existing tab's presentation. */
   openTab = (pane: string, tab: TabRef): void => {
     const cur = this.tabsOf(pane)
     const exists = cur.items.some(t => t.id === tab.id)
     this.writeTabs(pane, {
-      items: exists ? cur.items : [...cur.items, tab],
-      active: tab.id,
+      items: exists ? cur.items.map(item => item.id === tab.id ? tab : item) : [...cur.items, tab],
+      active: exists ? cur.active : tab.id,
     })
   }
 
@@ -378,5 +378,3 @@ export class LayoutStore {
 export function useLayoutStore(store: LayoutStore): void {
   useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion)
 }
-
-

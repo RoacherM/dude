@@ -56,8 +56,11 @@ const MEDIA_ROUTE = '/deepbuddy/media'
 /** Exact HTTP-upgrade route used by the interactive terminal. */
 const TERMINAL_ROUTE = '/deepbuddy/terminal'
 
-/** Maximum retained terminal output per session. */
+/** Maximum retained output per terminal instance. */
 const TERMINAL_SCROLLBACK_BYTES = 64 * 1024
+
+/** Hard ceiling for simultaneously running PTYs owned by one session. */
+const TERMINAL_MAX_PER_SESSION = 6
 
 /** Plugin configuration, validated and defaulted by the dsh loader. */
 export const Config = Schema.object({
@@ -426,8 +429,9 @@ function appendScrollback(current, chunk) {
 
 /** One host-owned PTY and every browser currently attached to it. */
 class TerminalResource {
-  constructor(sessionId, cwd, shell, onExit) {
+  constructor(sessionId, termId, cwd, shell, onExit) {
     this.sessionId = sessionId
+    this.termId = termId
     this.cwd = cwd
     this.clients = new Set()
     this.scrollback = ''
@@ -497,8 +501,9 @@ class TerminalResource {
 }
 
 /**
- * Session-keyed PTY owner. React attachments may come and go; this registry
- * alone decides resource lifetime and prevents two shells for one session.
+ * Session + terminal-id keyed PTY owner. React attachments may come and go;
+ * this registry alone decides resource lifetime and enforces the per-session
+ * concurrency ceiling.
  */
 export class DeepbuddyTerminalManager {
   constructor(ctx) {
@@ -507,35 +512,50 @@ export class DeepbuddyTerminalManager {
     this.pending = new Map()
   }
 
-  async resourceFor(sessionId) {
+  keyOf(sessionId, termId) {
+    return `${sessionId}\u0000${termId}`
+  }
+
+  runningCount(sessionId) {
+    const running = [...this.resources.values()].filter(resource => resource.sessionId === sessionId
+      && resource.status.kind === 'running' && !resource.closing).length
+    const spawning = [...this.pending.values()].filter(entry => entry.sessionId === sessionId).length
+    return running + spawning
+  }
+
+  async resourceFor(sessionId, termId) {
     const resolved = await resolveSessionCwd(this.ctx, sessionId, undefined)
     if (!resolved.ok) throw new Error(resolved.refusal.kind)
-    const existing = this.resources.get(sessionId)
+    const key = this.keyOf(sessionId, termId)
+    const existing = this.resources.get(key)
     if (existing !== undefined && existing.status.kind === 'running' && !existing.closing) return existing
     if (existing !== undefined && existing.closing) {
       await existing.exited
-      return this.resourceFor(sessionId)
+      return this.resourceFor(sessionId, termId)
     }
-    if (existing !== undefined && existing.status.kind === 'exited') this.resources.delete(sessionId)
-    const spawning = this.pending.get(sessionId)
-    if (spawning !== undefined) return spawning
+    if (existing !== undefined && existing.status.kind === 'exited') this.resources.delete(key)
+    const spawning = this.pending.get(key)
+    if (spawning !== undefined) return spawning.promise
+    if (this.runningCount(sessionId) >= TERMINAL_MAX_PER_SESSION) {
+      throw new Error(`terminal-limit-reached: max ${TERMINAL_MAX_PER_SESSION} per session`)
+    }
     const promise = Promise.resolve().then(() => {
       const shell = process.env.SHELL || '/bin/zsh'
-      const resource = new TerminalResource(sessionId, resolved.cwd, shell, (exited) => {
+      const resource = new TerminalResource(sessionId, termId, resolved.cwd, shell, (exited) => {
         // Natural exits stay available for one final scrollback attachment;
         // explicit closes leave immediately so a requested restart can spawn.
-        if (exited.closing && this.resources.get(sessionId) === exited) this.resources.delete(sessionId)
+        if (exited.closing && this.resources.get(key) === exited) this.resources.delete(key)
       })
-      this.resources.set(sessionId, resource)
+      this.resources.set(key, resource)
       return resource
     })
-    this.pending.set(sessionId, promise)
+    this.pending.set(key, { sessionId, promise })
     try { return await promise }
-    finally { this.pending.delete(sessionId) }
+    finally { this.pending.delete(key) }
   }
 
-  async attach(sessionId, socket) {
-    const resource = await this.resourceFor(sessionId)
+  async attach(sessionId, termId, socket) {
+    const resource = await this.resourceFor(sessionId, termId)
     resource.attach(socket)
     socket.on('message', (raw) => {
       let message
@@ -553,7 +573,7 @@ export class DeepbuddyTerminalManager {
         resource.resize(message.cols, message.rows)
       }
       else if (message?.type === 'kill') {
-        resource.kill('user closed terminal')
+        this.close(sessionId, termId, 'user closed terminal')
       }
       else {
         sendTerminalMessage(socket, { type: 'error', message: 'unsupported terminal message' })
@@ -562,8 +582,24 @@ export class DeepbuddyTerminalManager {
     socket.once('close', () => { resource.detach(socket) })
   }
 
-  kill(sessionId, reason) {
-    this.resources.get(sessionId)?.kill(reason)
+  close(sessionId, termId, reason) {
+    const key = this.keyOf(sessionId, termId)
+    const resource = this.resources.get(key)
+    if (resource === undefined) return
+    if (resource.status.kind === 'exited') {
+      resource.dispose(reason)
+      this.resources.delete(key)
+      return
+    }
+    resource.kill(reason)
+  }
+
+  killSession(sessionId, reason) {
+    for (const [key, resource] of this.resources) {
+      if (resource.sessionId !== sessionId) continue
+      resource.dispose(reason)
+      this.resources.delete(key)
+    }
   }
 
   dispose() {
@@ -726,12 +762,18 @@ export function apply(ctx, config) {
     terminalWss.on('connection', (socket, request) => {
       const url = new URL(request.url ?? TERMINAL_ROUTE, 'http://x')
       const sessionId = url.searchParams.get('sessionId')
+      const termId = url.searchParams.get('termId')
       if (sessionId === null || sessionId === '') {
         sendTerminalMessage(socket, { type: 'error', message: 'session-not-found' })
         socket.close(1008, 'session required')
         return
       }
-      void terminals.attach(sessionId, socket).catch((error) => {
+      if (termId === null || !/^term-\d+$/.test(termId)) {
+        sendTerminalMessage(socket, { type: 'error', message: 'term-id-required' })
+        socket.close(1008, 'termId required')
+        return
+      }
+      void terminals.attach(sessionId, termId, socket).catch((error) => {
         sendTerminalMessage(socket, { type: 'error', message: error instanceof Error ? error.message : String(error) })
         socket.close(1008, 'terminal refused')
       })
@@ -765,8 +807,8 @@ export function apply(ctx, config) {
   // A session resource ends with its owner, independent of whether a dock
   // attachment happens to be mounted at that moment.
   ctx.effect(() => ctx.on('session/disposed', (session) => {
-    terminals.kill(String(session.id), 'session disposed')
+    terminals.killSession(String(session.id), 'session disposed')
   }), 'deepbuddy: terminal session cleanup')
 }
 
-export { DESCRIPTORS, SERVICE_KEY, TERMINAL_ROUTE }
+export { DESCRIPTORS, SERVICE_KEY, TERMINAL_MAX_PER_SESSION, TERMINAL_ROUTE }

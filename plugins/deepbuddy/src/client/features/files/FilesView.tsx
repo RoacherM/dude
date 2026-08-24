@@ -2,10 +2,9 @@
  * The explorer inspector view: the workspace file tree on the left of the
  * column, the active tab's file body on the right.
  *
- * The view does not draw a tab strip — the shell owns that row and the tab
- * ledger (app/catalog.ts {@link InspectorViewProps}). Opening a file is two
- * calls: read the body (the files store) and open the tab (the shell's
- * callback). Neither knows about the other.
+ * The shared inspector tab row draws this view's shell-owned ledger slice.
+ * Opening a file is two calls: read the body and open the tab. Neither store
+ * knows about the other.
  */
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
@@ -16,6 +15,7 @@ import { basename } from '../../dsh/adapter.ts'
 import { useStore } from '../../dsh/hooks.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { KIT } from '../../ui/kit.tsx'
+import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
 import { ChevronDown, ChevronRight, FileText, Folder } from '../../ui/icons.tsx'
 
 /** Sort one listed level: directories first, then case-insensitive by name. */
@@ -213,7 +213,7 @@ function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNo
  * view owns dropping its own tabs — each clears what it opened.
  */
 export function FilesView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, onOpenTab, onCloseTab } = props
+  const { tabs, active, onOpenTab, onCloseTab, onFocusTab } = props
   const { files } = useAppDeps()
   useStore(files)
   const s = files.state
@@ -236,19 +236,27 @@ export function FilesView(props: InspectorViewProps): ReactNode {
   const onOpen = (child: DirectoryChild): void => {
     files.openFile(child)
     onOpenTab({ id: child.path, label: child.name })
+    onFocusTab(child.path)
   }
 
+  const frame = (body: ReactNode): ReactNode => (
+    <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {tabs.length > 0 && <InspectorTabs tabs={tabs} active={active} onFocus={onFocusTab} onClose={onCloseTab} />}
+      {body}
+    </div>
+  )
+
   if (files.dsh.files === null) {
-    return <div style={{ padding: 16 }}><KIT.EmptyState>文件服务未装配。</KIT.EmptyState></div>
+    return frame(<div style={{ padding: 16 }}><KIT.EmptyState>文件服务未装配。</KIT.EmptyState></div>)
   }
   if (s.sessionId === undefined) {
-    return <div style={{ padding: 16 }}><KIT.EmptyState>还没有会话——发起一个任务，这里显示它的工作空间。</KIT.EmptyState></div>
+    return frame(<div style={{ padding: 16 }}><KIT.EmptyState>还没有会话——发起一个任务，这里显示它的工作空间。</KIT.EmptyState></div>)
   }
   // With nothing open the tree IS the view. Splitting first and filling the
   // right half with a dashed placeholder spends the column's whole width on a
   // box that says "empty" — the tree wants that width.
   const split = active !== null
-  return (
+  return frame(
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
       <div style={{
         ...split ? { flex: '0 0 232px', width: 232 } : { flex: '1 1 auto' },

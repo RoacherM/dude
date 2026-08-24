@@ -1,18 +1,16 @@
-/**
- * xterm client for the host-owned, session-scoped PTY. The React tree owns
- * only the presentation and one WebSocket attachment: closing or switching
- * the dock disconnects this view, while the host keeps the PTY alive.
- */
-import { useEffect, useRef, useState } from 'react'
+/** Multi-instance xterm client for host-owned, session-scoped PTYs. */
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import xtermCss from '@xterm/xterm/css/xterm.css'
 import type { InspectorViewProps } from '../../app/catalog.ts'
+import type { TabRef } from '../../shell/layout-store.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { useStore } from '../../dsh/hooks.ts'
 import { KIT } from '../../ui/kit.tsx'
-import { Refresh, Stop } from '../../ui/icons.tsx'
+import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
+import { Refresh } from '../../ui/icons.tsx'
 
 type ConnectionState = 'connecting' | 'ready' | 'exited' | 'closed' | 'error'
 
@@ -25,28 +23,44 @@ interface TerminalMessage {
   status?: 'running' | 'exited'
 }
 
-function terminalSocketUrl(sessionId: string): string {
+const terminalCounters = new Map<string, number>()
+
+function terminalSocketUrl(sessionId: string, termId: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return `${protocol}//${window.location.host}/deepbuddy/terminal?sessionId=${encodeURIComponent(sessionId)}`
+  const query = new URLSearchParams({ sessionId, termId })
+  return `${protocol}//${window.location.host}/deepbuddy/terminal?${query.toString()}`
 }
 
 function send(socket: WebSocket | null, message: object): void {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message))
 }
 
-/** One xterm attachment. The host enforces the one-PTY-per-session rule. */
-export function TerminalView(_props: InspectorViewProps): ReactNode {
-  const { conversation } = useAppDeps()
-  useStore(conversation)
-  const sessionId = conversation.state.list?.current as string | undefined
+function nextTerminalTab(sessionId: string, tabs: readonly TabRef[]): TabRef {
+  const greatest = tabs.reduce((max, tab) => {
+    const match = /^term-(\d+)$/.exec(tab.id)
+    return match === null ? max : Math.max(max, Number(match[1]))
+  }, 0)
+  const number = Math.max(terminalCounters.get(sessionId) ?? 1, greatest + 1)
+  terminalCounters.set(sessionId, number + 1)
+  return { id: `term-${number}`, label: `终端 ${number}` }
+}
+
+function TerminalPane({ sessionId, termId, visible, onControl, onClosed }: {
+  sessionId: string
+  termId: string
+  visible: boolean
+  onControl: (termId: string, close: (() => void) | null) => void
+  onClosed: (termId: string) => void
+}): ReactNode {
   const mountRef = useRef<HTMLDivElement>(null)
   const socketRef = useRef<WebSocket | null>(null)
+  const fitRef = useRef<() => void>(() => {})
   const [state, setState] = useState<ConnectionState>('connecting')
   const [detail, setDetail] = useState('')
   const [restart, setRestart] = useState(0)
 
   useEffect(() => {
-    if (sessionId === undefined || mountRef.current === null) return
+    if (mountRef.current === null) return
     const mount = mountRef.current
     const styles = getComputedStyle(mount)
     const terminal = new Terminal({
@@ -72,21 +86,38 @@ export function TerminalView(_props: InspectorViewProps): ReactNode {
     let reconnectTimer: number | undefined
     let manuallyClosed = false
 
+    const closeResource = (): void => {
+      manuallyClosed = true
+      const socket = socketRef.current
+      if (socket === null || socket.readyState === WebSocket.CLOSED) {
+        onClosed(termId)
+        return
+      }
+      const killAndClose = (): void => {
+        send(socket, { type: 'kill' })
+        socket.close()
+        onClosed(termId)
+      }
+      if (socket.readyState === WebSocket.CONNECTING) socket.addEventListener('open', killAndClose, { once: true })
+      else killAndClose()
+    }
+    onControl(termId, closeResource)
+
     const fitAndResize = (): void => {
       try {
         fit.fit()
         send(socketRef.current, { type: 'resize', cols: terminal.cols, rows: terminal.rows })
-      } catch { /* the dock may be between layout frames */ }
+      } catch { /* hidden panes and dock transitions can temporarily be 0x0 */ }
     }
+    fitRef.current = fitAndResize
     const resizeObserver = new ResizeObserver(fitAndResize)
     resizeObserver.observe(mount)
-    requestAnimationFrame(fitAndResize)
 
     const connect = (): void => {
       if (disposed || manuallyClosed) return
       setState('connecting')
       setDetail('')
-      const socket = new WebSocket(terminalSocketUrl(sessionId))
+      const socket = new WebSocket(terminalSocketUrl(sessionId, termId))
       socketRef.current = socket
       socket.addEventListener('open', fitAndResize)
       socket.addEventListener('message', (event) => {
@@ -116,7 +147,9 @@ export function TerminalView(_props: InspectorViewProps): ReactNode {
         }
       })
       socket.addEventListener('close', () => {
-        if (socketRef.current === socket) socketRef.current = null
+        if (socketRef.current === socket) {
+          socketRef.current = null
+        }
         if (!disposed && !manuallyClosed) reconnectTimer = window.setTimeout(connect, 800)
       })
     }
@@ -125,46 +158,99 @@ export function TerminalView(_props: InspectorViewProps): ReactNode {
     connect()
     return () => {
       disposed = true
+      fitRef.current = () => {}
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
       resizeObserver.disconnect()
       input.dispose()
       socketRef.current?.close()
       socketRef.current = null
+      onControl(termId, null)
       fit.dispose()
       terminal.dispose()
     }
-  }, [sessionId, restart])
+  }, [sessionId, termId, restart, onControl, onClosed])
 
-  if (sessionId === undefined) {
-    return <div style={{ padding: 16 }}><KIT.EmptyState>还没有会话——发起一个任务后即可打开终端。</KIT.EmptyState></div>
-  }
-
-  const stop = (): void => {
-    send(socketRef.current, { type: 'kill' })
-    setState('closed')
-  }
+  useEffect(() => {
+    if (visible) requestAnimationFrame(() => { fitRef.current() })
+  }, [visible])
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--db-window)' }}>
-      <style>{xtermCss}</style>
       <div style={{ height: 34, flex: '0 0 34px', display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 12px', borderBottom: '1px solid var(--db-line)' }}>
         <KIT.Dot tone={state === 'ready' ? 'run' : state === 'connecting' ? 'await' : 'offline'} size={6} />
         <span title={detail} style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--db-mono)', fontSize: 11.5, color: state === 'error' ? 'var(--db-await)' : 'var(--db-text-4)' }}>
           {state === 'connecting' ? '正在连接…' : detail || (state === 'closed' ? '终端已关闭' : '终端')}
         </span>
-        {state === 'closed' || state === 'exited' || state === 'error'
-          ? (
-              <KIT.IconButton title="重新启动终端" size={26} onClick={() => { setRestart(value => value + 1) }}>
-                <Refresh size={13} />
-              </KIT.IconButton>
-            )
-          : (
-              <KIT.IconButton title="终止终端" size={26} disabled={state !== 'ready'} onClick={stop}>
-                <Stop size={12} />
-              </KIT.IconButton>
-            )}
+        {(state === 'closed' || state === 'exited' || state === 'error') && (
+          <KIT.IconButton title="重新启动终端" size={26} onClick={() => { setRestart(value => value + 1) }}>
+            <Refresh size={13} />
+          </KIT.IconButton>
+        )}
       </div>
       <div ref={mountRef} style={{ flex: '1 1 auto', minHeight: 0, padding: '8px 8px 4px', userSelect: 'text', overflow: 'hidden' }} />
+    </div>
+  )
+}
+
+/** One kept-alive xterm pane per tab; only an explicit tab close kills it. */
+export function TerminalView(props: InspectorViewProps): ReactNode {
+  const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
+  const { conversation } = useAppDeps()
+  useStore(conversation)
+  const sessionId = conversation.state.list?.current as string | undefined
+  const controls = useRef(new Map<string, () => void>())
+  const initializedSession = useRef<string | null>(null)
+  const onControl = useCallback((termId: string, close: (() => void) | null): void => {
+    if (close === null) controls.current.delete(termId)
+    else controls.current.set(termId, close)
+  }, [])
+  const closeTabRef = useRef(onCloseTab)
+  closeTabRef.current = onCloseTab
+  const finishClose = useCallback((termId: string): void => {
+    controls.current.delete(termId)
+    closeTabRef.current(termId)
+  }, [])
+
+  const add = useCallback((): void => {
+    if (sessionId === undefined) return
+    onOpenTab(nextTerminalTab(sessionId, tabs))
+  }, [sessionId, tabs, onOpenTab])
+
+  useEffect(() => {
+    if (!visible || sessionId === undefined || initializedSession.current === sessionId) return
+    initializedSession.current = sessionId
+    if (tabs.length === 0) add()
+  }, [visible, sessionId, tabs.length, add])
+
+  const close = (termId: string): void => {
+    const control = controls.current.get(termId)
+    if (control === undefined) finishClose(termId)
+    else control()
+  }
+
+  return (
+    <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <style>{xtermCss}</style>
+      <InspectorTabs tabs={tabs} active={active} onFocus={onFocusTab} onClose={close} onAdd={add} />
+      {sessionId === undefined
+        ? <div style={{ padding: 16 }}><KIT.EmptyState>还没有会话——发起一个任务后即可打开终端。</KIT.EmptyState></div>
+        : tabs.length === 0
+          ? <div style={{ padding: 16 }}><KIT.EmptyState>点击 + 新建终端。</KIT.EmptyState></div>
+          : tabs.map(tab => (
+              <div
+                key={tab.id}
+                data-terminal-tab={tab.id}
+                style={{ display: tab.id === active ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
+              >
+                <TerminalPane
+                  sessionId={sessionId}
+                  termId={tab.id}
+                  visible={visible && tab.id === active}
+                  onControl={onControl}
+                  onClosed={finishClose}
+                />
+              </div>
+            ))}
     </div>
   )
 }

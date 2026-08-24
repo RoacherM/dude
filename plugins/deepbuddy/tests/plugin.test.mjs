@@ -184,20 +184,50 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /\bsetDockWidth|\bsetSidebarWidth|\bsetColumnWidth/)
 })
 
+test('inspector views and resource tabs use display keep-alive instead of conditional mounts', async () => {
+  const shell = await readFile(join(root, 'src/client/shell/ThreeColumnFrame.tsx'), 'utf8')
+  const terminal = await readFile(join(root, 'src/client/features/terminal/TerminalView.tsx'), 'utf8')
+  const browser = await readFile(join(root, 'src/client/features/browser/BrowserView.tsx'), 'utf8')
+
+  // All registered view components are mapped into the tree together; only
+  // their display changes when the segmented control changes.
+  assert.match(shell, /views\.map\(\(view\) =>/)
+  assert.match(shell, /data-inspector-view=\{view\.id\}/)
+  assert.match(shell, /display: visible \? 'flex' : 'none'/)
+  assert.doesNotMatch(shell, /<active\.Component/)
+
+  // Resource tabs repeat that same keep-alive rule, so an inactive webview or
+  // xterm attachment remains mounted rather than becoming a second lifecycle.
+  assert.match(terminal, /data-terminal-tab=\{tab\.id\}/)
+  assert.match(terminal, /display: tab\.id === active \? 'flex' : 'none'/)
+  assert.match(terminal, /if \(visible\) requestAnimationFrame\(\(\) => \{ fitRef\.current\(\) \}\)/)
+  assert.match(browser, /data-browser-tab=\{tab\.id\}/)
+  assert.match(browser, /display: tab\.id === active \? 'flex' : 'none'/)
+  assert.match(browser, /const browserResources = new Map/)
+})
+
 test('terminal and browser views ship their required interaction paths', async () => {
   const client = await readFile(join(root, 'lib/client.js'), 'utf8')
   const host = await readFile(join(root, 'lib/index.js'), 'utf8')
   const desktop = await readFile(join(root, '../../apps/desktop/main.js'), 'utf8')
 
   // Terminal: xterm + fit are bundled client-side; the host owns a bounded,
-  // session-keyed PTY over a native webServer upgrade route.
+  // session+term keyed PTYs over a native webServer upgrade route.
   assert.match(client, /const terminal = new [\w$]+\(\{\s*\n\s*allowProposedApi: false,/)
   assert.match(client, /const fit = new [\w$]+\(\);\s*\n\s*terminal\.loadAddon\(fit\)/)
-  assert.match(client, /new WebSocket\(terminalSocketUrl\(sessionId\)\)/)
+  assert.match(client, /new WebSocket\(terminalSocketUrl\(sessionId, termId\)\)/)
+  assert.match(client, /new URLSearchParams\(\{ sessionId, termId \}\)/)
+  assert.match(client, /data-inspector-tabs/)
+  assert.match(client, /data-terminal-tab/)
+  assert.match(client, /data-browser-tab/)
   assert.match(client, /type: "resize"/)
   assert.match(client, /type: "kill"/)
   assert.match(host, /spawnPty\(shell, \[\]/)
   assert.match(host, /TERMINAL_SCROLLBACK_BYTES = 64 \* 1024/)
+  assert.match(host, /TERMINAL_MAX_PER_SESSION = 6/)
+  assert.match(host, /keyOf\(sessionId, termId\)/)
+  assert.match(host, /searchParams\.get\("termId"\)/)
+  assert.match(host, /terminal-limit-reached: max \$\{TERMINAL_MAX_PER_SESSION\} per session/)
   assert.match(host, /webServer\.registerUpgrade\(/)
   assert.match(host, /ctx\.on\("session\/disposed"/)
 
@@ -205,7 +235,9 @@ test('terminal and browser views ship their required interaction paths', async (
   // explicit refusal/open-external state. Localhost normalization stays HTTP.
   assert.match(client, /"webview"/)
   assert.match(client, /"did-navigate"/)
+  assert.match(client, /"did-start-loading"/)
   assert.match(client, /"did-fail-load"/)
+  assert.match(client, /"page-title-updated"/)
   assert.match(client, /"iframe"/)
   assert.match(client, /\\u8BE5\\u7AD9\\u70B9\\u62D2\\u7EDD\\u5D4C\\u5165/)
   assert.match(client, /local \? "http" : "https"/)

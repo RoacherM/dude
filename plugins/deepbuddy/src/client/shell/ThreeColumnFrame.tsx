@@ -28,7 +28,7 @@ import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutStore } from './layout-store.ts'
 import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
-import { Close, Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
+import { Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
 import { ChatNav, CONVERSATION_APP_ID } from '../features/conversation/index.ts'
 
@@ -127,14 +127,8 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
 
 /**
  * The inspector (dock) column: a segmented control over every registered view
- * type, the shell-owned tab strip, and the active view's body.
- *
- * Tabs live here rather than in the views because the handoff draws the same
- * 38px strip inside Explorer, Browser and Terminal alike — several views each
- * re-implementing one would be several chances to disagree about a row the
- * shell already owns. The shell keeps the ledger in the layout store and
- * hands the active view its slice through props; the view never writes the
- * store itself.
+ * type and every view's mounted body. A segment change only changes display;
+ * browser documents and terminal attachments therefore stay alive.
  */
 function InspectorColumn(): ReactNode {
   const { layout } = useAppDeps()
@@ -142,7 +136,6 @@ function InspectorColumn(): ReactNode {
   const s = layout.state
   const views = INSPECTOR_VIEW_TYPES
   const active = pickEntry(views, s.pane)
-  const tabs = active === undefined ? undefined : s.tabs[active.id]
   return (
     <ColumnFrame
       rootRef={layout.dockRef}
@@ -198,61 +191,6 @@ function InspectorColumn(): ReactNode {
         </>
       )}
     >
-      {active !== undefined && tabs !== undefined && tabs.items.length > 0 && (
-        <div style={{
-          height: 38,
-          flex: '0 0 38px',
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: 2,
-          padding: '0 8px',
-          borderBottom: '1px solid var(--db-line)',
-          overflowX: 'auto',
-        }}
-        >
-          {tabs.items.map(tab => (
-            <div
-              key={tab.id}
-              onClick={() => { layout.focusTab(active.id, tab.id) }}
-              className={tab.id === tabs.active ? undefined : 'dbdy-hv-1'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                flex: '0 1 180px',
-                minWidth: 74,
-                margin: '5px 0',
-                padding: '0 6px 0 10px',
-                borderRadius: 'var(--db-r-chip)',
-                background: tab.id === tabs.active ? 'var(--db-fill-4)' : 'transparent',
-                cursor: 'pointer',
-                transition: 'background var(--db-tint)',
-              }}
-            >
-              <span style={{
-                flex: '1 1 auto',
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontSize: 12.5,
-                color: tab.id === tabs.active ? 'var(--db-text)' : 'var(--db-text-3)',
-              }}
-              >
-                {tab.label}
-              </span>
-              <KIT.IconButton
-                title="关闭标签"
-                size={26}
-                style={{ width: 20, height: 20, flex: '0 0 20px', borderRadius: 6 }}
-                onClick={() => { layout.closeTab(active.id, tab.id) }}
-              >
-                <Close size={11} />
-              </KIT.IconButton>
-            </div>
-          ))}
-        </div>
-      )}
       <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {active === undefined
           ? (
@@ -260,16 +198,28 @@ function InspectorColumn(): ReactNode {
                 <KIT.EmptyState>没有装配任何停靠面板。</KIT.EmptyState>
               </div>
             )
-          : (
-              <active.Component
-                viewId={active.id}
-                tabs={tabs?.items ?? EMPTY_TABS}
-                active={tabs?.active ?? null}
-                onOpenTab={(tab) => { layout.openTab(active.id, tab) }}
-                onCloseTab={(id) => { layout.closeTab(active.id, id) }}
-                onFocusTab={(id) => { layout.focusTab(active.id, id) }}
-              />
-            )}
+          : views.map((view) => {
+              const tabs = s.tabs[view.id]
+              const visible = view.id === active.id
+              const Component = view.Component
+              return (
+                <div
+                  key={view.id}
+                  data-inspector-view={view.id}
+                  style={{ display: visible ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
+                >
+                  <Component
+                    viewId={view.id}
+                    tabs={tabs?.items ?? EMPTY_TABS}
+                    active={tabs?.active ?? null}
+                    visible={visible}
+                    onOpenTab={(tab) => { layout.openTab(view.id, tab) }}
+                    onCloseTab={(id) => { layout.closeTab(view.id, id) }}
+                    onFocusTab={(id) => { layout.focusTab(view.id, id) }}
+                  />
+                </div>
+              )
+            })}
       </div>
     </ColumnFrame>
   )

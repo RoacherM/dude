@@ -31,7 +31,9 @@ export interface InspectorViewProps {
   tabs: readonly TabRef[]
   /** The focused instance id, or null. */
   active: string | null
-  /** Open an instance, or focus it when it exists. */
+  /** Whether this view type and its active resource are currently visible. */
+  visible: boolean
+  /** Open and focus a new instance, or update an existing instance label. */
   onOpenTab(tab: TabRef): void
   /** Close an instance; focus falls to its neighbour. */
   onCloseTab(id: string): void
