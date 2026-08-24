@@ -43,6 +43,12 @@ export interface LayoutState {
   sidebar: boolean
   /** Whether the inspector column is open. */
   dock: boolean
+  /**
+   * Whether the open inspector covers the whole frame. An overlay, not a
+   * layout change: the columns underneath stay mounted and laid out, so
+   * restoring loses no scroll position or view state.
+   */
+  dockMax: boolean
   /** Active inspector view-type key; null while the dock is closed. */
   pane: string | null
   /**
@@ -77,6 +83,7 @@ export class LayoutStore {
     view: 'chat',
     sidebar: true,
     dock: false,
+    dockMax: false,
     pane: null,
     title: null,
     sessionStarted: false,
@@ -158,7 +165,8 @@ export class LayoutStore {
    */
   private onResize = (): void => {
     const vw = window.innerWidth
-    if (this.state.dock && (vw < DOCK_BREAKPOINT || !dockFits(vw, this.sideWidth()))) {
+    // A maximized dock is an overlay — column-fit arithmetic does not apply.
+    if (this.state.dock && !this.state.dockMax && (vw < DOCK_BREAKPOINT || !dockFits(vw, this.sideWidth()))) {
       this.patch({ dock: false })
     }
     if (vw < SIDEBAR_BREAKPOINT && this.state.sidebar) this.patch({ sidebar: false })
@@ -191,7 +199,7 @@ export class LayoutStore {
   /** Hold the dock inside its range after the window changed size. */
   private clampDockWidth(): void {
     const el = this.dockRef.current
-    if (el === null || !this.state.dock) return
+    if (el === null || !this.state.dock || this.state.dockMax) return
     const now = el.getBoundingClientRect().width
     const next = clampDock(now, window.innerWidth, this.sideWidth())
     if (Math.abs(next - now) > 0.5) this.writeDockWidth(el, next)
@@ -242,7 +250,13 @@ export class LayoutStore {
 
   closeDock = (): void => {
     this.userClosedDock = true
-    this.patch({ dock: false })
+    this.patch({ dock: false, dockMax: false })
+  }
+
+  /** Grow the open dock to cover the frame, or shrink it back. */
+  toggleDockMax = (): void => {
+    if (!this.state.dock) return
+    this.patch({ dockMax: !this.state.dockMax })
   }
 
   /** The main bar's own dock button; `fallback` is the first registered view. */

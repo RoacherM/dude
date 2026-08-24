@@ -53,6 +53,14 @@ export const PanelLeft = (p: IconProps): ReactNode =>
 export const PanelRight = (p: IconProps): ReactNode =>
   svg(<><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M14.5 4v16" /></>, p)
 
+/** Grow a panel to the whole window. */
+export const Maximize = (p: IconProps): ReactNode =>
+  svg(<><path d="M14.5 4.5H19.5V9.5" /><path d="M19.5 4.5L13.8 10.2" /><path d="M9.5 19.5H4.5V14.5" /><path d="M4.5 19.5L10.2 13.8" /></>, p)
+
+/** Shrink a maximized panel back to its column. */
+export const Minimize = (p: IconProps): ReactNode =>
+  svg(<><path d="M19.5 9.5H14.5V4.5" /><path d="M20 4L14.5 9.5" /><path d="M4.5 14.5H9.5V19.5" /><path d="M4 20l5.5-5.5" /></>, p)
+
 // ── navigation ──────────────────────────────────────────────────────────────
 
 /** New thread. */
@@ -162,6 +170,10 @@ export const AlertCircle = (p: IconProps): ReactNode =>
 export const Dots = (p: IconProps): ReactNode =>
   svg(<><path d="M6 12h.01" /><path d="M12 12h.01" /><path d="M18 12h.01" /></>, p)
 
+/** Document/conversation outline (the overview panel). */
+export const Outline = (p: IconProps): ReactNode =>
+  svg(<><path d="M4.5 6.5h15" /><path d="M4.5 12h10" /><path d="M4.5 17.5h13" /></>, p)
+
 // ── name lookup for catalog-carried icons ───────────────────────────────────
 
 /**
@@ -205,6 +217,9 @@ export const ICONS = {
   'eye-off': EyeOff,
   'alert-circle': AlertCircle,
   dots: Dots,
+  maximize: Maximize,
+  minimize: Minimize,
+  outline: Outline,
 } as const
 
 /** The name of any glyph in {@link ICONS}. */

@@ -28,7 +28,7 @@ import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutStore } from './layout-store.ts'
 import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
-import { Close, Glyph, PanelLeft, PanelRight } from '../ui/icons.tsx'
+import { Close, Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
 import { ChatNav, CONVERSATION_APP_ID } from '../features/conversation/index.ts'
 
@@ -147,9 +147,20 @@ function InspectorColumn(): ReactNode {
     <ColumnFrame
       rootRef={layout.dockRef}
       headerPad={10}
-      style={{ flex: '0 0 auto', minWidth: 0, background: 'var(--db-window)' }}
+      style={s.dockMax
+        // Maximized: an overlay over the whole frame. The columns underneath
+        // stay mounted and laid out, so restoring loses no scroll or state —
+        // and the header regains the lights cluster it now covers.
+        ? { position: 'absolute', inset: 0, zIndex: 8, width: 'auto', background: 'var(--db-window)' }
+        : { flex: '0 0 auto', minWidth: 0, background: 'var(--db-window)' }}
       header={(
         <>
+          {s.dockMax && (
+            <>
+              <TrafficLights />
+              <span style={{ width: 2 }} />
+            </>
+          )}
           {/* A segmented control with one segment is a label wearing a choice's
               clothes. Below two view types the dock states which one it is. */}
           {views.length > 1
@@ -175,9 +186,14 @@ function InspectorColumn(): ReactNode {
           )}
           <span style={{ marginLeft: 'auto' }} />
           <div style={{ ...NO_DRAG, display: 'flex', gap: 2 }}>
-            <KIT.IconButton title="关闭停靠栏" onClick={layout.closeDock}>
-              <PanelRight size={15} />
+            <KIT.IconButton title={s.dockMax ? '退出全屏' : '全屏显示'} onClick={layout.toggleDockMax}>
+              {s.dockMax ? <Minimize size={14} /> : <Maximize size={14} />}
             </KIT.IconButton>
+            {!s.dockMax && (
+              <KIT.IconButton title="关闭停靠栏" onClick={layout.closeDock}>
+                <PanelRight size={15} />
+              </KIT.IconButton>
+            )}
           </div>
         </>
       )}
@@ -351,7 +367,8 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
           </div>
           {s.dock && s.sessionStarted && (
             <>
-              <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />
+              {/* No seam to drag while the dock overlays the frame. */}
+              {!s.dockMax && <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />}
               <InspectorColumn />
             </>
           )}

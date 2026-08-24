@@ -140,7 +140,7 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /WORKBENCH_APPS = \[/)
   assert.doesNotMatch(bundle, /SIDEBAR_SECTIONS = \[/)
   assert.doesNotMatch(bundle, /SessionListSectionDefinition/)
-  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition\s*\n\]/)
+  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*OverviewViewDefinition,\s*\n\s*FilesViewDefinition\s*\n\]/)
   // The definitions carry their ids — the catalog is the single composition
   // point the shell renders from. Settings is no longer a workbench app (it
   // is a dialog overlay, wave 4 §5), so it is deliberately absent here.
