@@ -420,6 +420,8 @@
     }
     button, input, textarea { font: inherit; }
     button { color: inherit; }
+    button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+    button:disabled, [aria-disabled="true"] { opacity: .38; cursor: default; }
     button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
       outline: 2px solid var(--db-primary);
       outline-offset: 2px;
@@ -520,6 +522,7 @@
       background: var(--db-line);
       pointer-events: none;
     }
+    .resize-handle:hover::after { width: 2px; background: var(--db-primary); }
 
     .tagline { padding: 3px 16px 12px; color: var(--db-text-3); font-size: 12px; line-height: 1.4; }
     .new-task {
@@ -560,7 +563,21 @@
     .workspace-title { color: var(--db-text-2); font-size: 13px; }
     .workspace-title .folder { color: var(--db-primary); }
     .session-row { padding-left: 28px; }
-    .more { height: 25px; padding-left: 28px; color: var(--db-text-4); font-size: 11.5px; cursor: pointer; display: flex; align-items: center; }
+    .more { height: 25px; padding-left: 28px; color: var(--db-text-4); font-size: 11.5px; cursor: pointer; display: flex; align-items: center; border-radius: 8px; }
+    .more:hover { color: var(--db-text-2); background: var(--db-fill-2); }
+    .workspace.collapsed > :not(.workspace-title) { display: none !important; }
+    .workspace.collapsed .workspace-title .icon { transform: rotate(-8deg); opacity: .72; }
+    .extra-sessions { display: none; }
+    .workspace.expanded .extra-sessions { display: block; }
+    .sidebar-search { display: none; align-items: center; gap: 6px; height: 38px; padding: 0 10px; }
+    .sidebar-search.open { display: flex; }
+    .sidebar-search.open + .sidebar-tools { display: none; }
+    .sidebar-search input { min-width: 0; flex: 1 1 auto; height: 29px; border: 1px solid var(--db-line-input); border-radius: 9px; padding: 0 9px; outline: none; background: var(--db-fill-2); color: var(--db-text); }
+    .sidebar-search input:focus { border-color: var(--db-line-focus); }
+    .sidebar-search.open ~ .workspace-list .extra-sessions { display: block; }
+    .sidebar-search.open ~ .workspace-list .more { display: none; }
+    .sidebar-search.open ~ .workspace-list .workspace.collapsed > :not(.workspace-title) { display: block !important; }
+    .session-empty { display: none; padding: 14px 20px; color: var(--db-text-5); font-size: 12px; }
     .settings-row { height: 48px; flex: 0 0 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--db-text-2); cursor: pointer; }
     .settings-row:hover { background: var(--db-fill-2); }
 
@@ -592,6 +609,7 @@
       font-size: 13px;
     }
     .view-tab.active { color: var(--db-primary); }
+    .view-tab:hover { color: var(--db-text); }
     .view-tab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--db-primary); }
 
     .main-body { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; }
@@ -599,7 +617,9 @@
     .hero-card { width: min(760px, calc(100% - 64px)); transform: translateY(-2vh); }
     .hero-mark { display: flex; justify-content: center; align-items: center; gap: 50px; margin-bottom: 24px; font-size: 31px; font-weight: 600; }
     .hero-mark .accent { color: var(--db-primary); }
-    .hero-chips { display: flex; gap: 24px; margin: 0 12px 14px; color: var(--db-text-2); font-size: 12px; }
+    .hero-chips { display: flex; gap: 8px; margin: 0 12px 14px; color: var(--db-text-2); font-size: 12px; }
+    .hero-chip { height: 28px; border: 0; border-radius: 14px; padding: 0 10px; background: transparent; color: var(--db-text-2); }
+    .hero-chip:hover { background: var(--db-fill-4); color: var(--db-text); }
     .composer {
       width: 100%;
       min-height: 112px;
@@ -650,6 +670,7 @@
       cursor: pointer;
     }
     .send:hover { filter: brightness(1.12); }
+    .send:disabled { opacity: .34; cursor: default; filter: none; }
 
     .conversation { height: 100%; display: flex; flex-direction: column; }
     .conversation-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 20px 0 10px; }
@@ -665,6 +686,7 @@
     .assistant-copy p { margin: 0 0 16px; }
     .inline-code { padding: 2px 7px; border-radius: 7px; background: var(--dsw-alias-markdown-inline-code); }
     .message-actions { display: flex; gap: 8px; margin-top: 17px; }
+    .message-actions .icon-button.selected { color: var(--db-primary); background: color-mix(in srgb, var(--db-primary) 16%, transparent); }
     .composer-wrap { flex: 0 0 auto; padding: 0 0 8px; }
     .composer-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
     .app:not(.dock-open) .composer-column { width: min(880px, calc(100% - 48px)); }
@@ -689,6 +711,7 @@
       white-space: nowrap;
     }
     .segment.active { color: var(--db-text); background: var(--db-fill-4); }
+    .segment:hover { color: var(--db-text); background: var(--db-fill-3); }
     .dock-view { flex: 1 1 0; min-height: 0; display: none; flex-direction: column; }
     .dock-view.active { display: flex; }
     .resource-tabs {
@@ -718,6 +741,7 @@
       cursor: pointer;
     }
     .resource-tab.active { background: var(--db-fill-4); color: var(--db-text); }
+    .resource-tab:hover { background: var(--db-fill-3); color: var(--db-text); }
     .resource-tab .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 12.5px; }
     .tab-close { width: 20px; height: 20px; flex: 0 0 20px; border: 0; border-radius: 6px; background: transparent; color: var(--db-text-4); cursor: pointer; }
     .tab-close:hover { background: var(--db-fill-5); color: var(--db-text); }
@@ -736,6 +760,7 @@
     .file-preview pre { margin: 0; padding: 14px; border-radius: 22px; background: var(--db-fill-1); color: var(--db-text-2); font: 12px/1.7 var(--db-mono); white-space: pre-wrap; word-break: break-word; }
 
     .terminal-meta { height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--db-line); font: 11.5px var(--db-mono); color: var(--db-text-4); }
+    .terminal-meta .restart-terminal { margin-left: auto; width: auto; flex-basis: auto; padding: 0 8px; border-radius: 8px; gap: 5px; font-size: 11.5px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--db-run); flex: 0 0 6px; }
     .terminal-panes, .browser-panes { flex: 1 1 0; min-height: 0; position: relative; }
     .terminal-pane, .browser-pane { position: absolute; inset: 0; display: none; }
@@ -767,18 +792,32 @@
     .example-page article { max-width: 650px; }
     .example-page h1 { margin: 0 0 18px; font-size: 28px; }
     .example-page p { font-size: 18px; line-height: 1.45; }
-    .example-page a { color: #465ea0; font-size: 17px; text-decoration: underline; }
+    .example-page a { color: #465ea0; font-size: 17px; text-decoration: underline; cursor: pointer; }
+    .example-page a:hover { color: #263d84; }
     .docs-page { min-height: 130%; padding: 42px; color: var(--db-text-2); background: #18191c; user-select: text; }
     .docs-page h1 { color: var(--db-text); font-size: 26px; margin: 0 0 8px; }
     .docs-page .hero-line { color: var(--db-text-4); margin-bottom: 30px; }
     .docs-card { padding: 18px; margin-bottom: 12px; border: 1px solid var(--db-line-container); border-radius: 16px; background: var(--db-fill-1); }
     .blocked-page { height: 100%; display: grid; place-items: center; padding: 24px; }
     .blocked-card { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--db-text-3); }
-    .outline-button { height: 34px; padding: 0 16px; border: 1px solid var(--db-line-emphasis); border-radius: 17px; background: transparent; color: var(--db-text); cursor: pointer; }
+    .outline-button { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; border: 1px solid var(--db-line-emphasis); border-radius: 17px; background: transparent; color: var(--db-text); cursor: pointer; }
     .outline-button:hover { background: var(--db-fill-5); border-color: var(--db-line-hover); }
 
-    .toast { position: fixed; left: 50%; bottom: 26px; z-index: 100; transform: translate(-50%, 12px); padding: 9px 14px; border-radius: 12px; background: var(--db-popover); color: var(--db-text); box-shadow: var(--db-shadow-popover); opacity: 0; pointer-events: none; transition: .18s ease; }
-    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .floating-menu { position: fixed; z-index: 110; min-width: 178px; padding: 6px; border: 1px solid var(--db-line-container); border-radius: 12px; background: var(--db-popover); box-shadow: var(--db-shadow-menu); }
+    .menu-item { width: 100%; min-height: 32px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--db-text-2); text-align: left; }
+    .menu-item:hover { color: var(--db-text); background: var(--db-fill-5); }
+    .menu-item.selected::after { content: "✓"; margin-left: auto; color: var(--db-primary); }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 28px; background: rgba(0,0,0,.58); }
+    .settings-panel { width: min(520px, 100%); max-height: min(620px, calc(100vh - 56px)); overflow: auto; border: 1px solid var(--db-line-container); border-radius: 20px; background: var(--db-dialog); box-shadow: var(--db-shadow-dialog); }
+    .settings-head { height: 52px; display: flex; align-items: center; padding: 0 14px 0 20px; border-bottom: 1px solid var(--db-line); font-weight: 600; }
+    .settings-group { padding: 14px 18px; border-bottom: 1px solid var(--db-line); }
+    .settings-group:last-child { border-bottom: 0; }
+    .settings-group h3 { margin: 0 0 9px; color: var(--db-text-4); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+    .settings-item { min-height: 40px; display: flex; align-items: center; gap: 12px; color: var(--db-text-2); }
+    .settings-value { margin-left: auto; color: var(--db-text-4); font-size: 12px; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 140; transform: translateY(12px); padding: 9px 14px; border: 1px solid var(--db-line-container); border-radius: 12px; background: var(--db-popover); color: var(--db-text); box-shadow: var(--db-shadow-popover); opacity: 0; pointer-events: none; transition: .18s ease; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .click-pulse { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--db-primary) 55%, transparent); }
     .hidden { display: none !important; }
     @keyframes blink { 50% { opacity: 0; } }
     .cursor-block { display: inline-block; width: 7px; height: 15px; vertical-align: -2px; background: var(--db-text); animation: blink 1s steps(1) infinite; }
@@ -821,11 +860,16 @@
       </header>
       <div class="tagline">向着未知出发，把每一步都变成脚印。</div>
       <button id="newTask" class="new-task"><svg class="icon"><use href="#i-compose"></use></svg>新建任务</button>
+      <div id="sidebarSearch" class="sidebar-search">
+        <svg class="icon"><use href="#i-search"></use></svg>
+        <input id="sidebarSearchInput" type="search" placeholder="搜索会话" autocomplete="off">
+        <button id="closeSidebarSearch" class="icon-button" title="关闭搜索"><svg class="icon"><use href="#i-close"></use></svg></button>
+      </div>
       <div class="sidebar-tools">
         <span class="label grow">工作区</span>
-        <button class="icon-button" title="搜索"><svg class="icon"><use href="#i-search"></use></svg></button>
-        <button class="icon-button" title="视图选项"><svg class="icon"><use href="#i-sliders"></use></svg></button>
-        <button class="icon-button" title="添加工作区"><svg class="icon"><use href="#i-plus"></use></svg></button>
+        <button id="openSidebarSearch" class="icon-button" title="搜索"><svg class="icon"><use href="#i-search"></use></svg></button>
+        <button id="workspaceViewOptions" class="icon-button" title="视图选项"><svg class="icon"><use href="#i-sliders"></use></svg></button>
+        <button id="addWorkspace" class="icon-button" title="添加工作区"><svg class="icon"><use href="#i-plus"></use></svg></button>
       </div>
       <div class="workspace-list">
         <section class="workspace">
@@ -840,7 +884,11 @@
           <div class="row session-row" data-session="运行echo命令执行report"><span class="truncate grow">运行echo命令执行rep...</span><span class="time">18小时</span></div>
           <div class="row session-row" data-session="Bash 运行 echo result"><span class="truncate grow">Bash 运行 echo re...</span><span class="time">18小时</span></div>
           <div class="row session-row" data-session="问候与闲聊"><span class="truncate grow">问候与闲聊</span><span class="time">19小时</span></div>
-          <div class="more">展开其余 16 个会话</div>
+          <div class="extra-sessions">
+            <div class="row session-row" data-session="图片生成讨论"><span class="truncate grow">图片生成讨论</span><span class="time">20小时</span></div>
+            <div class="row session-row" data-session="API 参数校对"><span class="truncate grow">API 参数校对</span><span class="time">1天</span></div>
+          </div>
+          <div class="more" data-count="16">展开其余 16 个会话</div>
         </section>
         <section class="workspace">
           <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate mono">deepseek-harness</span></div>
@@ -849,12 +897,17 @@
           <div class="row session-row" data-session="中文普通话学习助手介绍"><span class="truncate grow">中文普通话学习助手介绍</span><span class="time">1天</span></div>
           <div class="row session-row" data-session="Happy Session"><span class="truncate grow">Happy Session</span><span class="time">7天</span></div>
           <div class="row session-row" data-session="Session title request"><span class="truncate grow">Session title reque...</span><span class="time">7天</span></div>
-          <div class="more">展开其余 3 个会话</div>
+          <div class="extra-sessions">
+            <div class="row session-row" data-session="工具调用复盘"><span class="truncate grow">工具调用复盘</span><span class="time">8天</span></div>
+            <div class="row session-row" data-session="Prompt 调整"><span class="truncate grow">Prompt 调整</span><span class="time">9天</span></div>
+          </div>
+          <div class="more" data-count="3">展开其余 3 个会话</div>
         </section>
-        <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>Docs</span></div>
-        <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>未分组</span></div>
+        <section class="workspace"><div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>Docs</span></div><div class="row session-row" data-session="设计规范索引"><span class="truncate grow">设计规范索引</span><span class="time">2天</span></div></section>
+        <section class="workspace"><div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>未分组</span></div><div class="row session-row" data-session="临时会话"><span class="truncate grow">临时会话</span><span class="time">3天</span></div></section>
+        <div id="sessionEmpty" class="session-empty">没有匹配的会话</div>
       </div>
-      <div class="settings-row"><svg class="icon"><use href="#i-settings"></use></svg><span>设置</span></div>
+      <div id="openSettings" class="settings-row" role="button" tabindex="0"><svg class="icon"><use href="#i-settings"></use></svg><span>设置</span></div>
     </aside>
     <div id="sideHandle" class="resize-handle side-handle" title="拖拽调整侧栏宽度 · 双击重置"></div>
 
@@ -879,15 +932,15 @@
         <section id="hero" class="hero">
           <div class="hero-card">
             <div class="hero-mark"><span class="accent">◉</span><span>探索未至之境</span></div>
-            <div class="hero-chips"><span>▱ film-studio⌄</span><span>♧ 创造模式⌄</span></div>
+            <div class="hero-chips"><button id="heroWorkspace" class="hero-chip">▱ <span>film-studio</span>⌄</button><button id="heroMode" class="hero-chip">♧ <span>创造模式</span>⌄</button></div>
             <div class="composer hero-composer">
               <textarea id="heroInput" placeholder="描述你想要构建的内容"></textarea>
               <div class="composer-actions">
                 <button class="icon-button attach" title="添加附件"><svg class="icon"><use href="#i-plus"></use></svg></button>
                 <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
                 <span class="grow"></span>
-                <button class="pill-button model">DeepSeek-V4-Flash-Vision-Exp High⌄</button>
-                <button class="send hero-send" title="发送"><svg class="icon"><use href="#i-send"></use></svg></button>
+                <button class="pill-button model"><span>DeepSeek-V4-Flash-Vision-Exp · High</span>⌄</button>
+                <button class="send hero-send" title="发送" disabled><svg class="icon"><use href="#i-send"></use></svg></button>
               </div>
             </div>
           </div>
@@ -908,9 +961,9 @@
                 </div>
                 <div class="message-actions">
                   <button class="icon-button copy-action" title="复制"><svg class="icon"><use href="#i-copy"></use></svg></button>
-                  <button class="icon-button" title="赞"><svg class="icon"><use href="#i-like"></use></svg></button>
-                  <button class="icon-button" title="踩"><svg class="icon" style="transform:rotate(180deg)"><use href="#i-like"></use></svg></button>
-                  <button class="icon-button" title="更多">⌁</button>
+                  <button class="icon-button feedback-action" data-feedback="like" title="赞"><svg class="icon"><use href="#i-like"></use></svg></button>
+                  <button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon" style="transform:rotate(180deg)"><use href="#i-like"></use></svg></button>
+                  <button class="icon-button message-more" title="分叉与更多">⌁</button>
                 </div>
               </div>
             </div>
@@ -923,9 +976,9 @@
                   <button class="icon-button attach" title="添加附件"><svg class="icon"><use href="#i-plus"></use></svg></button>
                   <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
                   <span class="grow"></span>
-                  <button class="pill-button model">DeepSeek-V4-Flash-Vision-Exp High⌄</button>
+                  <button class="pill-button model"><span>DeepSeek-V4-Flash-Vision-Exp · High</span>⌄</button>
                   <span class="dim">◯</span>
-                  <button class="send chat-send" title="发送"><svg class="icon"><use href="#i-send"></use></svg></button>
+                  <button class="send chat-send" title="发送" disabled><svg class="icon"><use href="#i-send"></use></svg></button>
                 </div>
               </div>
               <div class="stats">1 轮 · 1 步 ｜ LLM 2s ｜ 首 token 平均 1.2s · 115 tok/s ｜ 缓存命中 0% ｜ 输入 12.5K tok · …</div>
@@ -994,6 +1047,15 @@
       </section>
     </aside>
   </main>
+  <div id="floatingMenu" class="floating-menu hidden" role="menu"></div>
+  <div id="settingsModal" class="modal-backdrop hidden">
+    <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <header class="settings-head"><span id="settingsTitle">设置</span><span class="grow"></span><button id="closeSettings" class="icon-button" title="关闭设置"><svg class="icon"><use href="#i-close"></use></svg></button></header>
+      <div class="settings-group"><h3>通用</h3><div class="settings-item"><span>界面语言</span><span class="settings-value">简体中文</span></div><div class="settings-item"><span>主题</span><span class="settings-value">深色</span></div></div>
+      <div class="settings-group"><h3>智能体</h3><div class="settings-item"><span>默认模型</span><span class="settings-value">DeepSeek V4 Flash</span></div><div class="settings-item"><span>默认权限</span><span class="settings-value">Full access</span></div></div>
+      <div class="settings-group"><h3>关于</h3><div class="settings-item"><span>DeepBuddy 原型</span><span class="settings-value">v2 · 单文件</span></div></div>
+    </section>
+  </div>
   <div id="toast" class="toast">已复制</div>
 
   <script>
@@ -1011,8 +1073,12 @@
       dockWidth: 0,
       permissions: ["Full access", "Ask first", "Read only"],
       permissionIndex: 0,
-      models: ["DeepSeek-V4-Flash-Vision-Exp High", "DeepSeek-V3.2 High", "DeepSeek-R1"],
+      models: ["DeepSeek-V4-Flash-Vision-Exp · High", "DeepSeek-V3.2 · High", "DeepSeek-R1 · Balanced"],
       modelIndex: 0,
+      heroWorkspace: "film-studio",
+      heroMode: "创造模式",
+      currentSession: null,
+      sessionHtml: {},
       fileTabs: [],
       activeFile: null,
       terminalTabs: [],
@@ -1031,11 +1097,106 @@
       el.textContent = message;
       el.classList.add("show");
       clearTimeout(toast.timer);
-      toast.timer = setTimeout(() => el.classList.remove("show"), 1100);
+      toast.timer = setTimeout(() => el.classList.remove("show"), 2000);
     }
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[char]);
     }
+    document.addEventListener("click", event => {
+      const target = event.target.closest('button:not(:disabled), [role="button"]:not([aria-disabled="true"]), .row, .more');
+      if (!target) return;
+      target.classList.remove("click-pulse");
+      target.classList.add("click-pulse");
+      setTimeout(() => target.classList.remove("click-pulse"), 280);
+    }, true);
+    function closeMenu() { $("#floatingMenu").classList.add("hidden"); $("#floatingMenu").innerHTML = ""; }
+    function openMenu(anchor, items) {
+      const menu = $("#floatingMenu");
+      menu.innerHTML = items.map((item, index) => '<button class="menu-item ' + (item.selected ? "selected" : "") + '" data-menu-index="' + index + '">' + escapeHtml(item.label) + '</button>').join("");
+      menu.classList.remove("hidden");
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.max(178, rect.width);
+      menu.style.minWidth = width + "px";
+      const left = Math.min(rect.left, window.innerWidth - width - 10);
+      const estimatedHeight = items.length * 32 + 12;
+      const top = rect.bottom + estimatedHeight < window.innerHeight - 8 ? rect.bottom + 6 : Math.max(8, rect.top - estimatedHeight - 6);
+      menu.style.left = Math.max(8, left) + "px";
+      menu.style.top = top + "px";
+      $$('[data-menu-index]', menu).forEach(button => button.addEventListener("click", event => {
+        event.stopPropagation();
+        const item = items[Number(button.dataset.menuIndex)];
+        closeMenu();
+        item.action();
+      }));
+    }
+    function placeholderMenu(anchor, labels) {
+      openMenu(anchor, labels.map(label => ({ label, action: () => toast("原型占位") })));
+    }
+    document.addEventListener("pointerdown", event => {
+      const menu = $("#floatingMenu");
+      if (!menu.classList.contains("hidden") && !event.target.closest("#floatingMenu")) closeMenu();
+    });
+    function openSettings() { closeMenu(); $("#settingsModal").classList.remove("hidden"); $("#closeSettings").focus(); }
+    function closeSettings() { $("#settingsModal").classList.add("hidden"); }
+    $("#openSettings").addEventListener("click", openSettings);
+    $("#openSettings").addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openSettings(); } });
+    $("#closeSettings").addEventListener("click", closeSettings);
+    $("#settingsModal").addEventListener("click", event => { if (event.target === $("#settingsModal")) closeSettings(); });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeMenu();
+        closeSettings();
+        closeSidebarSearch();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j" && state.mainMode === "conversation") {
+        event.preventDefault();
+        state.dock = !state.dock;
+        state.dockMax = false;
+        if (state.dock) state.dockWidth = dockDefault();
+        applyLayout();
+      }
+    });
+
+    // Sidebar controls mirror the real shell's sessionStarted boundary.
+    function filterSessions() {
+      const query = $("#sidebarSearchInput").value.trim().toLowerCase();
+      let visible = 0;
+      $$(".session-row").forEach(row => {
+        const matches = !query || row.dataset.session.toLowerCase().includes(query);
+        row.classList.toggle("hidden", !matches);
+        if (matches) visible += 1;
+      });
+      $$(".workspace").forEach(workspace => {
+        const hasMatch = Boolean($(".session-row:not(.hidden)", workspace));
+        workspace.classList.toggle("hidden", Boolean(query) && !hasMatch);
+      });
+      $("#sessionEmpty").style.display = visible ? "none" : "block";
+    }
+    function openSidebarSearch() {
+      $("#sidebarSearch").classList.add("open");
+      $("#sidebarSearchInput").focus();
+    }
+    function closeSidebarSearch() {
+      $("#sidebarSearch").classList.remove("open");
+      $("#sidebarSearchInput").value = "";
+      $$(".session-row, .workspace").forEach(row => row.classList.remove("hidden"));
+      $("#sessionEmpty").style.display = "none";
+    }
+    $("#openSidebarSearch").addEventListener("click", openSidebarSearch);
+    $("#closeSidebarSearch").addEventListener("click", closeSidebarSearch);
+    $("#sidebarSearchInput").addEventListener("input", filterSessions);
+    $("#sidebarSearchInput").addEventListener("blur", () => setTimeout(() => { if (!$("#sidebarSearch").contains(document.activeElement)) closeSidebarSearch(); }, 120));
+    $("#workspaceViewOptions").addEventListener("click", event => { event.stopPropagation(); placeholderMenu(event.currentTarget, ["最近使用", "按工作区分组", "仅显示收藏"]); });
+    $("#addWorkspace").addEventListener("click", event => { event.stopPropagation(); placeholderMenu(event.currentTarget, ["打开文件夹…", "连接远程工作区…"]); });
+    $$(".workspace-title").forEach(title => title.addEventListener("click", () => {
+      const workspace = title.closest(".workspace");
+      if (workspace) workspace.classList.toggle("collapsed");
+    }));
+    $$(".more").forEach(more => more.addEventListener("click", () => {
+      const workspace = more.closest(".workspace");
+      const expanded = workspace.classList.toggle("expanded");
+      more.textContent = expanded ? "收起" : "展开其余 " + more.dataset.count + " 个会话";
+    }));
 
     // Layout and pointer-captured resize gestures.
     function sideContribution() { return state.sidebar ? state.sidebarWidth + 1 : 0; }
@@ -1139,8 +1300,31 @@
     });
 
     // Conversation, hero, composer controls, and fake replies.
+    function messageMarkup(user, assistant) {
+      return '<div class="message-block">' +
+        '<div class="user-line"><div class="user-bubble">' + escapeHtml(user) + '</div></div>' +
+        '<div class="copy-user"><button class="icon-button copy-action" data-copy-source="user" title="复制用户消息">' + svg("i-copy") + '</button></div>' +
+        '<div class="think-row"><span>⌘</span><span>Think · 根据当前上下文整理请求并生成可执行回复。</span></div>' +
+        '<div class="assistant-copy"><p>' + escapeHtml(assistant) + '</p></div>' +
+        '<div class="message-actions"><button class="icon-button copy-action" data-copy-source="assistant" title="复制回复">' + svg("i-copy") + '</button>' +
+        '<button class="icon-button feedback-action" data-feedback="like" title="赞">' + svg("i-like") + '</button>' +
+        '<button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon" style="transform:rotate(180deg)"><use href="#i-like"></use></svg></button>' +
+        '<button class="icon-button message-more" title="分叉与更多">⌁</button></div></div>';
+    }
+    function sessionTemplate(title) {
+      const samples = {
+        "Hi Hi Hi Greeting...": ["哈哈哈哈", "哈哈，有什么可以帮你的吗？如果想写代码、检查项目或聊聊想法，直接说就行。"],
+        "Simple Greetings": ["你好，介绍一下这个项目", "DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端，界面保持三列两区，并提供文件、终端和浏览器检查器。"],
+        "用 bash 运行 echo": ["用 bash 运行 echo deepbuddy", "已在终端中执行假命令：echo deepbuddy，输出为 deepbuddy。"],
+        "AI助手自我介绍": ["你是谁？", "我是 DeepBuddy 原型里的假智能体，用来验证会话、工具轨迹和 dock 的交互关系。"]
+      };
+      const sample = samples[title] || [title, "这是「" + title + "」会话的独立假内容。切换会话会保留各自的消息状态。"];
+      return messageMarkup(sample[0], sample[1]);
+    }
     function showHero() {
+      if (state.currentSession) state.sessionHtml[state.currentSession] = $("#chatMessages").innerHTML;
       state.mainMode = "hero";
+      state.currentSession = null;
       state.dock = false;
       state.dockMax = false;
       $("#hero").classList.remove("hidden");
@@ -1149,12 +1333,16 @@
       applyLayout();
     }
     function showConversation(title) {
+      if (state.currentSession) state.sessionHtml[state.currentSession] = $("#chatMessages").innerHTML;
       state.mainMode = "conversation";
-      $("#mainTitle").textContent = title || "Hello Greeting";
+      state.currentSession = title || "Hello Greeting";
+      $("#mainTitle").textContent = state.currentSession;
+      if (!state.sessionHtml[state.currentSession]) state.sessionHtml[state.currentSession] = sessionTemplate(state.currentSession);
+      $("#chatMessages").innerHTML = state.sessionHtml[state.currentSession];
       $("#hero").classList.add("hidden");
       $("#conversation").classList.remove("hidden");
       selectMainView("chat");
-      $$(".session-row").forEach(row => row.classList.toggle("current", row.dataset.session === title));
+      $$(".session-row").forEach(row => row.classList.toggle("current", row.dataset.session === state.currentSession));
       applyLayout();
     }
     function selectMainView(view) {
@@ -1165,40 +1353,133 @@
       $("#tracePanel").classList.toggle("active", view === "trace");
     }
     $("#newTask").addEventListener("click", showHero);
-    $$(".session-row").forEach(row => row.addEventListener("click", () => showConversation(row.dataset.session)));
+    $(".workspace-list").addEventListener("click", event => {
+      const row = event.target.closest(".session-row");
+      if (row) showConversation(row.dataset.session);
+    });
     $$(".view-tab").forEach(tab => tab.addEventListener("click", () => selectMainView(tab.dataset.mainView)));
+    function addNewSessionRow() {
+      let row = $('.session-row[data-session="新会话"]');
+      if (row) return row;
+      row = document.createElement("div");
+      row.className = "row session-row";
+      row.dataset.session = "新会话";
+      row.innerHTML = '<span class="truncate grow">新会话</span><span class="time">刚刚</span>';
+      const first = $(".workspace");
+      first.insertBefore(row, $(".session-row", first));
+      return row;
+    }
+    function scrollChat() { requestAnimationFrame(() => { $("#chatPanel").scrollTop = $("#chatPanel").scrollHeight; }); }
     function sendMessage(input, fromHero) {
       const value = input.value.trim();
       if (!value) return;
-      if (fromHero) showConversation("新会话");
+      if (fromHero) {
+        addNewSessionRow();
+        state.sessionHtml["新会话"] = "";
+        showConversation("新会话");
+      }
+      const targetSession = state.currentSession;
       const block = document.createElement("div");
       block.className = "message-block";
       block.innerHTML =
         '<div class="user-line"><div class="user-bubble">' + escapeHtml(value) + '</div></div>' +
-        '<div class="copy-user"><button class="icon-button copy-action" title="复制">' + svg("i-copy") + '</button></div>' +
-        '<div class="think-row"><span>⌘</span><span>Think · 根据当前上下文整理请求并生成可执行回复。</span></div>' +
-        '<div class="assistant-copy"><p>收到。我会沿用当前工作区与权限设置继续处理：<span class="inline-code mono">' + escapeHtml(value) + '</span></p><p>这是设计原型中的假回复；交互状态已经完整保留。</p></div>' +
-        '<div class="message-actions"><button class="icon-button copy-action" title="复制">' + svg("i-copy") + '</button><button class="icon-button" title="赞">' + svg("i-like") + '</button></div>';
+        '<div class="copy-user"><button class="icon-button copy-action" data-copy-source="user" title="复制用户消息">' + svg("i-copy") + '</button></div>';
       $("#chatMessages").append(block);
       input.value = "";
-      block.querySelectorAll(".copy-action").forEach(button => button.addEventListener("click", () => toast("已复制")));
-      requestAnimationFrame(() => { $("#chatPanel").scrollTop = $("#chatPanel").scrollHeight; });
+      updateSendState(input);
+      scrollChat();
+      state.sessionHtml[targetSession] = $("#chatMessages").innerHTML;
+      setTimeout(() => {
+        const replyMarkup = '<div class="think-row"><span>⌘</span><span>Think · 根据当前上下文整理请求并生成可执行回复。</span></div>' +
+          '<div class="assistant-copy"><p>收到。我会沿用当前工作区与权限设置继续处理：<span class="inline-code mono">' + escapeHtml(value) + '</span></p><p>这是原型中的假回复，消息状态会保留在当前会话。</p></div>' +
+          '<div class="message-actions"><button class="icon-button copy-action" data-copy-source="assistant" title="复制回复">' + svg("i-copy") + '</button><button class="icon-button feedback-action" data-feedback="like" title="赞">' + svg("i-like") + '</button><button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon" style="transform:rotate(180deg)"><use href="#i-like"></use></svg></button><button class="icon-button message-more" title="分叉与更多">⌁</button></div>';
+        if (block.isConnected && state.currentSession === targetSession) {
+          block.insertAdjacentHTML("beforeend", replyMarkup);
+          state.sessionHtml[targetSession] = $("#chatMessages").innerHTML;
+          scrollChat();
+        } else {
+          const saved = document.createElement("div");
+          saved.innerHTML = state.sessionHtml[targetSession] || "";
+          saved.lastElementChild?.insertAdjacentHTML("beforeend", replyMarkup);
+          state.sessionHtml[targetSession] = saved.innerHTML;
+        }
+      }, 300);
     }
     $(".hero-send").addEventListener("click", () => sendMessage($("#heroInput"), true));
     $(".chat-send").addEventListener("click", () => sendMessage($("#chatInput"), false));
-    [$("#heroInput"), $("#chatInput")].forEach((input, index) => input.addEventListener("keydown", event => {
-      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) sendMessage(input, index === 0);
+    function updateSendState(input) {
+      const button = input === $("#heroInput") ? $(".hero-send") : $(".chat-send");
+      button.disabled = !input.value.trim();
+    }
+    [$("#heroInput"), $("#chatInput")].forEach((input, index) => {
+      input.addEventListener("input", () => updateSendState(input));
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) sendMessage(input, index === 0);
+      });
+    });
+    async function writeClipboard(text) {
+      toast("已复制");
+      try { await navigator.clipboard.writeText(text); }
+      catch {
+        const fallback = document.createElement("textarea");
+        fallback.value = text;
+        fallback.style.position = "fixed";
+        fallback.style.opacity = "0";
+        document.body.append(fallback);
+        fallback.select();
+        document.execCommand("copy");
+        fallback.remove();
+      }
+    }
+    $("#chatMessages").addEventListener("click", event => {
+      const block = event.target.closest(".message-block");
+      const copy = event.target.closest(".copy-action");
+      if (copy && block) {
+        const source = copy.dataset.copySource || (copy.closest(".copy-user") ? "user" : "assistant");
+        const text = source === "user" ? $(".user-bubble", block)?.textContent : $(".assistant-copy", block)?.textContent;
+        writeClipboard((text || "").trim());
+        return;
+      }
+      const feedback = event.target.closest(".feedback-action");
+      if (feedback && block) {
+        const wasSelected = feedback.classList.contains("selected");
+        $$(".feedback-action", block).forEach(button => button.classList.remove("selected"));
+        if (!wasSelected) feedback.classList.add("selected");
+        state.sessionHtml[state.currentSession] = $("#chatMessages").innerHTML;
+        return;
+      }
+      const more = event.target.closest(".message-more");
+      if (more) {
+        event.stopPropagation();
+        openMenu(more, [{ label: "从此处分叉", action: () => toast("原型占位") }, { label: "重新生成", action: () => toast("原型占位") }]);
+      }
+    });
+    $$(".attach").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      openMenu(button, [{ label: "添加文件", action: () => toast("已选择假文件") }, { label: "添加图片", action: () => toast("已选择假图片") }]);
     }));
-    $$(".copy-action").forEach(button => button.addEventListener("click", () => toast("已复制")));
-    $$(".attach").forEach(button => button.addEventListener("click", () => toast("已添加假附件")));
-    $$(".permission").forEach(button => button.addEventListener("click", () => {
-      state.permissionIndex = (state.permissionIndex + 1) % state.permissions.length;
-      $$(".permission span").forEach(label => { label.textContent = state.permissions[state.permissionIndex]; });
+    $$(".permission").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      openMenu(button, state.permissions.map((label, index) => ({ label, selected: index === state.permissionIndex, action: () => {
+        state.permissionIndex = index;
+        $$(".permission span").forEach(node => { node.textContent = label; });
+      } })));
     }));
-    $$(".model").forEach(button => button.addEventListener("click", () => {
-      state.modelIndex = (state.modelIndex + 1) % state.models.length;
-      $$(".model").forEach(label => { label.textContent = state.models[state.modelIndex] + "⌄"; });
+    $$(".model").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      openMenu(button, state.models.map((label, index) => ({ label, selected: index === state.modelIndex, action: () => {
+        state.modelIndex = index;
+        $$(".model span").forEach(node => { node.textContent = label; });
+      } })));
     }));
+    $("#heroWorkspace").addEventListener("click", event => {
+      event.stopPropagation();
+      openMenu(event.currentTarget, ["film-studio", "deepbuddy", "GPT-Image2分享"].map(label => ({ label, selected: label === state.heroWorkspace, action: () => { state.heroWorkspace = label; $("#heroWorkspace span").textContent = label; } })));
+    });
+    $("#heroMode").addEventListener("click", event => {
+      event.stopPropagation();
+      openMenu(event.currentTarget, ["创造模式", "计划模式", "询问模式"].map(label => ({ label, selected: label === state.heroMode, action: () => { state.heroMode = label; $("#heroMode span").textContent = label; } })));
+    });
 
     // Inspector view switching and kept-alive file previews.
     function selectDockView(view) {
@@ -1271,6 +1552,7 @@
         id: "term-" + number,
         title: "终端 " + number,
         cwd: "/Users/byron/Desktop/film-studio",
+        status: "ready",
         lines: number === 1 ? ["DeepBuddy terminal ready.", "Type help for available fake commands."] : ["Terminal " + number + " attached."]
       };
       state.terminalTabs.push(tab);
@@ -1290,15 +1572,24 @@
       const input = $('[data-terminal-pane="' + id + '"] .terminal-input');
       if (input) input.focus();
     }
+    function restartTerminal(id) {
+      const tab = state.terminalTabs.find(item => item.id === id);
+      if (!tab) return;
+      tab.status = "ready";
+      tab.lines = ["DeepBuddy terminal ready.", "Type help for available fake commands."];
+      renderTerminals();
+      requestAnimationFrame(() => $('[data-terminal-pane="' + id + '"] .terminal-input')?.focus());
+    }
     function renderTerminals() {
       $("#terminalTabs").innerHTML = state.terminalTabs.map(tab =>
         '<button class="resource-tab ' + (tab.id === state.activeTerminal ? "active" : "") + '" data-terminal-tab="' + tab.id + '"><span class="title">' + escapeHtml(tab.title) + '</span><span class="tab-close" data-close-terminal="' + tab.id + '">×</span></button>'
       ).join("") + '<button id="addTerminal" class="tab-add" title="新建终端">+</button>';
       $("#terminalPanes").innerHTML = state.terminalTabs.map(tab =>
         '<div class="terminal-pane ' + (tab.id === state.activeTerminal ? "active" : "") + '" data-terminal-pane="' + tab.id + '">' +
-          '<div class="terminal-meta"><span class="dot"></span><span class="truncate">' + escapeHtml(tab.cwd) + '</span></div>' +
+          '<div class="terminal-meta"><span class="dot" style="background:' + (tab.status === "ready" ? "var(--db-run)" : "var(--db-await)") + '"></span><span class="truncate">' + escapeHtml(tab.cwd) + '</span>' +
+            (tab.status === "exited" ? '<button class="icon-button restart-terminal" data-restart-terminal="' + tab.id + '" title="重新启动终端">' + svg("i-refresh", "small") + '重新启动终端</button>' : '') + '</div>' +
           '<div class="terminal-screen"><div class="terminal-output">' + tab.lines.map(line => '<div class="terminal-line">' + escapeHtml(line) + '</div>').join("") + '</div>' +
-            '<div class="terminal-command"><span class="prompt">~/Des/film-studio ❯&nbsp;</span><input class="terminal-input" autocomplete="off" spellcheck="false"></div>' +
+            (tab.status === "ready" ? '<div class="terminal-command"><span class="prompt">~/Des/film-studio ❯&nbsp;</span><input class="terminal-input" autocomplete="off" spellcheck="false"></div>' : '') +
           '</div></div>'
       ).join("");
       $("#addTerminal").addEventListener("click", addTerminal);
@@ -1307,6 +1598,7 @@
         focusTerminal(tab.dataset.terminalTab);
       }));
       $$("[data-close-terminal]").forEach(close => close.addEventListener("click", event => { event.stopPropagation(); closeTerminal(close.dataset.closeTerminal); }));
+      $$("[data-restart-terminal]").forEach(button => button.addEventListener("click", () => restartTerminal(button.dataset.restartTerminal)));
       $$(".terminal-input").forEach(input => input.addEventListener("keydown", event => {
         if (event.key !== "Enter") return;
         const pane = event.target.closest("[data-terminal-pane]");
@@ -1314,18 +1606,23 @@
         const command = input.value.trim();
         if (!command) return;
         const replies = {
-          help: "Available: help, pwd, ls, clear, echo <text>",
+          help: "Available: help, pwd, ls, clear, echo <text>, exit",
           pwd: tab.cwd,
           ls: ".agents  deepbuddy-design-current  plugins  apps  README.md"
         };
         tab.lines.push("~/Des/film-studio ❯ " + command);
         if (command === "clear") tab.lines = [];
+        else if (command === "exit") { tab.lines.push("[进程已退出 · 0]"); tab.status = "exited"; }
         else if (command.startsWith("echo ")) tab.lines.push(command.slice(5));
         else tab.lines.push(replies[command] || "zsh: command not found: " + command);
         renderTerminals();
         requestAnimationFrame(() => {
           const active = $('[data-terminal-pane="' + tab.id + '"] .terminal-screen');
-          if (active) { active.scrollTop = active.scrollHeight; $(".terminal-input", active).focus(); }
+          if (active) {
+            active.scrollTop = active.scrollHeight;
+            const nextInput = $(".terminal-input", active);
+            if (nextInput) nextInput.focus();
+          }
         });
       }));
     }
@@ -1344,7 +1641,7 @@
     function pageType(url) {
       const host = hostOf(url);
       if (!url) return "empty";
-      if (host.includes("blocked") || host.includes("refuse")) return "blocked";
+      if (host === "x.com" || host.endsWith(".x.com") || host === "baidu.com" || host.endsWith(".baidu.com") || host.includes("blocked") || host.includes("refuse")) return "blocked";
       if (host.includes("docs") || host.includes("deepbuddy")) return "docs";
       return "example";
     }
@@ -1370,7 +1667,7 @@
     function browserPage(tab) {
       const type = pageType(tab.url);
       if (type === "empty") return '<div class="browser-empty"><div>' + svg("i-globe") + '<span>输入地址开始浏览</span></div></div>';
-      if (type === "blocked") return '<div class="blocked-page"><div class="blocked-card">' + svg("i-globe") + '<div>该站点拒绝嵌入</div><button class="outline-button preview-example">预览内置示例页</button></div></div>';
+      if (type === "blocked") return '<div class="blocked-page"><div class="blocked-card">' + svg("i-globe") + '<div>该站点拒绝嵌入</div><button class="outline-button blocked-external">' + svg("i-external", "small") + ' 在系统浏览器打开</button></div></div>';
       if (type === "docs") return '<div class="docs-page"><h1>DeepBuddy Design Notes</h1><div class="hero-line">Offline prototype · keep-alive scroll test</div>' +
         Array.from({ length: 10 }, (_, index) => '<div class="docs-card"><strong>Section ' + (index + 1) + '</strong><p>三列两区保持稳定；切换 Files / Terminal / Browser 后回到此页，滚动位置不会丢失。</p></div>').join("") + '</div>';
       return '<div class="example-page"><article><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><a href="#" class="learn-more">Learn more</a></article></div>';
@@ -1429,17 +1726,18 @@
         });
         $(".browser-refresh", pane).addEventListener("click", () => {
           const scroll = $(".fake-page", pane).scrollTop;
-          $(".fake-page", pane).innerHTML = browserPage(tab);
-          $(".fake-page", pane).scrollTop = scroll;
+          tab.scrollTop = scroll;
+          renderBrowsers();
         });
         $(".browser-external", pane).addEventListener("click", () => toast("原型不会打开外部网络"));
-        const preview = $(".preview-example", pane);
-        if (preview) preview.addEventListener("click", () => { address.value = "https://example.com/"; address.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" })); });
+        const blockedExternal = $(".blocked-external", pane);
+        if (blockedExternal) blockedExternal.addEventListener("click", () => toast("原型不会打开外部网络"));
         const learn = $(".learn-more", pane);
         if (learn) learn.addEventListener("click", event => { event.preventDefault(); toast("这是内置离线假页面"); });
       });
     }
 
+    state.sessionHtml["Hello Greeting"] = $("#chatMessages").innerHTML;
     state.dockWidth = dockDefault();
     applyLayout();
     showHero();
