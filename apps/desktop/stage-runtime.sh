@@ -34,6 +34,11 @@ STAGING="$REPO_ROOT/apps/desktop/staging"
 RUNTIME="$STAGING/runtime"
 PLUGIN="$STAGING/plugin"
 LOCKED_DSH='@deepseek-ai/dsh@0.1.1-rc.2'
+# Host dependencies imported by the built DeepBuddy plugin. They are staged
+# explicitly instead of relying on dsh's current transitive graph; node-pty's
+# prebuilt native binary then lives in extraResources, outside app.asar.
+LOCKED_NODE_PTY='node-pty@1.2.0-beta.15'
+LOCKED_WS='ws@8.21.3'
 # A cache dir outside the pnpm workspace, so pnpm treats it as a standalone
 # project instead of a workspace member.
 BUILD_DIR="$(mktemp -d)"
@@ -59,8 +64,8 @@ EOF
 cat > "$BUILD_DIR/runtime/.npmrc" <<'EOF'
 node-linker=hoisted
 EOF
-echo "stage-runtime: pnpm install $LOCKED_DSH (hoisted, prod) in isolated cache..." >&2
-(cd "$BUILD_DIR/runtime" && pnpm install "$LOCKED_DSH" --prod --ignore-scripts)
+echo "stage-runtime: pnpm install $LOCKED_DSH + DeepBuddy host deps (hoisted, prod) in isolated cache..." >&2
+(cd "$BUILD_DIR/runtime" && pnpm install "$LOCKED_DSH" "$LOCKED_NODE_PTY" "$LOCKED_WS" --prod --ignore-scripts)
 # Clear the pnpm workspace marker if pnpm created a nested store node_modules.
 rm -rf "$BUILD_DIR/runtime/node_modules/.pnpm"
 # Move the real tree into the staging (mv is cheaper than cp for 269M),

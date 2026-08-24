@@ -363,22 +363,6 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
 // ── snapshot helpers ────────────────────────────────────────────────────────
 
 /**
- * Join the text of a content-part array (user message content, tool result
- * content). Non-text parts contribute nothing; a plain string passes through.
- * @param content - host-shaped content value.
- * @returns concatenated text.
- */
-export function textOfParts(content: unknown): string {
-  if (typeof content === 'string') return content
-  if (!Array.isArray(content)) return ''
-  return content
-    .map(p => (p !== null && typeof p === 'object' && 'text' in p && typeof (p as { text: unknown }).text === 'string')
-      ? (p as { text: string }).text
-      : '')
-    .join('')
-}
-
-/**
  * Path tail for workspace display names, same rule the runtime's
  * workspaceTitleOf applies (last non-empty segment).
  * @param path - absolute or ~-relative path.

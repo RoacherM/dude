@@ -210,6 +210,9 @@ function createWindow(url) {
     // window flashes the wrong shade.
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
     title: 'DeepBuddy',
+    webPreferences: {
+      webviewTag: true,
+    },
   })
   win.removeMenu?.()
   win.loadURL(url)

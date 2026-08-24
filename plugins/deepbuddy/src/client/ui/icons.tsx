@@ -170,9 +170,9 @@ export const AlertCircle = (p: IconProps): ReactNode =>
 export const Dots = (p: IconProps): ReactNode =>
   svg(<><path d="M6 12h.01" /><path d="M12 12h.01" /><path d="M18 12h.01" /></>, p)
 
-/** Document/conversation outline (the overview panel). */
-export const Outline = (p: IconProps): ReactNode =>
-  svg(<><path d="M4.5 6.5h15" /><path d="M4.5 12h10" /><path d="M4.5 17.5h13" /></>, p)
+/** Open the current resource in an external application. */
+export const ExternalLink = (p: IconProps): ReactNode =>
+  svg(<><path d="M13.5 4.5h6v6" /><path d="M19.5 4.5l-8 8" /><path d="M17.5 13.5v4.3a1.7 1.7 0 01-1.7 1.7H6.2a1.7 1.7 0 01-1.7-1.7V8.2a1.7 1.7 0 011.7-1.7h4.3" /></>, p)
 
 // ── name lookup for catalog-carried icons ───────────────────────────────────
 
@@ -217,9 +217,9 @@ export const ICONS = {
   'eye-off': EyeOff,
   'alert-circle': AlertCircle,
   dots: Dots,
+  'external-link': ExternalLink,
   maximize: Maximize,
   minimize: Minimize,
-  outline: Outline,
 } as const
 
 /** The name of any glyph in {@link ICONS}. */

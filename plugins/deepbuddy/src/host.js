@@ -1,9 +1,9 @@
 /**
- * Host half of the deepbuddy plugin: the distribution's session-fenced file
- * surface.
+ * Host half of the deepbuddy plugin: session-fenced files and the interactive
+ * user terminal.
  *
- * Publishes two Remote endpoints on the Typert Gateway's shared `/api` channel
- * — `deepbuddyFiles/readFile` and `deepbuddyFiles/listDirectory` — through
+ * Publishes three Remote endpoints on the Typert Gateway's shared `/api`
+ * channel — `deepbuddyFiles/readFile`, `readBinary` and `listDirectory` — through
  * which the explorer dock pane reads a session's own workspace. The harness
  * itself has no session-fenced file enumeration (`host.listDirectory` is the
  * directory picker's browse capability and skips files), so the distribution
@@ -25,6 +25,8 @@
 import Schema from '@deepseek-ai/schemastery'
 
 import { createReadStream } from 'node:fs'
+import { spawn as spawnPty } from 'node-pty'
+import { WebSocketServer } from 'ws'
 
 /** Stable Cordis plugin name. */
 export const name = 'deepbuddy'
@@ -50,6 +52,12 @@ const PACKAGE_NAME = 'dsh-plugin-deepbuddy'
  * prefix so a distinct sub-path per session carries no state.
  */
 const MEDIA_ROUTE = '/deepbuddy/media'
+
+/** Exact HTTP-upgrade route used by the interactive terminal. */
+const TERMINAL_ROUTE = '/deepbuddy/terminal'
+
+/** Maximum retained terminal output per session. */
+const TERMINAL_SCROLLBACK_BYTES = 64 * 1024
 
 /** Plugin configuration, validated and defaulted by the dsh loader. */
 export const Config = Schema.object({
@@ -401,6 +409,169 @@ async function listWorkspaceDirectory(ctx, sessionId, path, signal) {
   }
 }
 
+/** Send one JSON protocol message when a terminal client is still attached. */
+function sendTerminalMessage(socket, message) {
+  if (socket.readyState === 1) socket.send(JSON.stringify(message))
+}
+
+/** Retain only the newest bounded UTF-8 terminal output. */
+function appendScrollback(current, chunk) {
+  const joined = Buffer.from(current + chunk)
+  if (joined.byteLength <= TERMINAL_SCROLLBACK_BYTES) return joined.toString('utf8')
+  // Dropping bytes can land inside one UTF-8 character. Buffer's decoder
+  // replaces that single partial prefix, which is safer than retaining an
+  // unbounded buffer; strip the replacement marker from the new head.
+  return joined.subarray(joined.byteLength - TERMINAL_SCROLLBACK_BYTES).toString('utf8').replace(/^\uFFFD/, '')
+}
+
+/** One host-owned PTY and every browser currently attached to it. */
+class TerminalResource {
+  constructor(sessionId, cwd, shell, onExit) {
+    this.sessionId = sessionId
+    this.cwd = cwd
+    this.clients = new Set()
+    this.scrollback = ''
+    this.status = { kind: 'running' }
+    this.closing = false
+    this.exited = new Promise(resolve => { this.resolveExit = resolve })
+    this.pty = spawnPty(shell, [], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd,
+      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' },
+    })
+    this.dataSubscription = this.pty.onData((data) => {
+      this.scrollback = appendScrollback(this.scrollback, data)
+      this.broadcast({ type: 'output', data })
+    })
+    this.exitSubscription = this.pty.onExit(({ exitCode, signal }) => {
+      this.status = { kind: 'exited', exitCode, signal: signal ?? null }
+      this.broadcast({ type: 'exit', exitCode, signal: signal ?? null })
+      this.resolveExit()
+      onExit(this)
+    })
+  }
+
+  attach(socket) {
+    this.clients.add(socket)
+    sendTerminalMessage(socket, {
+      type: 'snapshot',
+      data: this.scrollback,
+      cwd: this.cwd,
+      status: this.status.kind,
+      ...(this.status.kind === 'exited' ? { exitCode: this.status.exitCode } : {}),
+    })
+  }
+
+  detach(socket) {
+    this.clients.delete(socket)
+  }
+
+  broadcast(message) {
+    for (const socket of this.clients) sendTerminalMessage(socket, message)
+  }
+
+  resize(cols, rows) {
+    if (this.status.kind === 'running' && !this.closing) this.pty.resize(cols, rows)
+  }
+
+  write(data) {
+    if (this.status.kind === 'running' && !this.closing) this.pty.write(data)
+  }
+
+  kill(reason) {
+    if (this.status.kind !== 'running' || this.closing) return
+    this.closing = true
+    this.broadcast({ type: 'closed', reason })
+    this.pty.kill()
+  }
+
+  dispose(reason) {
+    this.kill(reason)
+    this.dataSubscription.dispose()
+    this.exitSubscription.dispose()
+    for (const socket of this.clients) socket.close(1001, reason)
+    this.clients.clear()
+  }
+}
+
+/**
+ * Session-keyed PTY owner. React attachments may come and go; this registry
+ * alone decides resource lifetime and prevents two shells for one session.
+ */
+export class DeepbuddyTerminalManager {
+  constructor(ctx) {
+    this.ctx = ctx
+    this.resources = new Map()
+    this.pending = new Map()
+  }
+
+  async resourceFor(sessionId) {
+    const resolved = await resolveSessionCwd(this.ctx, sessionId, undefined)
+    if (!resolved.ok) throw new Error(resolved.refusal.kind)
+    const existing = this.resources.get(sessionId)
+    if (existing !== undefined && existing.status.kind === 'running' && !existing.closing) return existing
+    if (existing !== undefined && existing.closing) {
+      await existing.exited
+      return this.resourceFor(sessionId)
+    }
+    if (existing !== undefined && existing.status.kind === 'exited') this.resources.delete(sessionId)
+    const spawning = this.pending.get(sessionId)
+    if (spawning !== undefined) return spawning
+    const promise = Promise.resolve().then(() => {
+      const shell = process.env.SHELL || '/bin/zsh'
+      const resource = new TerminalResource(sessionId, resolved.cwd, shell, (exited) => {
+        // Natural exits stay available for one final scrollback attachment;
+        // explicit closes leave immediately so a requested restart can spawn.
+        if (exited.closing && this.resources.get(sessionId) === exited) this.resources.delete(sessionId)
+      })
+      this.resources.set(sessionId, resource)
+      return resource
+    })
+    this.pending.set(sessionId, promise)
+    try { return await promise }
+    finally { this.pending.delete(sessionId) }
+  }
+
+  async attach(sessionId, socket) {
+    const resource = await this.resourceFor(sessionId)
+    resource.attach(socket)
+    socket.on('message', (raw) => {
+      let message
+      try { message = JSON.parse(String(raw)) }
+      catch {
+        sendTerminalMessage(socket, { type: 'error', message: 'bad terminal message' })
+        return
+      }
+      if (message?.type === 'input' && typeof message.data === 'string' && Buffer.byteLength(message.data) <= 64 * 1024) {
+        resource.write(message.data)
+      }
+      else if (message?.type === 'resize'
+        && Number.isInteger(message.cols) && message.cols >= 2 && message.cols <= 500
+        && Number.isInteger(message.rows) && message.rows >= 1 && message.rows <= 300) {
+        resource.resize(message.cols, message.rows)
+      }
+      else if (message?.type === 'kill') {
+        resource.kill('user closed terminal')
+      }
+      else {
+        sendTerminalMessage(socket, { type: 'error', message: 'unsupported terminal message' })
+      }
+    })
+    socket.once('close', () => { resource.detach(socket) })
+  }
+
+  kill(sessionId, reason) {
+    this.resources.get(sessionId)?.kill(reason)
+  }
+
+  dispose() {
+    for (const resource of this.resources.values()) resource.dispose('deepbuddy unloaded')
+    this.resources.clear()
+  }
+}
+
 /**
  * The `deepbuddyFiles` service behind the Remote endpoints.
  *
@@ -517,6 +688,7 @@ export class DeepbuddyFilesService {
  */
 export function apply(ctx, config) {
   const service = new DeepbuddyFilesService(ctx, config)
+  const terminals = new DeepbuddyTerminalManager(ctx)
   ctx.effect(() => ctx.provide(SERVICE_KEY, service), 'deepbuddy: files service')
   ctx.effect(() => ctx.typert.register({
     package: PACKAGE_NAME,
@@ -547,7 +719,54 @@ export function apply(ctx, config) {
         void streamMedia(ctx, req, res, sessionId, path)
       },
     }), 'deepbuddy: media route')
+
+    // webServer owns the HTTP server and exposes an exact upgrade registry, so
+    // the plugin supplies only the WebSocket protocol and PTY lifecycle.
+    const terminalWss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 })
+    terminalWss.on('connection', (socket, request) => {
+      const url = new URL(request.url ?? TERMINAL_ROUTE, 'http://x')
+      const sessionId = url.searchParams.get('sessionId')
+      if (sessionId === null || sessionId === '') {
+        sendTerminalMessage(socket, { type: 'error', message: 'session-not-found' })
+        socket.close(1008, 'session required')
+        return
+      }
+      void terminals.attach(sessionId, socket).catch((error) => {
+        sendTerminalMessage(socket, { type: 'error', message: error instanceof Error ? error.message : String(error) })
+        socket.close(1008, 'terminal refused')
+      })
+    })
+    ctx.effect(() => {
+      const unregister = webServer.registerUpgrade({
+        path: TERMINAL_ROUTE,
+        handler(req, socket, head) {
+          // Browser WebSockets carry Origin. Reject a foreign page even when
+          // the web server is exposed on 0.0.0.0; same-origin DeepBuddy and
+          // non-browser contract clients proceed.
+          const origin = req.headers.origin
+          const host = req.headers.host
+          if (origin !== undefined && host !== undefined && new URL(origin).host !== host) {
+            socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
+            socket.destroy()
+            return
+          }
+          terminalWss.handleUpgrade(req, socket, head, client => { terminalWss.emit('connection', client, req) })
+        },
+      })
+      return () => {
+        unregister()
+        terminals.dispose()
+        for (const client of terminalWss.clients) client.terminate()
+        terminalWss.close()
+      }
+    }, 'deepbuddy: terminal websocket')
   }
+
+  // A session resource ends with its owner, independent of whether a dock
+  // attachment happens to be mounted at that moment.
+  ctx.effect(() => ctx.on('session/disposed', (session) => {
+    terminals.kill(String(session.id), 'session disposed')
+  }), 'deepbuddy: terminal session cleanup')
 }
 
-export { DESCRIPTORS, SERVICE_KEY }
+export { DESCRIPTORS, SERVICE_KEY, TERMINAL_ROUTE }

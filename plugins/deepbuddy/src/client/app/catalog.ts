@@ -12,7 +12,8 @@
  */
 import type { ComponentType } from 'react'
 import { FilesViewDefinition } from '../features/files/index.ts'
-import { OverviewViewDefinition } from '../features/overview/index.ts'
+import { TerminalViewDefinition } from '../features/terminal/index.ts'
+import { BrowserViewDefinition } from '../features/browser/index.ts'
 import type { IconName } from '../ui/icons.tsx'
 import type { TabRef } from '../shell/layout-store.ts'
 
@@ -48,8 +49,9 @@ export interface InspectorViewTypeDefinition {
 
 /** Inspector view types, in segment order; the first is the dock's default. */
 export const INSPECTOR_VIEW_TYPES = [
-  OverviewViewDefinition,
   FilesViewDefinition,
+  TerminalViewDefinition,
+  BrowserViewDefinition,
 ] as const
 
 /**

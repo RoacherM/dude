@@ -31,6 +31,7 @@ test('host half registers the file service and its three endpoints', async () =>
     },
     provide(key, service) { provided.push([key, service]) },
     get() { return undefined /* no webServer in the contract test */ },
+    on() { return () => {} },
     typert: { register(contribution) { registered.push(contribution); return () => {} } },
   }
   mod.apply(ctx, { previewMaxChars: 262_144, previewMaxBytes: 50_102_400 })
@@ -47,6 +48,28 @@ test('host half registers the file service and its three endpoints', async () =>
   for (const d of registered[0].invocations) {
     assert.equal(typeof provided[0][1][d.method], 'function')
   }
+})
+
+test('host half owns one session-fenced terminal WebSocket route', async () => {
+  const mod = await import(join(root, 'lib/index.js'))
+  const routes = []
+  const upgrades = []
+  const ctx = {
+    effect(fn) { fn() },
+    provide() {},
+    get(key) {
+      if (key !== 'webServer') return undefined
+      return {
+        register(route) { routes.push(route); return () => {} },
+        registerUpgrade(route) { upgrades.push(route); return () => {} },
+      }
+    },
+    on() { return () => {} },
+    typert: { register() { return () => {} } },
+  }
+  mod.apply(ctx, { previewMaxChars: 262_144, previewMaxBytes: 50_102_400 })
+  assert.deepEqual(routes.map(route => [route.kind, route.path]), [['prefix', '/deepbuddy/media']])
+  assert.deepEqual(upgrades.map(route => route.path), ['/deepbuddy/terminal'])
 })
 
 test('client bundle self-registers under the package name', async () => {
@@ -140,11 +163,14 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /WORKBENCH_APPS = \[/)
   assert.doesNotMatch(bundle, /SIDEBAR_SECTIONS = \[/)
   assert.doesNotMatch(bundle, /SessionListSectionDefinition/)
-  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*OverviewViewDefinition,\s*\n\s*FilesViewDefinition\s*\n\]/)
+  assert.doesNotMatch(bundle, /OverviewViewDefinition|textOfParts|outlineOf\(/)
+  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition,\s*\n\s*TerminalViewDefinition,\s*\n\s*BrowserViewDefinition\s*\n\]/)
   // The definitions carry their ids — the catalog is the single composition
   // point the shell renders from. Settings is no longer a workbench app (it
   // is a dialog overlay, wave 4 §5), so it is deliberately absent here.
   assert.match(bundle, /FilesViewDefinition = \{\s*\n\s*id: "explorer",/)
+  assert.match(bundle, /TerminalViewDefinition = \{\s*\n\s*id: "terminal",/)
+  assert.match(bundle, /BrowserViewDefinition = \{\s*\n\s*id: "browser",/)
   // The workspace region is the official seat, not a first-party section list.
   assert.match(bundle, /renderSlot\("sidebar\.workspaces"/)
   assert.match(bundle, /"sidebar\.workspaces": \{ kind: "single", scope: "root" \}/)
@@ -156,6 +182,34 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   // reachable from a surface. (`\b` matters: the store's own private
   // writeDockWidth / resetDockWidth are not verbs a surface may call.)
   assert.doesNotMatch(bundle, /\bsetDockWidth|\bsetSidebarWidth|\bsetColumnWidth/)
+})
+
+test('terminal and browser views ship their required interaction paths', async () => {
+  const client = await readFile(join(root, 'lib/client.js'), 'utf8')
+  const host = await readFile(join(root, 'lib/index.js'), 'utf8')
+  const desktop = await readFile(join(root, '../../apps/desktop/main.js'), 'utf8')
+
+  // Terminal: xterm + fit are bundled client-side; the host owns a bounded,
+  // session-keyed PTY over a native webServer upgrade route.
+  assert.match(client, /const terminal = new [\w$]+\(\{\s*\n\s*allowProposedApi: false,/)
+  assert.match(client, /const fit = new [\w$]+\(\);\s*\n\s*terminal\.loadAddon\(fit\)/)
+  assert.match(client, /new WebSocket\(terminalSocketUrl\(sessionId\)\)/)
+  assert.match(client, /type: "resize"/)
+  assert.match(client, /type: "kill"/)
+  assert.match(host, /spawnPty\(shell, \[\]/)
+  assert.match(host, /TERMINAL_SCROLLBACK_BYTES = 64 \* 1024/)
+  assert.match(host, /webServer\.registerUpgrade\(/)
+  assert.match(host, /ctx\.on\("session\/disposed"/)
+
+  // Browser: desktop gets webview navigation events; web gets iframe plus an
+  // explicit refusal/open-external state. Localhost normalization stays HTTP.
+  assert.match(client, /"webview"/)
+  assert.match(client, /"did-navigate"/)
+  assert.match(client, /"did-fail-load"/)
+  assert.match(client, /"iframe"/)
+  assert.match(client, /\\u8BE5\\u7AD9\\u70B9\\u62D2\\u7EDD\\u5D4C\\u5165/)
+  assert.match(client, /local \? "http" : "https"/)
+  assert.match(desktop, /webviewTag: true/)
 })
 
 test('conversation folding is the official apply\'s job; DeepBuddy only provides layout', async () => {
@@ -364,4 +418,3 @@ test('slots: DeepBuddy registers its brand into the official hero mark', async (
   assert.doesNotMatch(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
   assert.doesNotMatch(bundle, /ModelChip/)
 })
-
