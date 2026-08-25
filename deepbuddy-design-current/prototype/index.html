@@ -804,18 +804,62 @@
     .outline-button { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; border: 1px solid var(--db-line-emphasis); border-radius: 17px; background: transparent; color: var(--db-text); cursor: pointer; }
     .outline-button:hover { background: var(--db-fill-5); border-color: var(--db-line-hover); }
 
-    .floating-menu { position: fixed; z-index: 110; min-width: 178px; padding: 6px; border: 1px solid var(--db-line-container); border-radius: 12px; background: var(--db-popover); box-shadow: var(--db-shadow-menu); }
-    .menu-item { width: 100%; min-height: 32px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--db-text-2); text-align: left; }
-    .menu-item:hover { color: var(--db-text); background: var(--db-fill-5); }
-    .menu-item.selected::after { content: "✓"; margin-left: auto; color: var(--db-primary); }
+    /* 浮层菜单：1:1 对齐真实 popover（bg #353638, r12, pad 4, 三层阴影；行 h40 pad 8/10 r10） */
+    .floating-menu { position: fixed; z-index: 130; min-width: 218px; padding: 4px; border: 1px solid rgba(255,255,255,.06); border-radius: 12px; background: var(--dsw-specific-menu); box-shadow: 0 0 1px rgba(0,0,0,.2), 0 0 4px rgba(0,0,0,.02), 0 12px 32px rgba(0,0,0,.08); display: flex; flex-direction: column; }
+    .menu-item { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--db-text); font-size: 14px; text-align: left; cursor: pointer; }
+    .menu-item:hover { background: rgba(255,255,255,.06); }
+    .menu-item-icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--db-text-3); }
+    .menu-item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .menu-item-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .menu-item-name { font-size: 13px; line-height: 20px; color: var(--db-text); }
+    .menu-item-desc { font-size: 12px; line-height: 16px; color: var(--db-text-4); white-space: normal; }
+    .menu-check { width: 16px; height: 16px; flex: 0 0 16px; margin-left: auto; color: var(--db-text); }
+    .menu-footer { border-top: 1px solid rgba(255,255,255,.12); margin-top: 4px; padding-top: 4px; }
+    /* 模型菜单 root 面板的两行 cell（label + value + ›） */
+    .menu-cell { width: 100%; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; font-size: 14px; cursor: pointer; }
+    .menu-cell:hover { background: rgba(255,255,255,.06); }
+    .menu-cell-label { color: var(--db-text); white-space: nowrap; }
+    .menu-cell-value { flex: 1; min-width: 0; text-align: right; color: var(--db-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .menu-cell .icon { width: 14px; height: 14px; color: var(--db-text-3); }
+    .menu-group-title { padding: 5px 8px 3px; font-size: 12px; font-weight: 500; color: var(--db-text-3); }
+    .menu-option { width: 100%; min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--db-text); font-size: 13.5px; text-align: left; cursor: pointer; }
+    .menu-option:hover { background: rgba(255,255,255,.06); }
     .modal-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 28px; background: rgba(0,0,0,.58); }
-    .settings-panel { width: min(520px, 100%); max-height: min(620px, calc(100vh - 56px)); overflow: auto; border: 1px solid var(--db-line-container); border-radius: 20px; background: var(--db-dialog); box-shadow: var(--db-shadow-dialog); }
-    .settings-head { height: 52px; display: flex; align-items: center; padding: 0 14px 0 20px; border-bottom: 1px solid var(--db-line); font-weight: 600; }
-    .settings-group { padding: 14px 18px; border-bottom: 1px solid var(--db-line); }
-    .settings-group:last-child { border-bottom: 0; }
-    .settings-group h3 { margin: 0 0 9px; color: var(--db-text-4); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
-    .settings-item { min-height: 40px; display: flex; align-items: center; gap: 12px; color: var(--db-text-2); }
-    .settings-value { margin-left: auto; color: var(--db-text-4); font-size: 12px; }
+    /* 设置对话框：真实结构 800×800、r24、bg #2C2C2E、左 nav 188 + 内容 612 */
+    .settings-panel { width: min(800px, 100%); height: min(800px, calc(100vh - 56px)); display: flex; overflow: hidden; border-radius: 24px; background: rgb(44,44,46); box-shadow: var(--db-shadow-dialog); }
+    .settings-nav { flex: 0 0 188px; display: flex; flex-direction: column; gap: 18px; padding: 22px 12px 0; }
+    .settings-nav-title { padding: 0 12px; font-size: 16px; font-weight: 500; color: var(--db-text); }
+    .settings-nav-cells { display: flex; flex-direction: column; gap: 2px; }
+    .settings-nav-cell { width: 164px; height: 40px; display: flex; align-items: center; gap: 8px; padding: 9px 16px 9px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--db-text); font-size: 14px; text-align: left; cursor: pointer; }
+    .settings-nav-cell:hover { background: rgba(255,255,255,.05); }
+    .settings-nav-cell.active { background: rgb(67,69,74); }
+    .settings-nav-cell .icon { width: 16px; height: 16px; color: var(--db-text-2); }
+    .settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .settings-content-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 20px 14px 8px 10px; }
+    .settings-open-config { height: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 0 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: transparent; color: var(--db-text); font-size: 12px; cursor: pointer; }
+    .settings-open-config:hover { background: var(--db-fill-4); }
+    .settings-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 24px 24px; }
+    .settings-pane-title { margin: 8px 0 0; font-size: 16px; font-weight: 500; color: var(--db-text); }
+    .settings-pane-desc { margin: 12px 0 4px; font-size: 12.5px; color: var(--db-text-3); }
+    .settings-row-line { display: flex; align-items: center; gap: 8px; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .settings-row-line:last-child { border-bottom: 0; }
+    .settings-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-right: 48px; }
+    .settings-row-title { font-size: 14px; color: var(--db-text); }
+    .settings-row-desc { font-size: 12px; color: var(--db-text-3); }
+    .settings-dd { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--dsw-specific-menu); color: var(--db-text); font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .settings-dd:hover { background: rgb(67,69,74); }
+    .settings-dd .icon { width: 12px; height: 12px; color: var(--db-text-3); }
+    .theme-cubes { display: flex; gap: 8px; margin: 12px 0 16px; }
+    .theme-cube { flex: 1; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: transparent; color: var(--db-text); font-size: 14px; cursor: pointer; }
+    .theme-cube:hover { background: rgba(255,255,255,.04); }
+    .theme-cube.selected { border-color: var(--db-text-3); background: var(--dsw-specific-menu); }
+    .theme-cube .icon { width: 16px; height: 16px; }
+    .settings-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid rgba(255,255,255,.14); border-radius: 9px; font-size: 11px; color: var(--db-text-3); }
+    .settings-tag.current { color: var(--db-primary); border-color: color-mix(in srgb, var(--db-primary) 45%, transparent); }
+    .settings-slug { font-size: 12px; color: var(--db-text-4); }
+    .settings-mini-btn { height: 26px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 13px; background: transparent; color: var(--db-text); font-size: 12px; cursor: pointer; }
+    .settings-mini-btn:hover { background: var(--db-fill-4); }
+    .settings-add-row { display: flex; gap: 8px; margin-top: 16px; }
     .toast { position: fixed; right: 22px; bottom: 22px; z-index: 140; transform: translateY(12px); padding: 9px 14px; border: 1px solid var(--db-line-container); border-radius: 12px; background: var(--db-popover); color: var(--db-text); box-shadow: var(--db-shadow-popover); opacity: 0; pointer-events: none; transition: .18s ease; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .click-pulse { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--db-primary) 55%, transparent); }
@@ -859,6 +903,14 @@
     <symbol id="i-mode" viewBox="0 0 16 16"><mask id="mask0_agent_preset_16" maskUnits="userSpaceOnUse" x="0" y="0" width="16" height="16"><rect width="16" height="16" fill="white"></rect><circle cx="7.9995" cy="3.28319" r="1.712" fill="black"></circle><circle cx="3.51122" cy="11.3855" r="1.712" fill="black"></circle><circle cx="12.4878" cy="11.3855" r="1.712" fill="black"></circle></mask><path mask="url(#mask0_agent_preset_16)" d="M12.2881 11.0425C12.6002 11.3723 13.0413 11.5786 13.5312 11.5786L13.5342 11.5776C13.1476 12.3233 12.6119 12.9785 11.9639 13.5005C10.9327 14.3309 9.6199 14.8286 8.19336 14.8286C7.29864 14.8285 6.45056 14.6313 5.6875 14.2808C6.08309 14.0281 6.36707 13.6189 6.45215 13.1392C6.99022 13.3561 7.57767 13.476 8.19336 13.4761C9.30019 13.4761 10.3157 13.0915 11.1152 12.4478C11.5935 12.0626 11.9924 11.5848 12.2881 11.0425ZM4.14746 4.36475C4.25569 4.83228 4.55488 5.2247 4.95898 5.4585C4.07956 6.30639 3.53144 7.49605 3.53125 8.81396C3.53125 9.69534 3.77613 10.5202 4.20117 11.2231C3.74959 11.3817 3.38395 11.7232 3.19531 12.1597C2.5541 11.2032 2.17969 10.052 2.17969 8.81396C2.17989 7.05087 2.93868 5.4646 4.14746 4.36475ZM8.19336 2.80029C8.85717 2.80029 9.49784 2.90834 10.0967 3.10791C12.3237 3.85044 13.9725 5.86061 14.1846 8.28369C13.9832 8.20048 13.7627 8.15382 13.5312 8.15381C13.2802 8.15381 13.042 8.20907 12.8271 8.30615C12.6281 6.47264 11.3666 4.95616 9.66895 4.39014C9.2063 4.236 8.70989 4.15186 8.19336 4.15186C7.96112 4.15189 7.7329 4.16981 7.50977 4.20264C7.51947 4.12886 7.52637 4.05348 7.52637 3.97705C7.52628 3.56604 7.3811 3.18914 7.13965 2.89404C7.48183 2.83352 7.83381 2.80033 8.19336 2.80029Z" fill="currentColor"></path><path d="M9.1123 3.28271C9.11205 2.66858 8.61322 2.17041 7.99902 2.17041C7.38504 2.17067 6.88697 2.66874 6.88672 3.28271C6.88672 3.89691 7.38489 4.39574 7.99902 4.396C8.61338 4.396 9.1123 3.89707 9.1123 3.28271ZM10.3115 3.28271C10.3115 4.55981 9.27612 5.59521 7.99902 5.59521C6.72214 5.59496 5.6875 4.55965 5.6875 3.28271C5.68776 2.00599 6.7223 0.971447 7.99902 0.971191C9.27596 0.971191 10.3113 2.00584 10.3115 3.28271Z" fill="currentColor"></path><path d="M4.62402 11.385C4.62377 10.7709 4.12494 10.2727 3.51074 10.2727C2.89676 10.273 2.39869 10.771 2.39844 11.385C2.39844 11.9992 2.89661 12.498 3.51074 12.4983C4.1251 12.4983 4.62402 11.9994 4.62402 11.385ZM5.82324 11.385C5.82324 12.6621 4.78784 13.6975 3.51074 13.6975C2.23386 13.6973 1.19922 12.6619 1.19922 11.385C1.19947 10.1083 2.23402 9.07374 3.51074 9.07349C4.78768 9.07349 5.82299 10.1081 5.82324 11.385Z" fill="currentColor"></path><path d="M13.6006 11.385C13.6003 10.7709 13.1015 10.2727 12.4873 10.2727C11.8733 10.273 11.3753 10.771 11.375 11.385C11.375 11.9992 11.8732 12.498 12.4873 12.4983C13.1017 12.4983 13.6006 11.9994 13.6006 11.385ZM14.7998 11.385C14.7998 12.6621 13.7644 13.6975 12.4873 13.6975C11.2104 13.6973 10.1758 12.6619 10.1758 11.385C10.176 10.1083 11.2106 9.07374 12.4873 9.07349C13.7642 9.07349 14.7995 10.1081 14.7998 11.385Z" fill="currentColor"></path></symbol>
     <symbol id="i-folder-real" viewBox="0 0 16 16"><path d="M5.19629 1.57104C5.81144 1.5711 6.38623 1.8786 6.72754 2.39038L7.19922 3.09839C7.28454 3.22635 7.42824 3.30344 7.58203 3.30347H12.1699C13.5039 3.30348 14.5859 4.38548 14.5859 5.71948V6.62671C15.2694 7.02689 15.6605 7.85012 15.4385 8.68726L14.3848 12.658C14.1037 13.7164 13.1449 14.4527 12.0498 14.4529H2.91699C1.51651 14.4529 0.451662 13.2814 0.501954 11.9519V3.98706C0.501954 2.65305 1.58396 1.57104 2.91797 1.57104H5.19629ZM3.7793 7.75562C3.30994 7.75562 2.89883 8.07153 2.77832 8.52515L1.91602 11.7722C1.74167 12.4291 2.23734 13.073 2.91699 13.073H12.0498C12.5191 13.0728 12.9304 12.757 13.0508 12.3035L14.1045 8.33374C14.1819 8.04202 13.9619 7.756 13.6602 7.75562H3.7793ZM2.91797 2.9519C2.34625 2.9519 1.88281 3.41534 1.88281 3.98706V7.2937C2.33068 6.7269 3.02249 6.37476 3.7793 6.37476H13.2051V5.71948C13.2051 5.14777 12.7416 4.68434 12.1699 4.68433H7.58203C6.96675 4.6843 6.39209 4.37595 6.05078 3.86401L5.5791 3.15601C5.49379 3.02821 5.34995 2.95196 5.19629 2.9519H2.91797Z" fill="currentColor"></path><path opacity="0.2" d="M13.6602 7.75525C13.9618 7.7556 14.1815 8.04179 14.1045 8.33337L13.0508 12.3031C12.9304 12.7567 12.5191 13.0725 12.0498 13.0726H2.91701C2.23744 13.0725 1.7417 12.4287 1.91603 11.7719L2.77834 8.52478C2.89898 8.07146 3.31018 7.75532 3.77931 7.75525H13.6602ZM5.1963 2.95154C5.34985 2.95159 5.49377 3.02803 5.57912 3.15564L6.0508 3.86365C6.39205 4.37553 6.96685 4.68385 7.58205 4.68396H12.1699C12.7416 4.68396 13.2049 5.14754 13.2051 5.71912V6.37439H3.77931C3.02267 6.37444 2.33067 6.72671 1.88283 7.29333V3.98669C1.88299 3.4152 2.34649 2.95168 2.91798 2.95154H5.1963Z" fill="currentColor"></path></symbol>
     <symbol id="i-chevron-real" viewBox="0 0 14 14"><path d="M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z" fill="currentColor"></path></symbol>
+    <symbol id="i-check-real" viewBox="0 0 16 16"><path d="M15.0498 3.92579L8.49512 12.3818C8.25774 12.6881 8.04517 12.9645 7.84668 13.1689C7.63957 13.3823 7.38732 13.5841 7.04492 13.6719C6.86373 13.7183 6.6757 13.7346 6.48926 13.7197C6.13666 13.6915 5.8528 13.5355 5.6123 13.3604C5.38201 13.1926 5.12573 12.9567 4.83984 12.6953L1.03125 9.21289L1.96875 8.1875L5.77734 11.6699C6.08684 11.9529 6.27773 12.1249 6.43066 12.2363C6.50183 12.2882 6.54699 12.3135 6.57324 12.3252C6.58525 12.3305 6.59269 12.3322 6.5957 12.333C6.59802 12.3336 6.59961 12.334 6.59961 12.334C6.63317 12.3367 6.66758 12.3335 6.7002 12.3252C6.7002 12.3252 6.70211 12.3251 6.7041 12.3242C6.70698 12.3229 6.71348 12.319 6.72461 12.3115C6.74849 12.2956 6.78843 12.2642 6.84961 12.2012C6.98138 12.0654 7.13957 11.8628 7.39648 11.5313L13.9502 3.07422L15.0498 3.92579Z" fill="currentColor"></path></symbol>
+    <symbol id="i-shield-ro" viewBox="0 0 16 16"><path d="M8.20554 0.899994L14.7901 3.36857V7.01026C14.7901 12 11.0466 14.2103 8.20554 15.3C5.36446 14.2103 1.62012 12 1.62012 7.01026V3.36857L8.20554 0.899994Z" stroke="currentColor" stroke-width="1.31831" stroke-linejoin="round" fill="none"></path><path d="M12.1654 5.7552L8.9447 9.41475C8.73044 9.65816 8.53628 9.8804 8.35774 10.0423C8.1713 10.2114 7.94235 10.3717 7.64016 10.4254C7.48207 10.4535 7.32 10.4552 7.16151 10.4294C6.85843 10.3801 6.62728 10.2223 6.43836 10.0559C6.25752 9.89653 6.06037 9.67732 5.84264 9.43705L4.72925 8.20897L5.63557 7.38707L6.74897 8.61594C6.98603 8.87755 7.12974 9.03533 7.24673 9.13839C7.31033 9.19443 7.34485 9.21476 7.35823 9.22122C7.38068 9.22484 7.40352 9.22515 7.42593 9.22122C7.40522 9.22502 7.42893 9.23294 7.53583 9.136C7.65132 9.03126 7.79316 8.87139 8.02643 8.60638L11.2479 4.94763L12.1654 5.7552Z" fill="currentColor"></path></symbol>
+    <symbol id="i-shield-ww" viewBox="0 0 16 16"><path d="M8.08887 0.251709C8.20479 0.23085 8.32486 0.241168 8.43652 0.282959L15.0215 2.75171C15.2787 2.84819 15.4492 3.09414 15.4492 3.3689V7.0105C15.4492 7.10986 15.4441 7.2081 15.4414 7.30542C15.0285 7.07175 14.5905 6.87695 14.1309 6.73022V3.82495L8.20508 1.60327L2.2793 3.82495V7.0105C2.27936 9.7171 3.4745 11.5379 5.02734 12.7947C5.01025 12.9942 5 13.1962 5 13.4001C5.00001 13.7617 5.02722 14.1169 5.08008 14.4636C2.91555 13.0393 0.961014 10.752 0.960938 7.0105V3.3689C0.960938 3.09417 1.13146 2.84821 1.38867 2.75171L7.97461 0.282959L8.08887 0.251709Z" fill="currentColor"></path><path d="M11.3525 5.64688V6.85688H5V5.64688H11.3525Z" fill="currentColor"></path><path d="M9.5824 8.29376V9.50376H5V8.29376H9.5824Z" fill="currentColor"></path><path d="M14.6647 15.6852H10.0338C10.3878 15.3751 10.7567 15.0517 11.0772 14.7706C11.2531 14.6164 11.4144 14.4746 11.5511 14.3547H14.6647V15.6852Z" fill="currentColor"></path><path d="M8.14852 14.1308L7.33925 15.4976C7.22458 15.6912 7.42245 15.9194 7.63037 15.8333L9.09785 15.2254L15.0399 10.0719L14.0905 8.97733L8.14852 14.1308Z" fill="currentColor"></path></symbol>
+    <symbol id="i-set-model" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.0997 8.54554C12.2905 8.54989 12.3541 8.58056 12.4535 8.74614L12.8849 9.46387C12.9851 9.63071 13.0464 9.66013 13.2388 9.66447H14.1138C14.3417 9.66448 14.3512 9.66937 14.4686 9.86507L14.892 10.5717C14.9942 10.7422 14.9948 10.8247 14.892 10.9961L14.4756 11.6906C14.3741 11.8677 14.3694 11.9379 14.4756 12.115L14.892 12.8096C14.9942 12.9801 14.9947 13.0625 14.892 13.234L14.4686 13.9406C14.3643 14.1028 14.3063 14.1354 14.1138 14.1412H13.2388C13.0465 14.1456 12.985 14.1752 12.8849 14.3418L12.4535 15.0595C12.353 15.2195 12.2895 15.2558 12.0997 15.2601H11.2237C10.9962 15.2601 10.9871 15.2548 10.8699 15.0595L10.4384 14.3418C10.3383 14.175 10.2767 14.1456 10.0846 14.1412H9.2096C9.01854 14.1355 8.95761 14.1006 8.85477 13.9406L8.43139 13.234C8.32562 13.0576 8.33148 12.9862 8.43139 12.8096L8.84771 12.115C8.95165 11.9416 8.94659 11.863 8.84771 11.6906L8.43139 10.9961C8.32767 10.8232 8.33411 10.7437 8.43139 10.5717L8.85477 9.86507C8.95447 9.69891 9.01875 9.67017 9.2096 9.66447H10.0846C10.2741 9.66441 10.3414 9.62547 10.4384 9.46387L10.8699 8.74614C10.987 8.55106 10.9963 8.54554 11.2237 8.54554H12.0997ZM11.6612 10.232C11.3326 10.7798 10.8155 11.0948 10.1743 11.106C10.4443 11.61 10.4425 12.1976 10.1743 12.6987C10.803 12.7096 11.3391 13.0359 11.6612 13.5727C11.9855 13.0323 12.5131 12.7098 13.148 12.6987C12.879 12.196 12.8789 11.6086 13.148 11.106C12.5076 11.0948 11.9894 10.7794 11.6612 10.232Z" fill="currentColor"></path><path fill-rule="evenodd" clip-rule="evenodd" d="M7.51205 0.790627C9.19055 0.790649 10.7401 1.0691 11.892 1.54364C12.4664 1.78029 12.9719 2.07885 13.3436 2.4408C13.7171 2.80467 13.9916 3.27253 13.9918 3.82384V7.90442C13.6067 7.69532 13.1907 7.53597 12.7529 7.43366V5.66454C12.4928 5.82898 12.2028 5.97601 11.892 6.10405C10.74 6.57865 9.19071 6.85706 7.51205 6.85706C5.8337 6.85703 4.285 6.57852 3.13309 6.10405C2.82215 5.97593 2.53164 5.8291 2.27121 5.66454V7.4135C2.27134 7.75678 2.6066 8.27106 3.62502 8.73405C4.58641 9.17097 5.95762 9.45591 7.50499 9.45681C7.24582 9.83133 7.03684 10.2434 6.88706 10.6826C5.44388 10.6162 4.12516 10.3216 3.11192 9.86104C2.81708 9.72698 2.53185 9.56866 2.27121 9.38928V11.2542C2.27158 11.5974 2.60697 12.1109 3.62502 12.5737C4.41933 12.9347 5.4937 13.1898 6.71569 13.2693C6.80349 13.7128 6.9513 14.1345 7.14814 14.5273C5.60324 14.4862 4.18593 14.1889 3.11192 13.7007C2.01039 13.1998 1.03366 12.3814 1.03333 11.2542V3.82384C1.03352 3.27273 1.30721 2.80461 1.68049 2.4408C2.05211 2.07893 2.55887 1.78026 3.13309 1.54364C4.28492 1.06926 5.83393 0.790683 7.51205 0.790627ZM7.51205 2.02851C5.95492 2.02857 4.57354 2.29079 3.60486 2.68979C3.11958 2.88977 2.76667 3.11253 2.5454 3.32788C2.32671 3.54101 2.2714 3.7089 2.27121 3.82384C2.27121 3.93882 2.32624 4.10625 2.5454 4.3198C2.76667 4.53527 3.11927 4.75781 3.60486 4.9579C4.5736 5.35699 5.95467 5.61914 7.51205 5.61918C9.06942 5.61918 10.4505 5.35695 11.4192 4.9579C11.9051 4.75773 12.2584 4.53536 12.4797 4.3198C12.6988 4.10627 12.7529 3.93882 12.7529 3.82384C12.7527 3.70889 12.6984 3.54104 12.4797 3.32788C12.2584 3.11239 11.9049 2.88989 11.4192 2.68979C10.4505 2.29079 9.06925 2.02853 7.51205 2.02851Z" fill="currentColor"></path></symbol>
+    <symbol id="i-set-plugin" viewBox="0 0 16 16"><path transform="translate(1.292 1.3)" d="M10.3232 9.18164C11.2868 9.18164 12.0985 9.82833 12.3506 10.7109L13.415 10.7109L13.415 11.8711L12.3496 11.8711C12.0971 12.7532 11.2864 13.3994 10.3232 13.3994C9.36031 13.3992 8.55012 12.7531 8.29785 11.8711L0 11.8711L0 10.7109L8.29688 10.7109C8.54876 9.82845 9.35988 9.18186 10.3232 9.18164ZM10.3232 10.3418C9.7999 10.3421 9.37534 10.7667 9.375 11.29C9.375 11.8137 9.79969 12.239 10.3232 12.2393C10.847 12.2393 11.2725 11.8138 11.2725 11.29C11.2721 10.7666 10.8468 10.3418 10.3232 10.3418ZM3.08301 4.59082C4.04605 4.59095 4.85696 5.23717 5.10938 6.11914L13.415 6.11914L13.415 7.2793L5.11035 7.2793C4.85833 8.16202 4.04648 8.80846 3.08301 8.80859C2.11972 8.80843 1.30963 8.16179 1.05762 7.2793L0 7.2793L0 6.11914L1.05762 6.11914C1.30994 5.23728 2.12006 4.59098 3.08301 4.59082ZM3.08301 5.75098C2.55962 5.75117 2.13512 6.17587 2.13477 6.69922C2.13477 7.22287 2.5594 7.64824 3.08301 7.64844C3.60665 7.64828 4.03223 7.2229 4.03223 6.69922C4.03187 6.17585 3.60643 5.75113 3.08301 5.75098ZM10.3232 0C11.2869 0 12.0986 0.646596 12.3506 1.5293L13.415 1.5293L13.415 2.68945L12.3496 2.68945C12.0977 3.57146 11.2867 4.21777 10.3232 4.21777C9.36037 4.21756 8.55018 3.57139 8.29785 2.68945L0 2.68945L0 1.5293L8.29688 1.5293C8.5487 0.646717 9.35981 0.00021854 10.3232 0ZM10.3232 1.16016C9.79984 1.16042 9.37524 1.58499 9.375 2.1084C9.375 2.63201 9.79969 3.05735 10.3232 3.05762C10.847 3.05762 11.2725 2.63217 11.2725 2.1084C11.2722 1.58483 10.8469 1.16016 10.3232 1.16016Z" fill="currentColor"></path></symbol>
+    <symbol id="i-theme-light" viewBox="0 0 16 16"><path d="M11.3496 8C11.3496 6.14985 9.85015 4.65039 8 4.65039C6.14985 4.65039 4.65039 6.14985 4.65039 8C4.65039 9.85015 6.14985 11.3496 8 11.3496C9.85015 11.3496 11.3496 9.85015 11.3496 8ZM12.6504 8C12.6504 10.5681 10.5681 12.6504 8 12.6504C5.43188 12.6504 3.34961 10.5681 3.34961 8C3.34961 5.43188 5.43188 3.34961 8 3.34961C10.5681 3.34961 12.6504 5.43188 12.6504 8Z" fill="currentColor"></path><path d="M8.65039 0.5V2.5H7.34961V0.5H8.65039Z" fill="currentColor"></path><path d="M8.65039 13.5V15.5H7.34961V13.5H8.65039Z" fill="currentColor"></path><path d="M3.15808 2.24035L4.57229 3.65456L3.6525 4.57435L2.23829 3.16014L3.15808 2.24035Z" fill="currentColor"></path><path d="M12.3505 11.4327L13.7647 12.8469L12.8449 13.7667L11.4307 12.3525L12.3505 11.4327Z" fill="currentColor"></path><path d="M2.24537 12.8469L3.65958 11.4327L4.57937 12.3525L3.16516 13.7667L2.24537 12.8469Z" fill="currentColor"></path><path d="M11.4377 3.65455L12.852 2.24033L13.7718 3.16012L12.3575 4.57434L11.4377 3.65455Z" fill="currentColor"></path><path d="M0.5 7.35461H2.5V8.6554H0.5L0.5 7.35461Z" fill="currentColor"></path><path d="M13.5 7.35461H15.5V8.6554H13.5V7.35461Z" fill="currentColor"></path></symbol>
+    <symbol id="i-theme-dark" viewBox="0 0 16 16"><path d="M13.2764 9.52324C12.5607 9.97754 11.7177 10.242 10.7812 10.242C8.11386 10.2419 5.95042 8.07997 5.9502 5.41289C5.9502 4.48128 6.21453 3.61071 6.67188 2.87285C4.30332 3.4658 2.54992 5.60845 2.5498 8.16093C2.5498 11.1712 4.99103 13.6102 8 13.6102C10.5383 13.6102 12.6709 11.8724 13.2764 9.52324ZM7.05078 5.41289C7.051 7.47224 8.72116 9.1423 10.7812 9.14238C11.9248 9.14238 12.887 8.63397 13.5781 7.8084C13.7266 7.63106 13.9701 7.56547 14.1875 7.64433C14.4049 7.72329 14.5497 7.9297 14.5498 8.16093C14.5498 11.7766 11.6161 14.7098 8 14.7098C4.38402 14.7098 1.4502 11.7792 1.4502 8.16093C1.45033 4.54322 4.3812 1.61015 8 1.61015C8.23027 1.61015 8.43585 1.75352 8.51562 1.96953C8.59536 2.18554 8.53241 2.42829 8.35742 2.57793C7.55573 3.26311 7.05078 4.27876 7.05078 5.41289Z" fill="currentColor"></path></symbol>
+    <symbol id="i-theme-system" viewBox="0 0 16 16"><path d="M12.1665 13.5811V14.7803H3.66651V13.5811H12.1665Z" fill="currentColor"></path><path d="M13.4453 7.02379C13.4453 6.04702 13.4452 5.3616 13.3887 4.83434C13.3333 4.31828 13.2302 4.02378 13.0723 3.80309C12.9446 3.62475 12.7877 3.46883 12.6094 3.34117C12.3887 3.18328 12.0942 3.08007 11.5781 3.02477C11.0508 2.96829 10.3655 2.96715 9.38867 2.96715H6.61035C5.63359 2.96715 4.94816 2.96827 4.4209 3.02477C3.90486 3.0801 3.61034 3.18321 3.38965 3.34117C3.21143 3.46878 3.05534 3.62487 2.92774 3.80309C2.76977 4.02377 2.66667 4.3183 2.61133 4.83434C2.55483 5.3616 2.55371 6.04702 2.55371 7.02379C2.55371 8.0006 2.55485 8.68596 2.61133 9.21324C2.66663 9.72936 2.76983 10.0238 2.92774 10.2445C3.0554 10.4228 3.21131 10.5797 3.38965 10.7074C3.61034 10.8654 3.90484 10.9685 4.4209 11.0238C4.94816 11.0803 5.63359 11.0804 6.61035 11.0804H9.38867C10.3654 11.0804 11.0508 11.0803 11.5781 11.0238C12.0941 10.9685 12.3887 10.8652 12.6094 10.7074C12.7877 10.5797 12.9446 10.4229 13.0723 10.2445C13.2301 10.0238 13.3334 9.72927 13.3887 9.21324C13.4452 8.68596 13.4453 8.00058 13.4453 7.02379ZM14.6455 7.02379C14.6455 7.97428 14.646 8.73509 14.5811 9.34117C14.5149 9.95828 14.3756 10.4858 14.0479 10.9437C13.8436 11.229 13.5938 11.4788 13.3086 11.683C12.8507 12.0108 12.3232 12.15 11.7061 12.2162C11.1 12.2811 10.3391 12.2806 9.38867 12.2806H6.61035C5.66018 12.2806 4.89991 12.2811 4.29395 12.2162C3.67684 12.15 3.14935 12.0108 2.69141 11.683C2.40613 11.4788 2.15639 11.229 1.95215 10.9437C1.62436 10.4858 1.4841 9.95828 1.41797 9.34117C1.35305 8.73511 1.35449 7.97424 1.35449 7.02379C1.35449 6.07366 1.35308 5.31333 1.41797 4.70738C1.4841 4.09028 1.62436 3.56279 1.95215 3.10485C2.15638 2.81956 2.40613 2.56982 2.69141 2.36559C3.14935 2.03779 3.67684 1.89753 4.29395 1.83141C4.8999 1.76652 5.66022 1.76793 6.61035 1.76793H9.38867C10.3391 1.76793 11.1 1.76649 11.7061 1.83141C12.3232 1.89753 12.8507 2.03779 13.3086 2.36559C13.5939 2.56982 13.8436 2.81957 14.0479 3.10485C14.3756 3.56279 14.5149 4.09028 14.5811 4.70738C14.646 5.31335 14.6455 6.07362 14.6455 7.02379Z" fill="currentColor"></path></symbol>
   </svg>
 
   <main id="app" class="app hero-mode">
@@ -1060,10 +1112,100 @@
   <div id="floatingMenu" class="floating-menu hidden" role="menu"></div>
   <div id="settingsModal" class="modal-backdrop hidden">
     <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-      <header class="settings-head"><span id="settingsTitle">设置</span><span class="grow"></span><button id="closeSettings" class="icon-button" title="关闭设置"><svg class="icon"><use href="#i-close"></use></svg></button></header>
-      <div class="settings-group"><h3>通用</h3><div class="settings-item"><span>界面语言</span><span class="settings-value">简体中文</span></div><div class="settings-item"><span>主题</span><span class="settings-value">深色</span></div></div>
-      <div class="settings-group"><h3>智能体</h3><div class="settings-item"><span>默认模型</span><span class="settings-value">DeepSeek V4 Flash</span></div><div class="settings-item"><span>默认权限</span><span class="settings-value">Full access</span></div></div>
-      <div class="settings-group"><h3>关于</h3><div class="settings-item"><span>DeepBuddy 原型</span><span class="settings-value">v2 · 单文件</span></div></div>
+      <nav class="settings-nav">
+        <span id="settingsTitle" class="settings-nav-title">设置</span>
+        <div class="settings-nav-cells">
+          <button class="settings-nav-cell active" data-settings-tab="general"><svg class="icon"><use href="#i-settings"></use></svg><span>通用设置</span></button>
+          <button class="settings-nav-cell" data-settings-tab="models"><svg class="icon"><use href="#i-set-model"></use></svg><span>模型</span></button>
+          <button class="settings-nav-cell" data-settings-tab="plugins"><svg class="icon"><use href="#i-set-plugin"></use></svg><span>插件</span></button>
+          <button class="settings-nav-cell" data-settings-tab="presets"><svg class="icon"><use href="#i-mode"></use></svg><span>Agent 预设</span></button>
+        </div>
+      </nav>
+      <div class="settings-content">
+        <header class="settings-content-head">
+          <button id="openConfigFile" class="settings-open-config">打开配置文件</button>
+          <button id="closeSettings" class="icon-button" title="关闭设置"><svg class="icon"><use href="#i-close"></use></svg></button>
+        </header>
+        <div class="settings-body">
+          <div class="settings-pane" data-settings-pane="general">
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">Agent 预设</span><span class="settings-row-desc">对此后新建的会话生效。运行中的会话保持它开始时的预设。</span></div>
+              <button class="settings-dd" data-settings-dd="preset"><span>创造模式</span><svg class="icon"><use href="#i-chevron-real"></use></svg></button>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">权限</span><span class="settings-row-desc">选择新会话的默认权限模式</span></div>
+              <button class="settings-dd mono" data-settings-dd="permission"><span>Full access</span><svg class="icon"><use href="#i-chevron-real"></use></svg></button>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">语言</span></div>
+              <button class="settings-dd" data-settings-dd="language"><span>中文</span><svg class="icon"><use href="#i-chevron-real"></use></svg></button>
+            </div>
+            <div class="settings-row-line" style="display:block">
+              <span class="settings-row-title">外观</span>
+              <div class="theme-cubes">
+                <button class="theme-cube" data-theme="light"><svg class="icon"><use href="#i-theme-light"></use></svg><span>浅色</span></button>
+                <button class="theme-cube selected" data-theme="dark"><svg class="icon"><use href="#i-theme-dark"></use></svg><span>深色</span></button>
+                <button class="theme-cube" data-theme="system"><svg class="icon"><use href="#i-theme-system"></use></svg><span>跟随系统</span></button>
+              </div>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">繁忙时 Enter 键行为</span><span class="settings-row-desc">仅在智能体运行时生效；Cmd/Ctrl+Enter 使用另一行为</span></div>
+              <button class="settings-dd" data-settings-dd="enter"><span>排队发送</span><svg class="icon"><use href="#i-chevron-real"></use></svg></button>
+            </div>
+          </div>
+          <div class="settings-pane hidden" data-settings-pane="models">
+            <h2 class="settings-pane-title">模型</h2>
+            <p class="settings-pane-desc">填入各提供方的 API 密钥即可使用其模型。</p>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">DeepSeek</span></div>
+              <button class="settings-mini-btn" data-provider-action="编辑">编辑</button>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">anthropic</span></div>
+              <button class="settings-mini-btn" data-provider-action="编辑">编辑</button>
+              <button class="settings-mini-btn" data-provider-action="删除">删除</button>
+            </div>
+            <div class="settings-add-row">
+              <button class="settings-mini-btn" data-provider-action="添加提供方">添加提供方</button>
+              <button class="settings-mini-btn" data-provider-action="添加自定义提供方">添加自定义提供方</button>
+            </div>
+          </div>
+          <div class="settings-pane hidden" data-settings-pane="plugins">
+            <h2 class="settings-pane-title">插件</h2>
+            <p class="settings-pane-desc">配置和查看本部署已安装的插件。</p>
+            <span class="settings-row-title" style="display:block;margin-top:12px">插件配置</span>
+            <span class="settings-row-title" style="display:block;margin-top:12px">插件列表</span>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">终端</span><span class="settings-row-desc">限制 agent 运行的每一条命令。</span></div>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">Agent 循环</span><span class="settings-row-desc">Agent 如何派发工具调用。</span></div>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">网页搜索</span><span class="settings-row-desc">DeepSeek 搜索提供方。</span></div>
+            </div>
+          </div>
+          <div class="settings-pane hidden" data-settings-pane="presets">
+            <h2 class="settings-pane-title">Agent 预设</h2>
+            <p class="settings-pane-desc">预设即一个会话的 Agent 所运行的插件组装 —— 它的工具、提示词与能力。复制一份既有预设改成自己的，或用「创造模式」让 Agent 帮你创建。</p>
+            <span class="settings-row-title" style="display:block;margin-top:12px">内置</span>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">标准模式 <span class="settings-tag">内置</span></span><span class="settings-row-desc">功能完整的编码 Agent，支持文件编辑、Shell、文件与网页检索、Skills、计划、目标、子代理和工作流。</span><span class="settings-slug mono">standard</span></div>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">PTC 模式 <span class="settings-tag">内置</span></span><span class="settings-row-desc">具备标准模式的全部能力，并通过 Code Mode SDK 呈现工具，让模型用一个 TypeScript 程序组合多步操作。</span><span class="settings-slug mono">code</span></div>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">极简模式 <span class="settings-tag">内置</span></span><span class="settings-row-desc">仅提供持久 bash 与 str_replace_editor 的双工具编码 Agent。</span><span class="settings-slug mono">minimal</span></div>
+            </div>
+            <div class="settings-row-line">
+              <div class="settings-row-text"><span class="settings-row-title">创造模式 <span class="settings-tag">内置</span> <span class="settings-tag current">当前使用</span></span><span class="settings-row-desc">用于创建自定义 Agent preset：具备标准模式的全部能力，并提供运行时检查、插件实验和 preset 创作指导。</span><span class="settings-slug mono">cordis</span></div>
+            </div>
+            <span class="settings-row-title" style="display:block;margin-top:16px">自定义</span>
+            <p class="settings-pane-desc">用「创造模式」创作自定义预设</p>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
   <div id="toast" class="toast">已复制</div>
@@ -1081,11 +1223,27 @@
       dockView: "files",
       sidebarWidth: 268,
       dockWidth: 0,
-      permissions: ["Full access", "Ask first", "Read only"],
-      permissionIndex: 0,
-      models: ["DeepSeek-V4-Flash-Vision-Exp High", "DeepSeek-V3.2 · High", "DeepSeek-R1 · Balanced"],
-      modelIndex: 0,
+      permissions: [
+        { label: "Read Only", icon: "i-shield-ro" },
+        { label: "Workspace Write", icon: "i-shield-ww" },
+        { label: "Full access", icon: "i-shield" }
+      ],
+      permissionIndex: 2,
+      modelGroups: [
+        { title: "DeepSeek", options: ["DeepSeek-V4-Flash", "DeepSeek-V4-Pro", "DeepSeek-V4-Flash-Vision-Exp"] },
+        { title: "anthropic", options: ["Claude Fable 5", "Claude Opus 5", "Claude Sonnet 5"] }
+      ],
+      model: "DeepSeek-V4-Flash-Vision-Exp",
+      efforts: ["Off", "Low", "High", "Max"],
+      effort: "High",
+      workspaces: ["film-studio", "GPT-Image2分享", "deepseek-harness", "Docs"],
       heroWorkspace: "film-studio",
+      modes: [
+        { name: "标准模式", desc: "功能完整的编码 Agent，支持文件编辑、Shell、文件与网页检索、Skills、计划、目标、子代理和工作流。" },
+        { name: "PTC 模式", desc: "具备标准模式的全部能力，并通过 Code Mode SDK 呈现工具，让模型用一个 TypeScript 程序组合多步操作。" },
+        { name: "极简模式", desc: "仅提供持久 bash 与 str_replace_editor 的双工具编码 Agent。" },
+        { name: "创造模式", desc: "用于创建自定义 Agent preset：具备标准模式的全部能力，并提供运行时检查、插件实验和 preset 创作指导。" }
+      ],
       heroMode: "创造模式",
       currentSession: null,
       sessionHtml: {},
@@ -1120,24 +1278,81 @@
       setTimeout(() => target.classList.remove("click-pulse"), 280);
     }, true);
     function closeMenu() { $("#floatingMenu").classList.add("hidden"); $("#floatingMenu").innerHTML = ""; }
-    function openMenu(anchor, items) {
+    function placeMenu(anchor, opts) {
       const menu = $("#floatingMenu");
-      menu.innerHTML = items.map((item, index) => '<button class="menu-item ' + (item.selected ? "selected" : "") + '" data-menu-index="' + index + '">' + escapeHtml(item.label) + '</button>').join("");
+      menu.style.width = opts.width ? opts.width + "px" : "";
+      menu.style.minWidth = opts.width ? "0" : "";
       menu.classList.remove("hidden");
       const rect = anchor.getBoundingClientRect();
-      const width = Math.max(178, rect.width);
-      menu.style.minWidth = width + "px";
-      const left = Math.min(rect.left, window.innerWidth - width - 10);
-      const estimatedHeight = items.length * 32 + 12;
-      const top = rect.bottom + estimatedHeight < window.innerHeight - 8 ? rect.bottom + 6 : Math.max(8, rect.top - estimatedHeight - 6);
-      menu.style.left = Math.max(8, left) + "px";
-      menu.style.top = top + "px";
+      const mw = menu.offsetWidth;
+      const mh = menu.offsetHeight;
+      let left = opts.align === "right" ? rect.right - mw : rect.left;
+      let top = opts.placement === "above" ? rect.top - mh - 6 : rect.bottom + 6;
+      if (opts.placement !== "above" && top + mh > window.innerHeight - 8) top = Math.max(8, rect.top - mh - 6);
+      menu.style.left = Math.max(8, Math.min(left, window.innerWidth - mw - 8)) + "px";
+      menu.style.top = Math.max(8, top) + "px";
+    }
+    function menuItemHtml(item, index) {
+      const icon = item.icon ? svg(item.icon, "menu-item-icon") : "";
+      const body = item.desc
+        ? '<span class="menu-item-col"><span class="menu-item-name">' + escapeHtml(item.label) + '</span><span class="menu-item-desc">' + escapeHtml(item.desc) + "</span></span>"
+        : '<span class="menu-item-label">' + escapeHtml(item.label) + "</span>";
+      const check = item.selected ? svg("i-check-real", "menu-check") : "";
+      return '<button class="menu-item" data-menu-index="' + index + '">' + icon + body + check + "</button>";
+    }
+    function openMenu(anchor, items, opts) {
+      opts = opts || {};
+      const menu = $("#floatingMenu");
+      let html = items.map(menuItemHtml).join("");
+      if (opts.footer) html += '<div class="menu-footer">' + menuItemHtml(opts.footer, items.length) + "</div>";
+      menu.innerHTML = html;
+      placeMenu(anchor, opts);
+      const all = opts.footer ? items.concat([opts.footer]) : items;
       $$('[data-menu-index]', menu).forEach(button => button.addEventListener("click", event => {
         event.stopPropagation();
-        const item = items[Number(button.dataset.menuIndex)];
+        const item = all[Number(button.dataset.menuIndex)];
         closeMenu();
         item.action();
       }));
+    }
+    /* 模型菜单：root 双 cell 面板 → 模型子菜单（分组）/ 推理等级子菜单，对齐真实交互 */
+    function openModelMenu(anchor) {
+      const menu = $("#floatingMenu");
+      const renderRoot = () => {
+        menu.innerHTML =
+          '<button class="menu-cell" data-model-cell="model"><span class="menu-cell-label">模型</span><span class="menu-cell-value mono">' + escapeHtml(state.model) + '</span>' + svg("i-chevron") + "</button>" +
+          '<button class="menu-cell" data-model-cell="effort"><span class="menu-cell-label">推理等级</span><span class="menu-cell-value mono">' + escapeHtml(state.effort) + '</span>' + svg("i-chevron") + "</button>";
+        placeMenu(anchor, { width: 341, placement: "above", align: "right" });
+        $('[data-model-cell="model"]', menu).addEventListener("click", event => { event.stopPropagation(); renderModels(); });
+        $('[data-model-cell="effort"]', menu).addEventListener("click", event => { event.stopPropagation(); renderEfforts(); });
+      };
+      const optionHtml = (label, selected) =>
+        '<button class="menu-option" data-menu-option="' + escapeHtml(label) + '"><span class="menu-item-label mono">' + escapeHtml(label) + "</span>" + (selected ? svg("i-check-real", "menu-check") : "") + "</button>";
+      const bindOptions = apply => {
+        $$("[data-menu-option]", menu).forEach(button => button.addEventListener("click", event => {
+          event.stopPropagation();
+          closeMenu();
+          apply(button.dataset.menuOption);
+          syncModelButtons();
+        }));
+      };
+      const renderModels = () => {
+        menu.innerHTML = state.modelGroups.map(group =>
+          '<div class="menu-group-title">' + escapeHtml(group.title) + "</div>" +
+          group.options.map(option => optionHtml(option, option === state.model)).join("")
+        ).join("");
+        placeMenu(anchor, { width: 301, placement: "above", align: "right" });
+        bindOptions(value => { state.model = value; });
+      };
+      const renderEfforts = () => {
+        menu.innerHTML = state.efforts.map(option => optionHtml(option, option === state.effort)).join("");
+        placeMenu(anchor, { width: 240, placement: "above", align: "right" });
+        bindOptions(value => { state.effort = value; });
+      };
+      renderRoot();
+    }
+    function syncModelButtons() {
+      $$(".model span").forEach(node => { node.textContent = state.model + " " + state.effort; });
     }
     function placeholderMenu(anchor, labels) {
       openMenu(anchor, labels.map(label => ({ label, action: () => toast("原型占位") })));
@@ -1147,7 +1362,35 @@
       if (!menu.classList.contains("hidden") && !event.target.closest("#floatingMenu")) closeMenu();
     });
     function openSettings() { closeMenu(); $("#settingsModal").classList.remove("hidden"); $("#closeSettings").focus(); }
-    function closeSettings() { $("#settingsModal").classList.add("hidden"); }
+    function closeSettings() { closeMenu(); $("#settingsModal").classList.add("hidden"); }
+    $$("[data-settings-tab]").forEach(button => button.addEventListener("click", () => {
+      $$("[data-settings-tab]").forEach(cell => cell.classList.toggle("active", cell === button));
+      $$("[data-settings-pane]").forEach(pane => pane.classList.toggle("hidden", pane.dataset.settingsPane !== button.dataset.settingsTab));
+    }));
+    const settingsMenus = {
+      preset: button => openMenu(button, modeItems($("span", button).textContent, name => { $("span", button).textContent = name; }), { width: 334, align: "right" }),
+      permission: button => openMenu(button, state.permissions.map(perm => ({
+        label: perm.label, icon: perm.icon, selected: perm.label === $("span", button).textContent,
+        action: () => { $("span", button).textContent = perm.label; }
+      })), { width: 218, align: "right" }),
+      language: button => openMenu(button, ["中文", "English"].map(label => ({
+        label, selected: label === $("span", button).textContent,
+        action: () => { $("span", button).textContent = label; }
+      })), { align: "right" }),
+      enter: button => openMenu(button, ["排队发送", "立即发送"].map(label => ({
+        label, selected: label === $("span", button).textContent,
+        action: () => { $("span", button).textContent = label; }
+      })), { align: "right" })
+    };
+    $$("[data-settings-dd]").forEach(button => button.addEventListener("click", event => {
+      event.stopPropagation();
+      settingsMenus[button.dataset.settingsDd](button);
+    }));
+    $$(".theme-cube").forEach(button => button.addEventListener("click", () => {
+      $$(".theme-cube").forEach(cube => cube.classList.toggle("selected", cube === button));
+    }));
+    $("#openConfigFile").addEventListener("click", () => toast("原型占位"));
+    $$("[data-provider-action]").forEach(button => button.addEventListener("click", () => toast("原型占位")));
     $("#openSettings").addEventListener("click", openSettings);
     $("#openSettings").addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openSettings(); } });
     $("#closeSettings").addEventListener("click", closeSettings);
@@ -1468,27 +1711,36 @@
       event.stopPropagation();
       openMenu(button, [{ label: "添加文件", action: () => toast("已选择假文件") }, { label: "添加图片", action: () => toast("已选择假图片") }]);
     }));
+    function permissionItems(onPick) {
+      return state.permissions.map((perm, index) => ({ label: perm.label, icon: perm.icon, selected: index === state.permissionIndex, action: () => onPick(index) }));
+    }
+    function modeItems(current, onPick) {
+      return state.modes.map(mode => ({ label: mode.name, desc: mode.desc, selected: mode.name === current, action: () => onPick(mode.name) }));
+    }
     $$(".permission").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
-      openMenu(button, state.permissions.map((label, index) => ({ label, selected: index === state.permissionIndex, action: () => {
+      openMenu(button, permissionItems(index => {
         state.permissionIndex = index;
-        $$(".permission span").forEach(node => { node.textContent = label; });
-      } })));
+        $$(".permission span").forEach(node => { node.textContent = state.permissions[index].label; });
+      }), { width: 218, placement: "above" });
     }));
     $$(".model").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
-      openMenu(button, state.models.map((label, index) => ({ label, selected: index === state.modelIndex, action: () => {
-        state.modelIndex = index;
-        $$(".model span").forEach(node => { node.textContent = label; });
-      } })));
+      openModelMenu(button);
     }));
     $("#heroWorkspace").addEventListener("click", event => {
       event.stopPropagation();
-      openMenu(event.currentTarget, ["film-studio", "deepbuddy", "GPT-Image2分享"].map(label => ({ label, selected: label === state.heroWorkspace, action: () => { state.heroWorkspace = label; $("#heroWorkspace span").textContent = label; } })));
+      openMenu(event.currentTarget, state.workspaces.map(label => ({
+        label, icon: "i-folder-real", selected: label === state.heroWorkspace,
+        action: () => { state.heroWorkspace = label; $("#heroWorkspace span").textContent = label; }
+      })), { width: 218, footer: { label: "添加工作区…", icon: "i-plus", action: () => toast("原型占位") } });
     });
     $("#heroMode").addEventListener("click", event => {
       event.stopPropagation();
-      openMenu(event.currentTarget, ["创造模式", "计划模式", "询问模式"].map(label => ({ label, selected: label === state.heroMode, action: () => { state.heroMode = label; $("#heroMode span").textContent = label; } })));
+      openMenu(event.currentTarget, modeItems(state.heroMode, name => {
+        state.heroMode = name;
+        $("#heroMode span").textContent = name;
+      }), { width: 334 });
     });
 
     // Inspector view switching and kept-alive file previews.
