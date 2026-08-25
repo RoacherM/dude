@@ -20,6 +20,7 @@ DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 系统边界、模块关系、DSH 集成方式 | 最高 |
 | [`DESIGN_INTENT.md`](./DESIGN_INTENT.md) | 三列两区、交互与视觉基线 | 高 |
 | [`DEVELOPMENT_RULES.md`](./DEVELOPMENT_RULES.md) | 开发时必须遵守的工程约束与检查表 | 高 |
+| [`prototype/`](./prototype/README.md) | 高保真可交互原型；**UI/交互改动先在此迭代再落实现** | UI 基线 |
 | [`FEATURE_MAP.md`](./FEATURE_MAP.md) | v1 功能落点、状态 Owner、开发顺序 | 当前计划 |
 | [`design/minimal-icons.html`](./design/minimal-icons.html) | 当前最小 UI 的浏览器配图 | 视觉参考 |
 | [`notes/UI_EXTENSION_TRIGGERS.md`](./notes/UI_EXTENSION_TRIGGERS.md) | 未来何时才抽取 UI 扩展协议 | 决策备忘 |

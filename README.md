@@ -16,6 +16,7 @@ DeepBuddy 自绘的三列两区桌面 UI。
 | [`ARCHITECTURE.md`](deepbuddy-design-current/ARCHITECTURE.md) | 系统边界、模块关系、DSH 集成方式 | 最高 |
 | [`DESIGN_INTENT.md`](deepbuddy-design-current/DESIGN_INTENT.md) | 三列两区、交互与视觉基线 | 高 |
 | [`DEVELOPMENT_RULES.md`](deepbuddy-design-current/DEVELOPMENT_RULES.md) | 工程约束与检查表 | 高 |
+| [`prototype/`](deepbuddy-design-current/prototype/README.md) | 高保真可交互原型；UI/交互改动先在此迭代再落实现 | UI 基线 |
 | [`FEATURE_MAP.md`](deepbuddy-design-current/FEATURE_MAP.md) | v1 功能落点、状态 Owner、开发顺序 | 当前计划 |
 
 > **当前代码与现行设计尚未对齐。** 下面「当前实现」一节描述的是仓库里今天跑着的东西；

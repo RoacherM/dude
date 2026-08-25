@@ -7,6 +7,10 @@
 3. `deepbuddy-design-current/DEVELOPMENT_RULES.md`
 4. `deepbuddy-design-current/FEATURE_MAP.md`
 
+涉及 UI/交互的改动，另读 `deepbuddy-design-current/prototype/README.md`：
+原型是现行 UI 设计基线，改动先在原型上迭代验收，再落到实现；
+实现与原型不一致时以最新验收过的原型为准。
+
 ## Current-State Principle
 
 Treat the latest accepted requirements, design decisions, and implementation state as
