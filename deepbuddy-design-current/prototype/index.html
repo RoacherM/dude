@@ -824,6 +824,19 @@
     .menu-group-title { padding: 5px 8px 3px; font-size: 12px; font-weight: 500; color: var(--db-text-3); }
     .menu-option { width: 100%; min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--db-text); font-size: 13.5px; text-align: left; cursor: pointer; }
     .menu-option:hover { background: rgba(255,255,255,.06); }
+    /* 命令面板（composer ＋ 按钮）：一级命令列表 + 二级搜索参数候选，对齐真实 slash command UI */
+    .menu-head { padding: 8px 10px; font-size: 12px; color: var(--db-text-3); }
+    .cmd-item { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; font-size: 14px; text-align: left; cursor: pointer; }
+    .cmd-item:hover { background: rgba(255,255,255,.08); }
+    .cmd-item-name { color: var(--db-text); white-space: nowrap; }
+    .cmd-item-desc { flex: 1; min-width: 0; color: var(--db-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .menu-search { width: 100%; height: 31px; margin-bottom: 4px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.06); border-radius: 8px; background: transparent; color: var(--db-text); font-size: 13px; font-family: inherit; }
+    .menu-search:focus { outline: 2px solid rgb(103,158,254); }
+    .opt-row { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; text-align: left; cursor: pointer; }
+    .opt-row:hover { background: rgba(255,255,255,.08); }
+    .opt-row-label { color: var(--db-text); white-space: nowrap; }
+    .opt-row-detail { flex: 1; min-width: 0; text-align: right; color: var(--db-text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .opt-row .menu-check { flex: 0 0 16px; margin-left: 0; }
     .modal-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 28px; background: rgba(0,0,0,.58); }
     /* 设置对话框：真实结构 800×800、r24、bg #2C2C2E、左 nav 188 + 内容 612 */
     .settings-panel { width: min(800px, 100%); height: min(800px, calc(100vh - 56px)); display: flex; overflow: hidden; border-radius: 24px; background: rgb(44,44,46); box-shadow: var(--db-shadow-dialog); }
@@ -998,7 +1011,7 @@
             <div class="composer hero-composer">
               <textarea id="heroInput" placeholder="描述你想要构建的内容"></textarea>
               <div class="composer-actions">
-                <button class="icon-button attach" title="添加附件"><svg class="icon"><use href="#i-plus"></use></svg></button>
+                <button class="icon-button attach" title="命令"><svg class="icon"><use href="#i-plus"></use></svg></button>
                 <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
                 <span class="grow"></span>
                 <button class="pill-button model"><span>DeepSeek-V4-Flash-Vision-Exp High</span>⌄</button>
@@ -1035,7 +1048,7 @@
               <div class="composer">
                 <textarea id="chatInput" placeholder="给智能体发消息"></textarea>
                 <div class="composer-actions">
-                  <button class="icon-button attach" title="添加附件"><svg class="icon"><use href="#i-plus"></use></svg></button>
+                  <button class="icon-button attach" title="命令"><svg class="icon"><use href="#i-plus"></use></svg></button>
                   <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
                   <span class="grow"></span>
                   <button class="pill-button model"><span>DeepSeek-V4-Flash-Vision-Exp High</span>⌄</button>
@@ -1356,6 +1369,68 @@
     }
     function placeholderMenu(anchor, labels) {
       openMenu(anchor, labels.map(label => ({ label, action: () => toast("原型占位") })));
+    }
+    /* ＋ 按钮命令面板：一级 slash 命令列表 → permission/model 进二级搜索候选，其余为占位命令 */
+    const slashCommands = [
+      { name: "compact", desc: "Compact older conversation history" },
+      { name: "export", desc: "Download this Session log as a ZIP archive" },
+      { name: "feedback", desc: "record feedback about this session" },
+      { name: "goal", desc: "set or view the goal for a long-running task" },
+      { name: "permission", desc: "Switch the permission preset (sandbox mode + approval policy)" },
+      { name: "plan", desc: "Enter or leave plan mode" },
+      { name: "model", desc: "Select the model for this conversation" }
+    ];
+    function openCommandMenu(anchor) {
+      const menu = $("#floatingMenu");
+      const renderOptions = options => {
+        menu.innerHTML =
+          '<input class="menu-search mono" type="text" placeholder="搜索…">' +
+          '<div data-cmd-options></div>';
+        const list = $("[data-cmd-options]", menu);
+        const renderRows = filter => {
+          const visible = options.filter(option => option.label.toLowerCase().includes(filter.toLowerCase()));
+          list.innerHTML = visible.map((option, index) =>
+            '<button class="opt-row" data-cmd-option="' + index + '"><span class="opt-row-label mono">' + escapeHtml(option.label) + '</span><span class="opt-row-detail mono">' + escapeHtml(option.detail || "") + "</span>" + (option.selected ? svg("i-check-real", "menu-check") : "") + "</button>"
+          ).join("");
+          $$("[data-cmd-option]", list).forEach(button => button.addEventListener("click", event => {
+            event.stopPropagation();
+            const option = visible[Number(button.dataset.cmdOption)];
+            closeMenu();
+            option.action();
+          }));
+        };
+        renderRows("");
+        placeMenu(anchor, { width: 351, placement: "above" });
+        const search = $(".menu-search", menu);
+        search.addEventListener("input", () => { renderRows(search.value); placeMenu(anchor, { width: 351, placement: "above" }); });
+        search.addEventListener("pointerdown", event => event.stopPropagation());
+        search.focus();
+      };
+      const commandActions = {
+        permission: () => renderOptions(state.permissions.map((perm, index) => ({
+          label: perm.label, selected: index === state.permissionIndex,
+          action: () => {
+            state.permissionIndex = index;
+            $$(".permission span").forEach(node => { node.textContent = perm.label; });
+          }
+        }))),
+        model: () => renderOptions(state.modelGroups.flatMap(group => group.options.map(option => ({
+          label: option, detail: group.title, selected: option === state.model,
+          action: () => { state.model = option; syncModelButtons(); }
+        }))))
+      };
+      menu.innerHTML =
+        '<div class="menu-head">命令</div>' +
+        slashCommands.map((cmd, index) =>
+          '<button class="cmd-item" data-cmd-index="' + index + '"><span class="cmd-item-name mono">' + escapeHtml(cmd.name) + '</span><span class="cmd-item-desc mono">' + escapeHtml(cmd.desc) + "</span></button>"
+        ).join("");
+      placeMenu(anchor, { width: 537, placement: "above" });
+      $$("[data-cmd-index]", menu).forEach(button => button.addEventListener("click", event => {
+        event.stopPropagation();
+        const cmd = slashCommands[Number(button.dataset.cmdIndex)];
+        if (commandActions[cmd.name]) commandActions[cmd.name]();
+        else { closeMenu(); toast("原型占位"); }
+      }));
     }
     document.addEventListener("pointerdown", event => {
       const menu = $("#floatingMenu");
@@ -1709,7 +1784,7 @@
     });
     $$(".attach").forEach(button => button.addEventListener("click", event => {
       event.stopPropagation();
-      openMenu(button, [{ label: "添加文件", action: () => toast("已选择假文件") }, { label: "添加图片", action: () => toast("已选择假图片") }]);
+      openCommandMenu(button);
     }));
     function permissionItems(onPick) {
       return state.permissions.map((perm, index) => ({ label: perm.label, icon: perm.icon, selected: index === state.permissionIndex, action: () => onPick(index) }));
