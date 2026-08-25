@@ -16,6 +16,7 @@
 | Files | Inspector | 普通 View | DSH Filesystem | Files Provider |
 | File Preview | Inspector | 普通 View Instance | DSH Filesystem | Files Provider + View State |
 | Terminal | Inspector | 资源 View | DSH Terminal 或 Electron PTY | Terminal Resource Manager |
+| Browser | Inspector | 资源 View | Electron webview（desktop）/ iframe（web） | Browser Resource Manager |
 | Approval / Questions | Veil + Conversation | 流程 UI | DSH Agent / Approval | DSH |
 | Dialog / Toast | Veil | Shell 基础设施 | Feature 请求 | Overlay Store |
 
@@ -98,7 +99,7 @@ Settings 是覆盖式设置面板（弹层面板，对齐 DSH web 原生 / WorkB
 - 不创建独立整窗模式；
 - 打开设置不改变主列内容——主列继续显示当前会话；
 - 面板内部左侧竖排导航（模型 / 模式 / 插件，结构上允许以后加页），右侧内容区，右上角 × 关闭；
-- 居中、占视口大部（宽 min(1200px, 90vw)、高 min(860px, 90vh)）、圆角、遮罩层点击关闭；
+- 居中 800×800（高受限时 calc(100vh - 56px)）、圆角 24、遮罩层点击关闭，规格以原型为准；
 - 页面结构先静态写死；
 - 第三个独立设置分组出现后，再考虑内部配置数组。
 
@@ -148,6 +149,16 @@ Terminal 是第一个资源型模块。
 - 宿主拒绝或失败时给出可操作错误。
 
 Resource Manager 与 View 分开，但留在 `features/terminal` 内。
+
+### Browser
+
+第二个资源型模块（0.1.0 已落地）：
+
+- 多 tab、地址栏、每 tab 独立历史（后退 / 前进 / 刷新）；
+- desktop 用 Electron `webview`（`allowpopups` + 主进程 `setWindowOpenHandler`
+  同视图导航），web 版用 iframe；
+- 拒绝嵌入（X-Frame-Options）时显示占位态 + 「在系统浏览器打开」；
+- 收起 dock 或切换视图不销毁页面状态。
 
 ### Inspector 实例规则
 
@@ -214,6 +225,10 @@ Resource Manager 与 View 分开，但留在 `features/terminal` 内。
 
 ## 7. 开发里程碑
 
+> **0.1.0 状态**：M0–M4 已落地（含计划外新增的 Browser dock 视图与
+> `prototype/` UI 基线）；M5 流程完整性（Approval / User Questions /
+> 失败恢复 / 可访问性）为当前进行中项。
+
 ### M0：壳
 
 - ThreeColumnFrame；
@@ -235,7 +250,7 @@ Resource Manager 与 View 分开，但留在 `features/terminal` 内。
 
 ### M2：设置
 
-- Settings 作为普通 Workbench 页面；
+- Settings 覆盖式弹层（800×800 四 tab）；
 - 模型 / Preset；
 - 连接诊断；
 - 必要偏好。

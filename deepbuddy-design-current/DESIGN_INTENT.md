@@ -368,4 +368,5 @@ Error 不只显示技术错误；在可恢复时给出明确操作。
 - Terminal 在切 Tab 和收右列后仍运行；
 - 键盘 Focus 与减少动态效果。
 
-当前配图见 `design/minimal-icons.html`。
+当前视觉与交互基线见 `prototype/index.html`（高保真可交互原型，
+规格采集数据在 `.agents/reference/proto-ref/`）。

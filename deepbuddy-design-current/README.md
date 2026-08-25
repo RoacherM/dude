@@ -1,7 +1,8 @@
 # DeepBuddy 当前设计文档
 
+> 版本：**0.1.0**（首个整合版本）  
 > 状态：**现行，可直接据此开发**  
-> 更新：2026-08-21
+> 更新：2026-08-25
 
 DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 
@@ -22,7 +23,6 @@ DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 | [`DEVELOPMENT_RULES.md`](./DEVELOPMENT_RULES.md) | 开发时必须遵守的工程约束与检查表 | 高 |
 | [`prototype/`](./prototype/README.md) | 高保真可交互原型；**UI/交互改动先在此迭代再落实现** | UI 基线 |
 | [`FEATURE_MAP.md`](./FEATURE_MAP.md) | v1 功能落点、状态 Owner、开发顺序 | 当前计划 |
-| [`design/minimal-icons.html`](./design/minimal-icons.html) | 当前最小 UI 的浏览器配图 | 视觉参考 |
 | [`notes/UI_EXTENSION_TRIGGERS.md`](./notes/UI_EXTENSION_TRIGGERS.md) | 未来何时才抽取 UI 扩展协议 | 决策备忘 |
 
 发生冲突时，以靠前文件为准。
@@ -45,12 +45,16 @@ DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 
 它们并非永远禁止，只是必须等真实需求出现后再提炼。
 
-## 开工顺序
+## 0.1.0 状态
 
-1. 搭 `ThreeColumnFrame` 和统一 `ColumnFrame`。
-2. 建 `dsh-adapter`，把官方数据投影为稳定前端接口。
-3. 跑通 Session List + Conversation。
-4. 将 Settings 做成主列普通页面。
-5. 加 Files Inspector View。
-6. 加 Terminal View 与独立 Resource Manager。
-7. 最后再评估是否出现了值得抽象的第三个同类需求。
+以下已在 `plugins/deepbuddy/` 落地并与原型对齐：
+
+1. `ThreeColumnFrame` / `ColumnFrame` 三列两区壳，四态布局与拖拽把手；
+2. `dsh-adapter` 投影官方数据；
+3. Session List + Conversation（对话 / 轨迹）；
+4. Settings 覆盖式弹层（800×800 四 tab，对齐原型）；
+5. 停靠栏三视图：Files / Terminal / Browser，资源保活与多 tab；
+6. `prototype/` 高保真交互原型确立为 UI 基线。
+
+后续改动按 `prototype/README.md` 的「先原型后实现」流程迭代；
+第三个同类需求出现前不抽象扩展协议（见 `notes/UI_EXTENSION_TRIGGERS.md`）。
