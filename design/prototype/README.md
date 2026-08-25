@@ -16,7 +16,7 @@
 直接用浏览器打开即可：
 
 ```bash
-open deepbuddy-design-current/prototype/index.html
+open design/prototype/index.html
 ```
 
 ## 覆盖面
@@ -50,5 +50,5 @@ open deepbuddy-design-current/prototype/index.html
 ## 复测入口
 
 ```bash
-node -e 'const fs=require("fs");const h=fs.readFileSync("deepbuddy-design-current/prototype/index.html","utf8");new Function(h.slice(h.indexOf("<script>")+8,h.lastIndexOf("</script>")));console.log("inline JS parse: PASS")'
+node -e 'const fs=require("fs");const h=fs.readFileSync("design/prototype/index.html","utf8");new Function(h.slice(h.indexOf("<script>")+8,h.lastIndexOf("</script>")));console.log("inline JS parse: PASS")'
 ```

@@ -4,7 +4,7 @@ DeepBuddy 发行版的界面层。一个三栏桌面应用（侧栏 / 主列 / �
 **接管**官方 Web UI 的 frame 合同——自有 bundle patch 里禁掉官方 `ui-layout` 行，
 本插件占用内建 `root` slot 并同名重声明它的四个子槽，零底座 diff，卸载即还原官方界面。
 
-界面按「模块化单体 + 静态组合」组织（`deepbuddy-design-current/ARCHITECTURE.md` §11
+界面按「模块化单体 + 静态组合」组织（`design/ARCHITECTURE.md` §11
 映射到本插件 `src/client/` 内部；`main/`、`preload/` 由 `apps/desktop` 承担）：
 
 ```text

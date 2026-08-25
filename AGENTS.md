@@ -2,12 +2,12 @@
 
 在修改 DeepBuddy 前，按顺序阅读：
 
-1. `deepbuddy-design-current/ARCHITECTURE.md`
-2. `deepbuddy-design-current/DESIGN_INTENT.md`
-3. `deepbuddy-design-current/DEVELOPMENT_RULES.md`
-4. `deepbuddy-design-current/FEATURE_MAP.md`
+1. `design/ARCHITECTURE.md`
+2. `design/DESIGN_INTENT.md`
+3. `design/DEVELOPMENT_RULES.md`
+4. `design/FEATURE_MAP.md`
 
-涉及 UI/交互的改动，另读 `deepbuddy-design-current/prototype/README.md`：
+涉及 UI/交互的改动，另读 `design/prototype/README.md`：
 原型是现行 UI 设计基线，改动先在原型上迭代验收，再落到实现；
 实现与原型不一致时以最新验收过的原型为准。
 
