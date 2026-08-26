@@ -173,6 +173,11 @@ export const FRAME_SLOT_MAP = {
  */
 export const SIDEBAR_SLOT_MAP = {
   'sidebar.settings': { kind: 'single', scope: 'root' },
+  // The official foot's action list, right above settings. ui-cordis rides it
+  // with the Cordis panel trigger — the ONLY surface carrying plugin-run
+  // approvals (the inline run card just reads 「待审批」), so dropping this
+  // seat silently drops the approve/decline buttons with it.
+  'sidebar.footer.action': { kind: 'list', scope: 'root' },
   // The official workspace browser (ui-workspace's WorkspaceBrowser: search,
   // view options, add-directory, rename/fork/archive/delete). Its registration
   // waits on this declaration; it in turn declares

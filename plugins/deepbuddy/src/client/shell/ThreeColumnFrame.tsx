@@ -117,10 +117,12 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
         {renderSlot('sidebar.workspaces', { wide: true, expandSidebar: () => {} })}
       </div>
 
-      {/* The official settings root rides the revived `sidebar.settings`
-          slot. It owns the settings trigger + overlay dialog; DeepBuddy no
-          longer carries its own settings row or dialog. */}
+      {/* The official foot, in the official order: the `sidebar.footer.action`
+          list (the Cordis panel trigger — where plugin-run approvals live)
+          directly above the `sidebar.settings` root, which owns the settings
+          trigger + overlay dialog. */}
       <div style={{ flex: '0 0 auto', padding: `6px ${ROW_METRICS.gutter}px 10px` }}>
+        {renderSlot('sidebar.footer.action', { wide: true })}
         {renderSlot('sidebar.settings', { wide: true })}
       </div>
     </ColumnFrame>
