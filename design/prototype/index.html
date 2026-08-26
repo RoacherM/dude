@@ -8,7 +8,7 @@
     :root {
       /* 与 tokens.ts / tokens-computed.json 对应 */
       --dsw-hovercard-bg: #2C2C2E;
-      --dsw-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-family: var(--db-font);
       --dsw-static-amber-100: #fef5e7;
       --dsw-static-amber-400: #f7ad31;
       --dsw-static-amber-500: #f59e0b;
@@ -178,233 +178,266 @@
       --dsw-shadow-lv2: 0 4px 12px 0 #00000005, 0 2px 8px 0 #0000000a;
       --dsw-shadow-lv3: 0 0 1px 0 #0003, 0 0 4px 0 #00000005, 0 12px 32px 0 #00000014;
       --dsw-mask-blur: blur(2px);
-      --dsw-font-markdown-h1: 700 24px/34px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-h1-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h1: 700 24px/34px var(--db-font);
+      --dsw-font-markdown-h1-font-family: var(--db-font);
       --dsw-font-markdown-h1-font-weight: 700;
       --dsw-font-markdown-h1-line-height: 34px;
       --dsw-font-markdown-h1-font-size: 24px;
       --dsw-font-markdown-h1-font-style: normal;
-      --dsw-font-markdown-h2: 700 22px/32px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-h2-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h2: 700 22px/32px var(--db-font);
+      --dsw-font-markdown-h2-font-family: var(--db-font);
       --dsw-font-markdown-h2-font-weight: 700;
       --dsw-font-markdown-h2-line-height: 32px;
       --dsw-font-markdown-h2-font-size: 22px;
       --dsw-font-markdown-h2-font-style: normal;
-      --dsw-font-markdown-h3: 700 20px/30px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-h3-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h3: 700 20px/30px var(--db-font);
+      --dsw-font-markdown-h3-font-family: var(--db-font);
       --dsw-font-markdown-h3-font-weight: 700;
       --dsw-font-markdown-h3-line-height: 30px;
       --dsw-font-markdown-h3-font-size: 20px;
       --dsw-font-markdown-h3-font-style: normal;
-      --dsw-font-markdown-h4: 600 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-h4-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-h4: 600 16px/28px var(--db-font);
+      --dsw-font-markdown-h4-font-family: var(--db-font);
       --dsw-font-markdown-h4-font-weight: 600;
       --dsw-font-markdown-h4-line-height: 28px;
       --dsw-font-markdown-h4-font-size: 16px;
       --dsw-font-markdown-h4-font-style: normal;
-      --dsw-font-markdown-base: 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-base-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base: 16px/28px var(--db-font);
+      --dsw-font-markdown-base-font-family: var(--db-font);
       --dsw-font-markdown-base-font-weight: 400;
       --dsw-font-markdown-base-line-height: 28px;
       --dsw-font-markdown-base-font-size: 16px;
       --dsw-font-markdown-base-font-style: normal;
-      --dsw-font-markdown-base-strong: 600 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-base-strong-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-strong: 600 16px/28px var(--db-font);
+      --dsw-font-markdown-base-strong-font-family: var(--db-font);
       --dsw-font-markdown-base-strong-font-weight: 600;
       --dsw-font-markdown-base-strong-line-height: 28px;
       --dsw-font-markdown-base-strong-font-size: 16px;
       --dsw-font-markdown-base-strong-font-style: normal;
-      --dsw-font-markdown-base-italic: italic 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-base-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-italic: italic 16px/28px var(--db-font);
+      --dsw-font-markdown-base-italic-font-family: var(--db-font);
       --dsw-font-markdown-base-italic-font-weight: 400;
       --dsw-font-markdown-base-italic-line-height: 28px;
       --dsw-font-markdown-base-italic-font-size: 16px;
       --dsw-font-markdown-base-italic-font-style: italic;
-      --dsw-font-markdown-base-strong-italic: italic 600 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-base-strong-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-base-strong-italic: italic 600 16px/28px var(--db-font);
+      --dsw-font-markdown-base-strong-italic-font-family: var(--db-font);
       --dsw-font-markdown-base-strong-italic-font-weight: 600;
       --dsw-font-markdown-base-strong-italic-line-height: 28px;
       --dsw-font-markdown-base-strong-italic-font-size: 16px;
       --dsw-font-markdown-base-strong-italic-font-style: italic;
-      --dsw-font-markdown-table: 15px/25px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-table-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-table: 15px/25px var(--db-font);
+      --dsw-font-markdown-table-font-family: var(--db-font);
       --dsw-font-markdown-table-font-weight: 400;
       --dsw-font-markdown-table-line-height: 25px;
       --dsw-font-markdown-table-font-size: 15px;
       --dsw-font-markdown-table-font-style: normal;
-      --dsw-font-markdown-table-head: 500 15px/25px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-table-head-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-table-head: 500 15px/25px var(--db-font);
+      --dsw-font-markdown-table-head-font-family: var(--db-font);
       --dsw-font-markdown-table-head-font-weight: 500;
       --dsw-font-markdown-table-head-line-height: 25px;
       --dsw-font-markdown-table-head-font-size: 15px;
       --dsw-font-markdown-table-head-font-style: normal;
-      --dsw-font-markdown-small: 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-small-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small: 14px/24px var(--db-font);
+      --dsw-font-markdown-small-font-family: var(--db-font);
       --dsw-font-markdown-small-font-weight: 400;
       --dsw-font-markdown-small-line-height: 24px;
       --dsw-font-markdown-small-font-size: 14px;
       --dsw-font-markdown-small-font-style: normal;
-      --dsw-font-markdown-small-strong: 600 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-small-strong-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-strong: 600 14px/24px var(--db-font);
+      --dsw-font-markdown-small-strong-font-family: var(--db-font);
       --dsw-font-markdown-small-strong-font-weight: 600;
       --dsw-font-markdown-small-strong-line-height: 24px;
       --dsw-font-markdown-small-strong-font-size: 14px;
       --dsw-font-markdown-small-strong-font-style: normal;
-      --dsw-font-markdown-small-italic: italic 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-small-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-italic: italic 14px/24px var(--db-font);
+      --dsw-font-markdown-small-italic-font-family: var(--db-font);
       --dsw-font-markdown-small-italic-font-weight: 400;
       --dsw-font-markdown-small-italic-line-height: 24px;
       --dsw-font-markdown-small-italic-font-size: 14px;
       --dsw-font-markdown-small-italic-font-style: italic;
-      --dsw-font-markdown-small-strong-italic: italic 600 14px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-markdown-small-strong-italic-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-markdown-small-strong-italic: italic 600 14px/24px var(--db-font);
+      --dsw-font-markdown-small-strong-italic-font-family: var(--db-font);
       --dsw-font-markdown-small-strong-italic-font-weight: 600;
       --dsw-font-markdown-small-strong-italic-line-height: 24px;
       --dsw-font-markdown-small-strong-italic-font-size: 14px;
       --dsw-font-markdown-small-strong-italic-font-style: italic;
-      --dsw-font-markdown-code: 14px/22px "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
-      --dsw-font-markdown-code-font-family: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code: 14px/22px var(--db-mono);
+      --dsw-font-markdown-code-font-family: var(--db-mono);
       --dsw-font-markdown-code-font-weight: 400;
       --dsw-font-markdown-code-line-height: 22px;
       --dsw-font-markdown-code-font-size: 14px;
       --dsw-font-markdown-code-font-style: normal;
-      --dsw-font-markdown-code-block: 13px/22px "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
-      --dsw-font-markdown-code-block-font-family: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-block: 13px/22px var(--db-mono);
+      --dsw-font-markdown-code-block-font-family: var(--db-mono);
       --dsw-font-markdown-code-block-font-weight: 400;
       --dsw-font-markdown-code-block-line-height: 22px;
       --dsw-font-markdown-code-block-font-size: 13px;
       --dsw-font-markdown-code-block-font-style: normal;
-      --dsw-font-markdown-code-block-small: 12px/18px "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
-      --dsw-font-markdown-code-block-small-font-family: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --dsw-font-markdown-code-block-small: 12px/18px var(--db-mono);
+      --dsw-font-markdown-code-block-small-font-family: var(--db-mono);
       --dsw-font-markdown-code-block-small-font-weight: 400;
       --dsw-font-markdown-code-block-small-line-height: 18px;
       --dsw-font-markdown-code-block-small-font-size: 12px;
       --dsw-font-markdown-code-block-small-font-style: normal;
-      --dsw-font-xl-24: 600 24px/32px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xl-24-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xl-24: 600 24px/32px var(--db-font);
+      --dsw-font-xl-24-font-family: var(--db-font);
       --dsw-font-xl-24-font-weight: 600;
       --dsw-font-xl-24-line-height: 32px;
       --dsw-font-xl-24-font-size: 24px;
       --dsw-font-xl-24-font-style: normal;
-      --dsw-font-l-20: 500 20px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-l-20-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-l-20: 500 20px/28px var(--db-font);
+      --dsw-font-l-20-font-family: var(--db-font);
       --dsw-font-l-20-font-weight: 500;
       --dsw-font-l-20-line-height: 28px;
       --dsw-font-l-20-font-size: 20px;
       --dsw-font-l-20-font-style: normal;
-      --dsw-font-m-18: 500 16px/28px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-m-18-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-m-18: 500 16px/28px var(--db-font);
+      --dsw-font-m-18-font-family: var(--db-font);
       --dsw-font-m-18-font-weight: 500;
       --dsw-font-m-18-line-height: 28px;
       --dsw-font-m-18-font-size: 16px;
       --dsw-font-m-18-font-style: normal;
-      --dsw-font-base-16: 16px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-base-16-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-base-16: 16px/24px var(--db-font);
+      --dsw-font-base-16-font-family: var(--db-font);
       --dsw-font-base-16-font-weight: 400;
       --dsw-font-base-16-line-height: 24px;
       --dsw-font-base-16-font-size: 16px;
       --dsw-font-base-16-font-style: normal;
-      --dsw-font-base-strong-16: 500 16px/24px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-base-strong-16-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-base-strong-16: 500 16px/24px var(--db-font);
+      --dsw-font-base-strong-16-font-family: var(--db-font);
       --dsw-font-base-strong-16-font-weight: 500;
       --dsw-font-base-strong-16-line-height: 24px;
       --dsw-font-base-strong-16-font-size: 16px;
       --dsw-font-base-strong-16-font-style: normal;
-      --dsw-font-s-14: 14px/22px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-s-14-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-s-14: 14px/22px var(--db-font);
+      --dsw-font-s-14-font-family: var(--db-font);
       --dsw-font-s-14-font-weight: 400;
       --dsw-font-s-14-line-height: 22px;
       --dsw-font-s-14-font-size: 14px;
       --dsw-font-s-14-font-style: normal;
-      --dsw-font-s-strong-14: 500 14px/22px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-s-strong-14-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-s-strong-14: 500 14px/22px var(--db-font);
+      --dsw-font-s-strong-14-font-family: var(--db-font);
       --dsw-font-s-strong-14-font-weight: 500;
       --dsw-font-s-strong-14-line-height: 22px;
       --dsw-font-s-strong-14-font-size: 14px;
       --dsw-font-s-strong-14-font-style: normal;
-      --dsw-font-xs-13: 13px/20px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xs-13-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xs-13: 13px/20px var(--db-font);
+      --dsw-font-xs-13-font-family: var(--db-font);
       --dsw-font-xs-13-font-weight: 400;
       --dsw-font-xs-13-line-height: 20px;
       --dsw-font-xs-13-font-size: 13px;
       --dsw-font-xs-13-font-style: normal;
-      --dsw-font-xs-strong-13: 500 13px/20px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xs-strong-13-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xs-strong-13: 500 13px/20px var(--db-font);
+      --dsw-font-xs-strong-13-font-family: var(--db-font);
       --dsw-font-xs-strong-13-font-weight: 500;
       --dsw-font-xs-strong-13-line-height: 20px;
       --dsw-font-xs-strong-13-font-size: 13px;
       --dsw-font-xs-strong-13-font-style: normal;
-      --dsw-font-xxs-12: 12px/18px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xxs-12-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxs-12: 12px/18px var(--db-font);
+      --dsw-font-xxs-12-font-family: var(--db-font);
       --dsw-font-xxs-12-font-weight: 400;
       --dsw-font-xxs-12-line-height: 18px;
       --dsw-font-xxs-12-font-size: 12px;
       --dsw-font-xxs-12-font-style: normal;
-      --dsw-font-xxs-strong-12: 500 12px/18px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xxs-strong-12-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxs-strong-12: 500 12px/18px var(--db-font);
+      --dsw-font-xxs-strong-12-font-family: var(--db-font);
       --dsw-font-xxs-strong-12-font-weight: 500;
       --dsw-font-xxs-strong-12-line-height: 18px;
       --dsw-font-xxs-strong-12-font-size: 12px;
       --dsw-font-xxs-strong-12-font-style: normal;
-      --dsw-font-xxxs-11: 11px/14px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xxxs-11-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxxs-11: 11px/14px var(--db-font);
+      --dsw-font-xxxs-11-font-family: var(--db-font);
       --dsw-font-xxxs-11-font-weight: 400;
       --dsw-font-xxxs-11-line-height: 14px;
       --dsw-font-xxxs-11-font-size: 11px;
       --dsw-font-xxxs-11-font-style: normal;
-      --dsw-font-xxxs-strong-11: 500 11px/14px "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --dsw-font-xxxs-strong-11-font-family: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --dsw-font-xxxs-strong-11: 500 11px/14px var(--db-font);
+      --dsw-font-xxxs-strong-11-font-family: var(--db-font);
       --dsw-font-xxxs-strong-11-font-weight: 500;
       --dsw-font-xxxs-strong-11-line-height: 14px;
       --dsw-font-xxxs-strong-11-font-size: 11px;
       --dsw-font-xxxs-strong-11-font-style: normal;
-      --db-window: #151517;
-      --db-rail: #1b1b1c;
-      --db-popover: #353638;
-      --db-dialog: #353638;
-      --db-fill-1: color-mix(in srgb, #ffffff14 40%, transparent);
-      --db-fill-2: #ffffff14;
-      --db-fill-3: color-mix(in srgb, #ffffff14 140%, transparent);
-      --db-fill-4: #ffffff24;
-      --db-fill-5: color-mix(in srgb, #ffffff24 130%, transparent);
-      --db-fill-6: color-mix(in srgb, #ffffff24 160%, transparent);
-      --db-text: #f9fafb;
-      --db-text-2: #cfd3d6;
-      --db-text-3: #adb2b8;
-      --db-text-4: #81858c;
-      --db-text-5: color-mix(in srgb, #81858c 78%, transparent);
-      --db-line: #ffffff0f;
-      --db-line-card: #ffffff0f;
-      --db-line-container: #ffffff1f;
-      --db-line-input: #ffffff1f;
-      --db-line-input-2: #ffffff29;
-      --db-line-emphasis: #ffffff29;
-      --db-line-focus: #fff3;
-      --db-line-hover: #ffffff24;
-      --db-line-dashed: #ffffff1f;
-      --db-run: #22c55e;
-      --db-run-soft: color-mix(in srgb, #22c55e 80%, #f9fafb);
-      --db-run-wash: color-mix(in srgb, #22c55e 14%, transparent);
-      --db-await: #d97757;
-      --db-await-wash: color-mix(in srgb, #d97757 13%, transparent);
+      /* ============================================================
+         DeepBuddy 视觉基线 v2 · 浮岛 + Archivo
+         参照 deepbuddy_redesign/「DeepBuddy 视觉重设计.dc.html」
+         三条纪律不变：分隔靠材质 / 层级靠透明度 / 颜色只属于状态。
+         ============================================================ */
+
+      /* 底与面 —— 窗口底最深，面板浮在其上，面板内再抬升一层 */
+      --db-window: #0b0b0c;   /* 窗口底色，也是浮岛之间的缝 */
+      --db-panel: #151517;    /* 列面板（三列同色，靠缝分隔而非靠明度） */
+      --db-raised: #1c1c1f;   /* 面板内抬升：composer */
+      --db-void: #0e0e10;     /* 嵌入式黑底：终端 / 文件预览 / 浏览器空态 */
+      --db-rail: var(--db-panel);
+      --db-popover: #1f1f23;
+      --db-dialog: #171719;
+      --db-gap: 10px;         /* 浮岛间隙 = 窗口内边距 = 拖拽把手宽度 */
+
+      /* 填充：层级只靠透明度 */
+      --db-fill-1: rgba(255, 255, 255, .02);
+      --db-fill-2: rgba(255, 255, 255, .045);
+      --db-fill-3: rgba(255, 255, 255, .06);
+      --db-fill-4: rgba(255, 255, 255, .085);
+      --db-fill-5: rgba(255, 255, 255, .12);
+      --db-fill-6: rgba(255, 255, 255, .16);
+
+      /* 文字五阶 */
+      --db-text: #f4f4f5;
+      --db-text-2: #d6d6db;
+      --db-text-3: #a6a6ad;
+      --db-text-4: #6f6f78;
+      --db-text-5: #4a4a52;
+
+      /* 线：只有结构缝留线，其余靠材质 */
+      --db-line-panel: rgba(255, 255, 255, .05);  /* 浮岛外框 */
+      --db-line: rgba(255, 255, 255, .06);        /* 列内状态栏缝 */
+      --db-line-card: rgba(255, 255, 255, .08);
+      --db-line-container: rgba(255, 255, 255, .08);
+      --db-line-input: rgba(255, 255, 255, .09);
+      --db-line-input-2: rgba(255, 255, 255, .14);
+      --db-line-emphasis: rgba(255, 255, 255, .14);
+      --db-line-focus: rgba(255, 255, 255, .22);
+      --db-line-hover: rgba(255, 255, 255, .28);
+      --db-line-dashed: rgba(255, 255, 255, .14);
+
+      /* 颜色只属于状态 —— 红=品牌，蓝=行动，绿=运行，橙=等待 */
+      --db-brand: #ec3013;
+      --db-brand-wash: color-mix(in srgb, #ec3013 14%, transparent);
       --db-primary: #679efe;
-      --db-offline: #81858c;
-      --db-font: "Departure Mono", "Fusion Pixel", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --db-mono: "Departure Mono", "Fusion Pixel", "SF Mono", "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace;
+      --db-primary-hover: #8ab4ff;
+      --db-run: #3ecf8e;
+      --db-run-soft: color-mix(in srgb, #3ecf8e 80%, #f4f4f5);
+      --db-run-wash: color-mix(in srgb, #3ecf8e 14%, transparent);
+      --db-await: #e9a23b;
+      --db-await-wash: color-mix(in srgb, #e9a23b 13%, transparent);
+      --db-offline: #55555e;
+
+      /* 字体：正文 Archivo + 中文回退；Departure Mono 只做品牌字标；代码走系统 mono */
+      --db-font: "Archivo", -apple-system, "system-ui", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --db-brandfont: "Departure Mono", "Fusion Pixel", ui-monospace, Menlo, monospace;
+      --db-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+      /* 圆角：面板 20 / 弹层 14 / 对话框 24 / 输入 16 / 卡片 12 / 控件 9 / 行 10 */
+      --db-r-panel: 20px;
+      --db-r-dialog: 24px;
+      --db-r-popover: 14px;
+      --db-r-input: 16px;
+      --db-r-card: 12px;
+      --db-r-control: 9px;
+      --db-r-row: 10px;
       --db-r-badge: 8px;
       --db-r-chip: 8px;
       --db-r-swatch: 10px;
-      --db-r-row: 8px;
-      --db-r-input: 14px;
-      --db-r-card: 22px;
-      --db-r-surface: 22px;
-      --db-r-editor: 22px;
+      --db-r-surface: 12px;
+      --db-r-editor: 12px;
+
       --db-in: .1s cubic-bezier(.4, 0, .2, 1);
       --db-size: 0.2s cubic-bezier(.4, 0, .2, 1);
       --db-tint: .1s cubic-bezier(.4, 0, .2, 1);
-      --db-shadow-popover: 0 22px 54px rgba(0, 0, 0, .68);
-      --db-shadow-menu: 0 24px 60px rgba(0, 0, 0, .70);
-      --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .74);
+      --db-shadow-popover: 0 16px 40px rgba(0, 0, 0, .5);
+      --db-shadow-menu: 0 16px 40px rgba(0, 0, 0, .5);
+      --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .6);
       --proto-sidebar-width: 268px;
       --proto-dock-width: 30vw;
     }
@@ -417,6 +450,7 @@
       font-family: var(--db-font);
       font-size: 13.5px;
       user-select: none;
+      -webkit-font-smoothing: antialiased;
     }
     button, input, textarea { font: inherit; }
     button { color: inherit; }
@@ -429,34 +463,47 @@
     ::selection { background: color-mix(in srgb, var(--db-primary) 35%, transparent); }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb {
-      background: var(--dsw-alias-scrollbar-bg-l2);
+      background: rgba(255, 255, 255, .13);
       border: 2px solid transparent;
       background-clip: content-box;
       border-radius: 99px;
     }
-    ::-webkit-scrollbar-thumb:hover { background-color: var(--dsw-alias-scrollbar-hover-l2); }
+    ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .22); }
     ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
 
-    .app { position: relative; display: flex; width: 100%; height: 100%; overflow: hidden; background: var(--db-window); }
-    .column { min-width: 0; display: flex; flex-direction: column; }
+    /* 浮岛外壳：窗口底露出 --db-gap 的缝，三列各是一张圆角面板 */
+    .app {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 100%;
+      padding: var(--db-gap);
+      overflow: hidden;
+      background: var(--db-window);
+    }
+    .column {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--db-panel);
+      border: 1px solid var(--db-line-panel);
+      border-radius: var(--db-r-panel);
+      overflow: hidden;
+    }
     .sidebar {
       width: var(--proto-sidebar-width);
       flex: 0 0 var(--proto-sidebar-width);
-      background: var(--db-rail);
-      overflow: hidden;
     }
-    .main { position: relative; flex: 1 1 0; background: var(--db-window); overflow: hidden; }
+    .main { position: relative; flex: 1 1 0; }
     .dock {
       width: var(--proto-dock-width);
       flex: 0 0 var(--proto-dock-width);
-      background: var(--db-window);
-      overflow: hidden;
     }
     .app.sidebar-off .sidebar, .app.sidebar-off .side-handle { display: none; }
     .app:not(.dock-open) .dock, .app:not(.dock-open) .dock-handle { display: none; }
     .app.dock-max .dock {
       position: absolute;
-      inset: 0;
+      inset: var(--db-gap);
       z-index: 30;
       width: auto;
       flex-basis: auto;
@@ -470,15 +517,17 @@
       align-items: center;
       gap: 8px;
       min-width: 0;
-      padding: 0 12px;
+      padding: 0 12px 0 14px;
       border-bottom: 1px solid var(--db-line);
     }
-    .traffic { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
-    .traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .traffic { display: flex; gap: 7px; align-items: center; flex: 0 0 auto; margin-right: 5px; }
+    .traffic i { width: 11px; height: 11px; border-radius: 50%; display: block; }
     .traffic .red { background: #ff5f57; }
     .traffic .amber { background: #febc2e; }
     .traffic .green { background: #28c840; }
-    .brand { font-size: 16px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+    /* 品牌字标是全界面唯一的 Departure Mono */
+    .brand { font-family: var(--db-brandfont); font-size: 13px; font-weight: 400; letter-spacing: .02em; white-space: nowrap; }
+    .brand-mark { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 2px; background: var(--db-brand); }
     .grow { flex: 1 1 auto; min-width: 0; }
     .truncate { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .muted { color: var(--db-text-4); }
@@ -486,28 +535,29 @@
     .mono { font-family: var(--db-mono); }
 
     .icon-button {
-      width: 28px;
-      height: 28px;
-      flex: 0 0 28px;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
       display: inline-grid;
       place-items: center;
       padding: 0;
       border: 0;
-      border-radius: 50%;
+      border-radius: var(--db-r-control);
       background: transparent;
       color: var(--db-text-3);
       cursor: pointer;
+      transition: background var(--db-tint), color var(--db-tint);
     }
-    .icon-button:hover, .icon-button.active { color: var(--db-text); background: var(--db-fill-5); }
+    .icon-button:hover, .icon-button.active { color: var(--db-text); background: var(--db-fill-3); }
     .icon-button:disabled { opacity: .35; cursor: default; background: transparent; }
-    .icon { width: 15px; height: 15px; display: block; }
+    .icon { width: 16px; height: 16px; display: block; }
     .icon.small { width: 13px; height: 13px; }
 
+    /* 把手正好占满浮岛之间的那条缝 */
     .resize-handle {
       position: relative;
-      width: 8px;
-      flex: 0 0 8px;
-      margin: 0 -3.5px;
+      width: var(--db-gap);
+      flex: 0 0 var(--db-gap);
       z-index: 10;
       cursor: col-resize;
       touch-action: none;
@@ -516,202 +566,301 @@
     .resize-handle::after {
       content: "";
       position: absolute;
-      inset: 0 auto 0 50%;
-      width: 1px;
-      transform: translateX(-.5px);
-      background: var(--db-line);
+      inset: 22px auto 22px 50%;
+      width: 2px;
+      border-radius: 2px;
+      transform: translateX(-1px);
+      background: transparent;
       pointer-events: none;
+      transition: background var(--db-tint);
     }
-    .resize-handle:hover::after { width: 2px; background: var(--db-primary); }
+    .resize-handle:hover::after, .resize-handle.dragging::after { background: var(--db-primary); }
 
-    .tagline { padding: 3px 16px 12px; color: var(--db-text-3); font-size: 12px; line-height: 1.4; }
+    .tagline { padding: 12px 14px 0; color: var(--db-text-4); font-size: 11.5px; line-height: 1.5; }
+    /* Modernist：宽按钮的标签靠左，图标压到右缘 */
     .new-task {
-      height: 38px;
-      margin: 0 8px 14px;
+      height: 40px;
+      margin: 12px 12px 4px;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
       gap: 8px;
-      border: 0;
+      padding: 0 12px;
+      border: 1px solid var(--db-line-input-2);
       border-radius: 12px;
-      background: var(--dsw-alias-bg-raised, #43454a);
+      background: transparent;
       color: var(--db-text);
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
+      transition: background var(--db-tint), border-color var(--db-tint);
     }
-    .new-task:hover { background: var(--db-fill-6); }
-    .sidebar-tools { height: 38px; display: flex; align-items: center; padding: 0 12px 0 14px; gap: 2px; }
-    .sidebar-tools .label { color: var(--db-text-4); font-size: 13px; }
-    .workspace-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 8px 14px; }
-    .workspace { margin-bottom: 4px; }
+    .new-task:hover { background: var(--db-fill-2); border-color: var(--db-line-hover); }
+    .new-task .icon { color: var(--db-text-3); width: 15px; height: 15px; }
+    .sidebar-tools { height: 34px; display: flex; align-items: center; padding: 16px 10px 4px 18px; gap: 2px; }
+    .sidebar-tools .label { color: var(--db-text-4); font-size: 11.5px; letter-spacing: .1em; }
+    .sidebar-tools .icon-button { width: 24px; height: 24px; flex: 0 0 24px; border-radius: 7px; color: var(--db-text-4); }
+    .sidebar-tools .icon-button .icon { width: 13px; height: 13px; }
+    .workspace-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 2px 8px 14px; }
+    .workspace { margin-bottom: 2px; }
     .row {
       height: 31px;
       display: flex;
       align-items: center;
       gap: 7px;
       min-width: 0;
-      padding: 0 8px;
-      border-radius: 10px;
+      padding: 0 10px;
+      border-radius: var(--db-r-row);
       color: var(--db-text-2);
       cursor: pointer;
+      transition: background var(--db-tint), color var(--db-tint);
     }
     .row:hover { background: var(--db-fill-2); }
-    .row.current { background: var(--db-fill-4); color: var(--db-text); }
+    .row.current { background: var(--db-fill-3); color: var(--db-text); }
     .row.dense { height: 26px; font-size: 12.5px; }
-    .row .time { margin-left: auto; color: var(--db-text-5); font-size: 11.5px; flex: 0 0 auto; }
-    .workspace-title { color: var(--db-text-2); font-size: 13px; }
-    .workspace-title .folder { color: var(--db-primary); }
-    .session-row { padding-left: 28px; }
-    .more { height: 25px; padding-left: 28px; color: var(--db-text-4); font-size: 11.5px; cursor: pointer; display: flex; align-items: center; border-radius: 8px; }
-    .more:hover { color: var(--db-text-2); background: var(--db-fill-2); }
+    .row .time { margin-left: auto; color: var(--db-text-4); font-size: 11px; flex: 0 0 auto; }
+    .workspace-title { color: var(--db-text-3); font-size: 12.5px; font-weight: 500; }
+    .workspace-title .folder, .workspace-title .icon { color: var(--db-text-4); width: 14px; height: 14px; }
+    /* 会话行：左侧状态点承载运行/等待/空闲；选中态只靠底色（.row.current） */
+    .session-row { padding-left: 12px; font-size: 13px; }
+    .session-row::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      flex: 0 0 6px;
+      margin-right: 4px;
+      border-radius: 50%;
+      background: var(--db-offline);
+    }
+    .session-row[data-state="run"]::before { background: var(--db-run); }
+    .session-row[data-state="await"]::before { background: var(--db-await); }
+    .more { height: 26px; padding-left: 12px; color: var(--db-text-4); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; border-radius: var(--db-r-row); }
+    .more::before { content: ""; width: 6px; flex: 0 0 6px; margin-right: 4px; }
+    .more:hover { color: var(--db-text-3); background: var(--db-fill-2); }
     .workspace.collapsed > :not(.workspace-title) { display: none !important; }
     .workspace.collapsed .workspace-title .icon { transform: rotate(-8deg); opacity: .72; }
     .extra-sessions { display: none; }
     .workspace.expanded .extra-sessions { display: block; }
-    .sidebar-search { display: none; align-items: center; gap: 6px; height: 38px; padding: 0 10px; }
+    .sidebar-search { display: none; align-items: center; gap: 7px; height: 32px; margin: 12px 12px 2px; padding: 0 10px; border: 1px solid var(--db-line-card); border-radius: var(--db-r-row); background: var(--db-fill-2); }
     .sidebar-search.open { display: flex; }
+    .sidebar-search .icon { width: 12px; height: 12px; color: var(--db-text-4); }
     .sidebar-search.open + .sidebar-tools { display: none; }
-    .sidebar-search input { min-width: 0; flex: 1 1 auto; height: 29px; border: 1px solid var(--db-line-input); border-radius: 9px; padding: 0 9px; outline: none; background: var(--db-fill-2); color: var(--db-text); }
-    .sidebar-search input:focus { border-color: var(--db-line-focus); }
+    .sidebar-search input { min-width: 0; flex: 1 1 auto; height: 30px; border: 0; padding: 0; outline: none; background: transparent; color: var(--db-text); font-size: 12.5px; -webkit-appearance: none; appearance: none; }
+    .sidebar-search input::-webkit-search-cancel-button { display: none; }
+    .sidebar-search .icon-button { width: 20px; height: 20px; flex: 0 0 20px; border-radius: 6px; }
+    .sidebar-search .icon-button .icon { width: 11px; height: 11px; }
     .sidebar-search.open ~ .workspace-list .extra-sessions { display: block; }
     .sidebar-search.open ~ .workspace-list .more { display: none; }
     .sidebar-search.open ~ .workspace-list .workspace.collapsed > :not(.workspace-title) { display: block !important; }
-    .session-empty { display: none; padding: 14px 20px; color: var(--db-text-5); font-size: 12px; }
-    .settings-row { height: 48px; flex: 0 0 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--db-text-2); cursor: pointer; }
-    .settings-row:hover { background: var(--db-fill-2); }
+    .session-empty { display: none; padding: 14px 20px; color: var(--db-text-4); font-size: 12px; }
+    .settings-shelf { flex: 0 0 auto; padding: 10px; border-top: 1px solid var(--db-line); }
+    .settings-row { height: 36px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border-radius: var(--db-r-row); color: var(--db-text-3); font-size: 13px; cursor: pointer; }
+    .settings-row:hover { background: var(--db-fill-2); color: var(--db-text); }
+    .settings-row .icon { width: 15px; height: 15px; }
+    .settings-row .kbd { margin-left: auto; color: var(--db-text-4); font-size: 11px; }
 
     .collapsed-lockup {
       display: none;
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 11px;
+      left: 14px;
       z-index: 12;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
     .app.sidebar-off .collapsed-lockup { display: flex; }
 
     .main-chrome { flex: 0 0 auto; }
     .hero-mode .main-chrome { display: none; }
-    .main-title { padding-left: 16px; font-size: 13px; }
-    .app.sidebar-off .main-title { padding-left: 110px; }
-    .mode-label { display: flex; align-items: center; gap: 5px; color: var(--db-text-3); font-size: 12px; }
-    .view-tabs { height: 38px; display: flex; align-items: flex-end; gap: 28px; padding: 0 28px; border-bottom: 1px solid var(--db-line); }
-    .view-tab {
-      height: 38px;
-      position: relative;
-      border: 0;
-      background: transparent;
+    .main-title { padding-left: 2px; font-size: 13.5px; font-weight: 600; color: var(--db-text); }
+    .app.sidebar-off .main-title { padding-left: 104px; }
+    /* 模式/运行状态 pill —— 颜色只由状态给 */
+    .mode-label {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 9px;
+      border-radius: var(--db-r-chip);
+      background: var(--db-fill-2);
       color: var(--db-text-3);
-      padding: 0;
-      cursor: pointer;
-      font-size: 13px;
+      font-size: 11.5px;
     }
-    .view-tab.active { color: var(--db-primary); }
-    .view-tab:hover { color: var(--db-text); }
-    .view-tab.active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--db-primary); }
+    .mode-label .state-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: var(--db-run); }
+    /* 视图 Tab 收进状态栏，做成分段控件，省掉整整一行 */
+    .view-tabs { flex: 0 0 auto; display: flex; gap: 2px; padding: 2px; border-radius: var(--db-r-row); background: var(--db-fill-2); }
+    .view-tab {
+      height: 24px;
+      border: 0;
+      border-radius: var(--db-r-chip);
+      background: transparent;
+      color: var(--db-text-4);
+      padding: 0 11px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: background var(--db-tint), color var(--db-tint);
+    }
+    .view-tab.active { color: var(--db-text); background: var(--db-fill-4); }
+    .view-tab:not(.active):hover { color: var(--db-text-2); }
 
     .main-body { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; }
     .hero { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 4vh; }
-    .hero-card { width: min(760px, calc(100% - 64px)); transform: translateY(-2vh); }
-    .hero-mark { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 24px; font-size: 26px; font-weight: 600; }
-    .hero-logo { width: 38px; height: 38px; }
-    .hero-mark .accent { color: var(--db-primary); }
-    .hero-chips { display: flex; gap: 8px; margin: 0 12px 14px; color: var(--db-text-2); font-size: 12px; }
-    .hero-chip { height: 28px; border: 0; border-radius: 14px; padding: 0 10px; background: transparent; color: var(--db-text-2); display: inline-flex; align-items: center; gap: 6px; }
+    .hero-card { width: min(660px, calc(100% - 64px)); transform: translateY(-2vh); }
+    /* Hero：品牌红方块 + Departure Mono 字标 + slogan */
+    .hero-mark { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+    .hero-logo-img { width: 46px; height: 46px; margin-bottom: 18px; display: block; }
+    .hero-wordmark { font-family: var(--db-brandfont); font-size: 26px; letter-spacing: .02em; color: var(--db-text); }
+    .hero-slogan { margin-top: 12px; color: var(--db-text-4); font-size: 13.5px; }
+    .hero-chips { display: flex; gap: 6px; margin: 0 0 12px; color: var(--db-text-3); font-size: 12.5px; }
+    .hero-chip { height: 28px; border: 0; border-radius: var(--db-r-control); padding: 0 9px; background: var(--db-fill-2); color: var(--db-text-3); display: inline-flex; align-items: center; gap: 6px; font-family: inherit; cursor: pointer; }
     .hero-chip:hover { background: var(--db-fill-4); color: var(--db-text); }
     .composer {
       width: 100%;
-      min-height: 112px;
-      padding: 15px 12px 10px;
+      padding: 0;
       border: 1px solid var(--db-line-input);
-      border-radius: 22px;
-      background: var(--dsw-specific-input-major);
-      box-shadow: 0 16px 36px #0002;
+      border-radius: var(--db-r-input);
+      background: var(--db-raised);
     }
+    .composer:focus-within { border-color: var(--db-line-input-2); }
     .composer textarea {
       display: block;
       width: 100%;
-      height: 48px;
+      height: 62px;
+      max-height: 200px;
       resize: none;
-      padding: 0 5px;
+      padding: 14px 16px 4px;
       border: 0;
       outline: 0;
       background: transparent;
       color: var(--db-text);
-      line-height: 1.5;
+      font-size: 14px;
+      line-height: 1.6;
     }
     .composer textarea::placeholder { color: var(--db-text-4); }
-    .composer-actions { height: 32px; display: flex; align-items: center; gap: 8px; }
+    .composer-actions { display: flex; align-items: center; gap: 6px; padding: 8px 10px 10px; }
+    .composer-actions .icon-button { width: 28px; height: 28px; flex: 0 0 28px; }
     .pill-button {
       height: 28px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 0 8px;
+      padding: 0 9px;
       border: 0;
-      border-radius: 14px;
-      background: transparent;
-      color: var(--db-text-2);
+      border-radius: var(--db-r-control);
+      background: var(--db-fill-2);
+      color: var(--db-text-3);
       cursor: pointer;
       white-space: nowrap;
-      font-size: 12px;
+      font-size: 12.5px;
+      font-family: inherit;
     }
     .pill-button:hover { background: var(--db-fill-4); color: var(--db-text); }
+    /* 主列被压窄时长模型名先截断，发送圆钮永不被裁出面板 */
+    .composer-actions .pill-button { min-width: 0; flex: 0 1 auto; }
+    .composer-actions .pill-button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    /* 蓝色只用在「每屏最主要的当前行动」上 */
     .send {
-      width: 34px;
-      height: 34px;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
       border: 0;
       border-radius: 50%;
       display: grid;
       place-items: center;
-      background: color-mix(in srgb, var(--db-primary) 55%, var(--db-window));
-      color: var(--db-text);
+      background: var(--db-primary);
+      color: #0b0b0c;
       cursor: pointer;
     }
+    .send .icon { width: 15px; height: 15px; }
     .send:hover { filter: brightness(1.12); }
-    .send:disabled { opacity: .34; cursor: default; filter: none; }
+    .send:disabled { background: var(--db-fill-4); color: var(--db-text-4); opacity: 1; cursor: default; filter: none; }
 
-    .conversation { height: 100%; display: flex; flex-direction: column; }
-    .conversation-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 20px 0 10px; }
+    /* 对话与轨迹是同一块主体区的两张叠放视图，不能互相顶位 */
+    .conversation { position: absolute; inset: 0; display: flex; flex-direction: column; }
+    .conversation-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 26px 0 10px; }
     .chat-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
     .app:not(.dock-open) .chat-column { width: min(880px, calc(100% - 48px)); }
-    .message-block { padding: 0 0 18px; user-select: text; }
-    .user-line { display: flex; justify-content: flex-end; margin-bottom: 10px; }
-    .user-bubble { max-width: 78%; padding: 11px 17px; border-radius: 22px; background: var(--dsw-specific-bubble); font-size: 15px; }
-    .copy-user { display: flex; justify-content: flex-end; margin: 0 8px 22px; }
-    .context-row, .think-row { display: flex; align-items: center; gap: 8px; min-height: 39px; color: var(--db-text-3); font-size: 13px; }
-    .think-row { margin-top: 2px; }
-    .assistant-copy { color: var(--db-text); font-size: 15px; line-height: 1.7; }
-    .assistant-copy p { margin: 0 0 16px; }
-    .inline-code { padding: 2px 7px; border-radius: 7px; background: var(--dsw-alias-markdown-inline-code); }
-    .message-actions { display: flex; gap: 8px; margin-top: 17px; }
+    .message-block { padding: 0 0 22px; user-select: text; }
+    .user-line { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    /* 用户气泡：右下角切平，指向自己 */
+    .user-bubble { max-width: 78%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: var(--db-fill-4); color: var(--db-text); font-size: 14px; line-height: 1.65; }
+    .copy-user { display: flex; justify-content: flex-end; margin: 0 2px 18px; }
+    /* 工具 / 上下文行：1px 描边卡，不用底色堆叠 */
+    .context-row, .think-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+      margin-bottom: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--db-line-card);
+      border-radius: var(--db-r-card);
+      background: var(--db-fill-1);
+      color: var(--db-text-3);
+      font-size: 12.5px;
+    }
+    .context-row .mono, .think-row .mono { color: var(--db-text-2); font-size: 12px; }
+    .think-row { margin-top: 0; }
+    .assistant-copy { margin-top: 14px; color: var(--db-text-2); font-size: 14px; line-height: 1.8; text-wrap: pretty; }
+    .assistant-copy p { margin: 0 0 14px; }
+    .inline-code { padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, .07); font-size: 12.5px; }
+    .message-actions { display: flex; gap: 4px; margin-top: 14px; }
+    .message-actions .icon-button { width: 28px; height: 28px; flex: 0 0 28px; }
     .message-actions .icon-button.selected { color: var(--db-primary); background: color-mix(in srgb, var(--db-primary) 16%, transparent); }
-    .composer-wrap { flex: 0 0 auto; padding: 0 0 8px; }
+    .composer-wrap { flex: 0 0 auto; padding: 0 0 12px; }
     .composer-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
     .app:not(.dock-open) .composer-column { width: min(880px, calc(100% - 48px)); }
-    .stats { height: 22px; text-align: center; color: var(--db-text-4); font: 11px/22px var(--db-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .trace { display: none; height: 100%; padding: 28px; overflow: auto; }
+    .stats { height: 20px; margin-top: 6px; text-align: center; color: var(--db-text-5); font: 11px/20px var(--db-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* 轨迹：时间轴，竖线即结构 */
+    .trace { position: absolute; inset: 0; display: none; padding: 30px 24px; overflow: auto; }
     .trace.active { display: block; }
-    .trace-line { max-width: 760px; margin: 0 auto 12px; padding: 12px 14px; border-radius: 12px; background: var(--db-fill-1); color: var(--db-text-3); }
+    .trace-line {
+      position: relative;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 0 24px 24px;
+      border-left: 2px solid var(--db-line-card);
+      border-radius: 0;
+      color: var(--db-text-2);
+      font-size: 12.5px;
+      line-height: 1.6;
+    }
+    .trace-line::before {
+      content: "";
+      position: absolute;
+      left: -6px;
+      top: 2px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .35);
+      box-shadow: 0 0 0 3px var(--db-panel);
+    }
+    .trace-line:last-child { border-left-color: transparent; padding-bottom: 0; }
+    .trace-line:last-child::before { background: var(--db-run); animation: pulse 1.6s ease-in-out infinite; }
 
-    .dock-topbar { padding: 0 10px; }
-    .segments { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--db-fill-1); }
+    .dock-topbar { padding: 0 10px; gap: 6px; }
+    .segments { display: flex; gap: 4px; padding: 0; border-radius: 0; background: transparent; }
     .segment {
       height: 30px;
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      padding: 0 12px;
+      padding: 0 10px;
       border: 0;
-      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12.5px;
+      border-radius: var(--db-r-control);
       background: transparent;
       color: var(--db-text-3);
       cursor: pointer;
       white-space: nowrap;
+      transition: background var(--db-tint), color var(--db-tint);
     }
-    .segment.active { color: var(--db-text); background: var(--db-fill-4); }
+    .segment .icon { width: 13px; height: 13px; }
+    .segment.active { color: var(--db-text); background: var(--db-fill-3); }
     .segment:hover { color: var(--db-text); background: var(--db-fill-3); }
     .dock-view { flex: 1 1 0; min-height: 0; display: none; flex-direction: column; }
     .dock-view.active { display: flex; }
@@ -724,7 +873,9 @@
       padding: 0 8px;
       border-bottom: 1px solid var(--db-line);
       overflow-x: auto;
+      scrollbar-width: none;
     }
+    .resource-tabs::-webkit-scrollbar { height: 0; }
     .resource-tab {
       min-width: 74px;
       max-width: 180px;
@@ -736,58 +887,62 @@
       gap: 6px;
       padding: 0 6px 0 10px;
       border: 0;
-      border-radius: 8px;
+      border-radius: var(--db-r-control);
       background: transparent;
       color: var(--db-text-3);
       cursor: pointer;
     }
-    .resource-tab.active { background: var(--db-fill-4); color: var(--db-text); }
+    .resource-tab.active { background: var(--db-fill-3); color: var(--db-text); }
     .resource-tab:hover { background: var(--db-fill-3); color: var(--db-text); }
     .resource-tab .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 12.5px; }
-    .tab-close { width: 20px; height: 20px; flex: 0 0 20px; border: 0; border-radius: 6px; background: transparent; color: var(--db-text-4); cursor: pointer; }
+    .tab-close { width: 16px; height: 16px; flex: 0 0 16px; border: 0; border-radius: 5px; background: transparent; color: var(--db-text-4); cursor: pointer; }
     .tab-close:hover { background: var(--db-fill-5); color: var(--db-text); }
-    .tab-add { width: 28px; height: 28px; margin: 5px 0; border: 0; border-radius: 50%; background: transparent; color: var(--db-text-3); cursor: pointer; flex: 0 0 28px; }
-    .tab-add:hover { background: var(--db-fill-5); color: var(--db-text); }
+    .tab-add { width: 28px; height: 28px; margin: 5px 0; border: 0; border-radius: var(--db-r-control); background: transparent; color: var(--db-text-3); cursor: pointer; flex: 0 0 28px; }
+    .tab-add:hover { background: var(--db-fill-3); color: var(--db-text); }
 
     .files-body { flex: 1 1 0; min-height: 0; display: flex; }
-    .file-tree { flex: 1 1 auto; min-width: 0; padding: 8px 6px 16px; overflow: auto; }
+    .file-tree { flex: 1 1 auto; min-width: 0; padding: 10px 4px 16px; overflow: auto; }
     .files-body.split .file-tree { width: 232px; flex: 0 0 232px; border-right: 1px solid var(--db-line); }
-    .file-root { padding: 0 8px 6px; font: 11px var(--db-mono); color: var(--db-text-5); }
+    .file-root { padding: 0 10px 6px; font: 11px var(--db-mono); color: var(--db-text-4); }
     .tree-children { display: none; }
     .tree-folder.open + .tree-children { display: block; }
-    .tree-row { padding-left: calc(8px + var(--depth, 0) * 14px); }
-    .tree-row.file { padding-left: calc(25px + var(--depth, 0) * 14px); font-family: var(--db-mono); font-size: 12px; }
-    .file-preview { flex: 1 1 0; min-width: 0; padding: 16px; overflow: auto; user-select: text; }
-    .file-preview pre { margin: 0; padding: 14px; border-radius: 22px; background: var(--db-fill-1); color: var(--db-text-2); font: 12px/1.7 var(--db-mono); white-space: pre-wrap; word-break: break-word; }
+    .tree-row { height: 28px; padding-left: calc(10px + var(--depth, 0) * 14px); color: var(--db-text-2); font-family: var(--db-mono); font-size: 12.5px; border-radius: var(--db-r-control); }
+    .tree-row .icon { color: var(--db-text-4); width: 14px; height: 14px; }
+    .tree-row.file { padding-left: calc(27px + var(--depth, 0) * 14px); font-size: 12px; color: var(--db-text-3); }
+    .file-preview { flex: 1 1 0; min-width: 0; padding: 12px; overflow: auto; user-select: text; }
+    .file-preview pre { margin: 0; padding: 14px 16px; border: 1px solid var(--db-line-panel); border-radius: var(--db-r-card); background: var(--db-void); color: #c8c8ce; font: 12px/1.7 var(--db-mono); white-space: pre-wrap; word-break: break-word; }
 
-    .terminal-meta { height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--db-line); font: 11.5px var(--db-mono); color: var(--db-text-4); }
-    .terminal-meta .restart-terminal { margin-left: auto; width: auto; flex-basis: auto; padding: 0 8px; border-radius: 8px; gap: 5px; font-size: 11.5px; }
+    .terminal-meta { height: 34px; flex: 0 0 34px; display: flex; align-items: center; gap: 8px; padding: 0 14px; font: 11.5px var(--db-mono); color: var(--db-text-4); }
+    .terminal-meta .restart-terminal { margin-left: auto; width: auto; flex-basis: auto; padding: 0 8px; border-radius: var(--db-r-chip); gap: 5px; font-size: 11.5px; }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--db-run); flex: 0 0 6px; }
     .terminal-panes, .browser-panes { flex: 1 1 0; min-height: 0; position: relative; }
     .terminal-pane, .browser-pane { position: absolute; inset: 0; display: none; }
     .terminal-pane.active, .browser-pane.active { display: flex; flex-direction: column; }
-    .terminal-screen { flex: 1 1 0; min-height: 0; overflow: auto; padding: 10px 12px; color: var(--db-text-2); background: var(--db-window); font: 13px/1.55 var(--db-mono); user-select: text; }
+    /* 终端是嵌进面板的一块黑，不铺满整列 */
+    .terminal-screen { flex: 1 1 0; min-height: 0; overflow: auto; margin: 0 12px 12px; padding: 12px 14px; border: 1px solid var(--db-line-panel); border-radius: var(--db-r-card); color: #a6a6ad; background: var(--db-void); font: 12px/1.8 var(--db-mono); user-select: text; }
     .terminal-line { min-height: 20px; white-space: pre-wrap; }
     .terminal-command { display: flex; align-items: baseline; }
-    .prompt { color: #46c9f0; white-space: nowrap; }
+    .prompt { color: var(--db-text-4); white-space: nowrap; }
     .terminal-input { flex: 1 1 auto; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--db-text); font: inherit; caret-color: var(--db-text); }
 
-    .browser-toolbar { height: 42px; flex: 0 0 42px; display: flex; align-items: center; gap: 3px; padding: 0 8px; border-bottom: 1px solid var(--db-line); }
+    .browser-toolbar { height: 42px; flex: 0 0 42px; display: flex; align-items: center; gap: 4px; padding: 12px 12px 0; }
+    .browser-toolbar .icon-button { width: 26px; height: 26px; flex: 0 0 26px; border-radius: var(--db-r-chip); color: var(--db-text-4); }
+    .browser-toolbar .icon-button .icon { width: 14px; height: 14px; }
     .address {
       flex: 1 1 auto;
       min-width: 80px;
       height: 30px;
-      padding: 0 11px;
-      border: 1px solid var(--db-line-input);
-      border-radius: 8px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: var(--db-r-control);
       outline: none;
-      background: var(--db-fill-3);
-      color: var(--db-text);
-      font: 13px var(--db-mono);
+      background: var(--db-fill-2);
+      color: var(--db-text-2);
+      font: 12.5px var(--db-mono);
     }
-    .address:focus { border-color: var(--db-line-focus); }
-    .fake-page { flex: 1 1 0; min-height: 0; overflow: auto; }
-    .browser-empty { height: 100%; display: grid; place-items: center; color: var(--db-text-5); }
+    .address:focus { box-shadow: inset 0 0 0 1px var(--db-line-input-2); color: var(--db-text); }
+    .fake-page { flex: 1 1 0; min-height: 0; overflow: auto; margin: 12px; border: 1px solid var(--db-line-panel); border-radius: var(--db-r-card); background: var(--db-void); }
+    .browser-empty { height: 100%; display: grid; place-items: center; color: var(--db-text-4); }
     .browser-empty div { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 12.5px; }
     .example-page { min-height: 100%; background: #f0f0f0; color: #292929; padding: clamp(90px, 18vh, 180px) clamp(38px, 14%, 180px); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     .example-page article { max-width: 650px; }
@@ -798,86 +953,91 @@
     .docs-page { min-height: 130%; padding: 42px; color: var(--db-text-2); background: #18191c; user-select: text; }
     .docs-page h1 { color: var(--db-text); font-size: 26px; margin: 0 0 8px; }
     .docs-page .hero-line { color: var(--db-text-4); margin-bottom: 30px; }
-    .docs-card { padding: 18px; margin-bottom: 12px; border: 1px solid var(--db-line-container); border-radius: 16px; background: var(--db-fill-1); }
+    .docs-card { padding: 18px; margin-bottom: 12px; border: 1px solid var(--db-line-container); border-radius: var(--db-r-card); background: var(--db-fill-1); }
     .blocked-page { height: 100%; display: grid; place-items: center; padding: 24px; }
     .blocked-card { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--db-text-3); }
-    .outline-button { height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; border: 1px solid var(--db-line-emphasis); border-radius: 17px; background: transparent; color: var(--db-text); cursor: pointer; }
-    .outline-button:hover { background: var(--db-fill-5); border-color: var(--db-line-hover); }
+    .outline-button { height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 1px solid var(--db-line-emphasis); border-radius: var(--db-r-control); background: transparent; color: var(--db-text); font-family: inherit; font-size: 12.5px; cursor: pointer; }
+    .outline-button:hover { background: var(--db-fill-3); border-color: var(--db-line-hover); }
 
-    /* 浮层菜单：1:1 对齐真实 popover（bg #353638, r12, pad 4, 三层阴影；行 h40 pad 8/10 r10） */
-    .floating-menu { position: fixed; z-index: 130; min-width: 218px; padding: 4px; border: 1px solid rgba(255,255,255,.06); border-radius: 12px; background: var(--dsw-specific-menu); box-shadow: 0 0 1px rgba(0,0,0,.2), 0 0 4px rgba(0,0,0,.02), 0 12px 32px rgba(0,0,0,.08); display: flex; flex-direction: column; }
-    .menu-item { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--db-text); font-size: 14px; text-align: left; cursor: pointer; }
-    .menu-item:hover { background: rgba(255,255,255,.06); }
-    .menu-item-icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--db-text-3); }
+    /* 浮层菜单：bg #1F1F23, r14, pad 6, 行 r9；有锚点的交互就地弹出 */
+    .floating-menu { position: fixed; z-index: 130; min-width: 218px; padding: 6px; border: 1px solid var(--db-line-input); border-radius: var(--db-r-popover); background: var(--db-popover); box-shadow: var(--db-shadow-menu); display: flex; flex-direction: column; }
+    .menu-item { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: var(--db-r-control); background: transparent; color: #e4e4e8; font-size: 13px; font-family: inherit; text-align: left; cursor: pointer; }
+    .menu-item:hover { background: var(--db-fill-3); }
+    .menu-item-icon { width: 14px; height: 14px; flex: 0 0 14px; color: var(--db-text-4); }
     .menu-item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .menu-item-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .menu-item-name { font-size: 13px; line-height: 20px; color: var(--db-text); }
-    .menu-item-desc { font-size: 12px; line-height: 16px; color: var(--db-text-4); white-space: normal; }
-    .menu-check { width: 16px; height: 16px; flex: 0 0 16px; margin-left: auto; color: var(--db-text); }
-    .menu-footer { border-top: 1px solid rgba(255,255,255,.12); margin-top: 4px; padding-top: 4px; }
+    .menu-item-name { font-size: 13px; font-weight: 500; line-height: 20px; color: #e4e4e8; }
+    .menu-item-desc { font-size: 11.5px; line-height: 1.6; color: var(--db-text-4); white-space: normal; }
+    .menu-check { width: 14px; height: 14px; flex: 0 0 14px; margin-left: auto; color: var(--db-primary); }
+    .menu-footer { border-top: 1px solid rgba(255,255,255,.07); margin: 5px 8px 0; padding-top: 5px; }
     /* 模型菜单 root 面板的两行 cell（label + value + ›） */
-    .menu-cell { width: 100%; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; font-size: 14px; cursor: pointer; }
-    .menu-cell:hover { background: rgba(255,255,255,.06); }
+    .menu-cell { width: 100%; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 0; border-radius: var(--db-r-control); background: transparent; font-size: 13px; font-family: inherit; cursor: pointer; }
+    .menu-cell:hover { background: var(--db-fill-3); }
     .menu-cell-label { color: var(--db-text); white-space: nowrap; }
     .menu-cell-value { flex: 1; min-width: 0; text-align: right; color: var(--db-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .menu-cell .icon { width: 14px; height: 14px; color: var(--db-text-3); }
-    .menu-group-title { padding: 5px 8px 3px; font-size: 12px; font-weight: 500; color: var(--db-text-3); }
-    .menu-option { width: 100%; min-height: 38px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: var(--db-text); font-size: 13.5px; text-align: left; cursor: pointer; }
-    .menu-option:hover { background: rgba(255,255,255,.06); }
+    .menu-cell .icon { width: 13px; height: 13px; color: var(--db-text-4); }
+    .menu-group-title { padding: 6px 10px 3px; font-size: 11px; letter-spacing: .08em; font-weight: 400; color: var(--db-text-4); }
+    .menu-option { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: var(--db-r-control); background: transparent; color: #e4e4e8; font-size: 13px; font-family: inherit; text-align: left; cursor: pointer; }
+    .menu-option:hover { background: var(--db-fill-3); }
     /* 命令面板（composer ＋ 按钮）：一级命令列表 + 二级搜索参数候选，对齐真实 slash command UI */
-    .menu-head { padding: 8px 10px; font-size: 12px; color: var(--db-text-3); }
-    .cmd-item { width: 100%; min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; font-size: 14px; text-align: left; cursor: pointer; }
-    .cmd-item:hover { background: rgba(255,255,255,.08); }
-    .cmd-item-name { color: var(--db-text); white-space: nowrap; }
-    .cmd-item-desc { flex: 1; min-width: 0; color: var(--db-text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .menu-search { width: 100%; height: 31px; margin-bottom: 4px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.06); border-radius: 8px; background: transparent; color: var(--db-text); font-size: 13px; font-family: inherit; }
-    .menu-search:focus { outline: 2px solid rgb(103,158,254); }
-    .opt-row { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; text-align: left; cursor: pointer; }
-    .opt-row:hover { background: rgba(255,255,255,.08); }
-    .opt-row-label { color: var(--db-text); white-space: nowrap; }
-    .opt-row-detail { flex: 1; min-width: 0; text-align: right; color: var(--db-text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .opt-row .menu-check { flex: 0 0 16px; margin-left: 0; }
-    .modal-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 28px; background: rgba(0,0,0,.58); }
-    /* 设置对话框：真实结构 800×800、r24、bg #2C2C2E、左 nav 188 + 内容 612 */
-    .settings-panel { width: min(800px, 100%); height: min(800px, calc(100vh - 56px)); display: flex; overflow: hidden; border-radius: 24px; background: rgb(44,44,46); box-shadow: var(--db-shadow-dialog); }
+    .menu-head { padding: 6px 10px 3px; font-size: 11px; letter-spacing: .08em; color: var(--db-text-4); }
+    .cmd-item { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: var(--db-r-control); background: transparent; font-size: 13px; font-family: inherit; text-align: left; cursor: pointer; }
+    .cmd-item:hover { background: var(--db-fill-3); }
+    .cmd-item-name { color: #e4e4e8; white-space: nowrap; }
+    .cmd-item-desc { flex: 1; min-width: 0; color: var(--db-text-4); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .menu-search { width: 100%; height: 32px; margin-bottom: 4px; padding: 6px 10px; border: 1px solid var(--db-line-card); border-radius: var(--db-r-control); background: var(--db-fill-2); color: var(--db-text); font-size: 12.5px; font-family: inherit; }
+    .menu-search:focus { outline: 2px solid var(--db-primary); outline-offset: 1px; }
+    .opt-row { width: 100%; min-height: 34px; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: var(--db-r-control); background: transparent; font-size: 13px; font-family: inherit; text-align: left; cursor: pointer; }
+    .opt-row:hover { background: var(--db-fill-3); }
+    .opt-row-label { color: #e4e4e8; white-space: nowrap; }
+    .opt-row-detail { flex: 1; min-width: 0; text-align: right; color: var(--db-text-4); font-size: 11.5px; font-family: var(--db-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .opt-row .menu-check { flex: 0 0 14px; margin-left: 0; }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 28px; background: rgba(0,0,0,.55); backdrop-filter: blur(2px); }
+    /* 设置对话框：800×800、r24、bg #171719、左 nav 188 + 内容区 */
+    .settings-panel { width: min(800px, 100%); height: min(800px, calc(100vh - 56px)); display: flex; overflow: hidden; border: 1px solid var(--db-line-card); border-radius: var(--db-r-dialog); background: var(--db-dialog); box-shadow: var(--db-shadow-dialog); }
     .settings-nav { flex: 0 0 188px; display: flex; flex-direction: column; gap: 18px; padding: 22px 12px 0; }
     .settings-nav-title { padding: 0 12px; font-size: 16px; font-weight: 500; color: var(--db-text); }
-    .settings-nav-cells { display: flex; flex-direction: column; gap: 2px; }
-    .settings-nav-cell { width: 164px; height: 40px; display: flex; align-items: center; gap: 8px; padding: 9px 16px 9px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--db-text); font-size: 14px; text-align: left; cursor: pointer; }
-    .settings-nav-cell:hover { background: rgba(255,255,255,.05); }
-    .settings-nav-cell.active { background: rgb(67,69,74); }
-    .settings-nav-cell .icon { width: 16px; height: 16px; color: var(--db-text-2); }
+    .settings-nav-cells { display: flex; flex-direction: column; gap: 4px; }
+    .settings-nav-cell { width: 164px; height: 40px; display: flex; align-items: center; gap: 9px; padding: 0 16px 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--db-text-3); font-size: 14px; font-family: inherit; text-align: left; cursor: pointer; }
+    .settings-nav-cell:hover { background: var(--db-fill-2); color: var(--db-text); }
+    .settings-nav-cell.active { background: var(--db-fill-3); color: var(--db-text); }
+    .settings-nav-cell .icon { width: 15px; height: 15px; }
     .settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .settings-content-head { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 20px 14px 8px 10px; }
-    .settings-open-config { height: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 0 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: transparent; color: var(--db-text); font-size: 12px; cursor: pointer; }
-    .settings-open-config:hover { background: var(--db-fill-4); }
+    .settings-open-config { height: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 0 10px; border: 1px solid var(--db-line-emphasis); border-radius: 14px; background: transparent; color: var(--db-text-3); font-size: 12px; font-family: inherit; cursor: pointer; }
+    .settings-open-config:hover { background: var(--db-fill-3); color: var(--db-text); }
+    /* 关闭钮：28px 圆形（对齐真实实现） */
+    .settings-content-head .icon-button { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%; }
     .settings-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 24px 24px; }
     .settings-pane-title { margin: 8px 0 0; font-size: 16px; font-weight: 500; color: var(--db-text); }
-    .settings-pane-desc { margin: 12px 0 4px; font-size: 12.5px; color: var(--db-text-3); }
-    .settings-row-line { display: flex; align-items: center; gap: 8px; padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.12); }
+    .settings-pane-desc { margin: 12px 0 4px; font-size: 12.5px; color: var(--db-text-4); }
+    .settings-row-line { display: flex; align-items: center; gap: 8px; padding: 16px 0; border-bottom: 1px solid var(--db-line); }
     .settings-row-line:last-child { border-bottom: 0; }
     .settings-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-right: 48px; }
-    .settings-row-title { font-size: 14px; color: var(--db-text); }
-    .settings-row-desc { font-size: 12px; color: var(--db-text-3); }
-    .settings-dd { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--dsw-specific-menu); color: var(--db-text); font-size: 14px; cursor: pointer; white-space: nowrap; }
-    .settings-dd:hover { background: rgb(67,69,74); }
-    .settings-dd .icon { width: 12px; height: 12px; color: var(--db-text-3); }
+    .settings-row-title { font-size: 14px; font-weight: 400; color: var(--db-text); }
+    .settings-row-desc { font-size: 12px; color: var(--db-text-4); }
+    /* 设置里的下拉是 36px 胶囊（对齐真实实现），非通用 r9 控件 */
+    .settings-dd { height: 36px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--db-fill-3); color: var(--db-text); font-size: 14px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .settings-dd:hover { background: var(--db-fill-4); }
+    .settings-dd .icon { width: 12px; height: 12px; color: var(--db-text-4); }
+    /* 主题卡三等分铺满内容区；选中用亮描边 + 抬升底，不用色（选中不标色） */
     .theme-cubes { display: flex; gap: 8px; margin: 12px 0 16px; }
-    .theme-cube { flex: 1; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: transparent; color: var(--db-text); font-size: 14px; cursor: pointer; }
-    .theme-cube:hover { background: rgba(255,255,255,.04); }
-    .theme-cube.selected { border-color: var(--db-text-3); background: var(--dsw-specific-menu); }
+    .theme-cube { flex: 1 1 0; min-width: 0; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid var(--db-line-card); border-radius: 16px; background: transparent; color: var(--db-text-4); font-size: 14px; font-family: inherit; cursor: pointer; }
+    .theme-cube:hover { background: var(--db-fill-2); }
+    .theme-cube.selected { border-color: rgba(255, 255, 255, .38); background: var(--db-fill-3); color: var(--db-text); }
     .theme-cube .icon { width: 16px; height: 16px; }
-    .settings-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid rgba(255,255,255,.14); border-radius: 9px; font-size: 11px; color: var(--db-text-3); }
-    .settings-tag.current { color: var(--db-primary); border-color: color-mix(in srgb, var(--db-primary) 45%, transparent); }
-    .settings-slug { font-size: 12px; color: var(--db-text-4); }
-    .settings-mini-btn { height: 26px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 13px; background: transparent; color: var(--db-text); font-size: 12px; cursor: pointer; }
-    .settings-mini-btn:hover { background: var(--db-fill-4); }
+    .settings-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border: 1px solid var(--db-line-emphasis); border-radius: var(--db-r-chip); font-size: 11px; color: var(--db-text-4); }
+    .settings-tag.current { color: var(--db-text-2); border-color: rgba(255, 255, 255, .32); }
+    .settings-slug { font-size: 12px; color: var(--db-text-4); font-family: var(--db-mono); }
+    .settings-mini-btn { height: 28px; display: inline-flex; align-items: center; padding: 0 12px; border: 1px solid var(--db-line-emphasis); border-radius: 14px; background: transparent; color: var(--db-text); font-size: 12.5px; font-family: inherit; cursor: pointer; }
+    .settings-mini-btn:hover { background: var(--db-fill-3); }
     .settings-add-row { display: flex; gap: 8px; margin-top: 16px; }
-    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 140; transform: translateY(12px); padding: 9px 14px; border: 1px solid var(--db-line-container); border-radius: 12px; background: var(--db-popover); color: var(--db-text); box-shadow: var(--db-shadow-popover); opacity: 0; pointer-events: none; transition: .18s ease; }
+    .toast { position: fixed; right: 18px; bottom: 18px; z-index: 140; transform: translateY(12px); padding: 10px 14px; border: 1px solid var(--db-line-input); border-radius: var(--db-r-card); background: var(--db-popover); color: #e4e4e8; font-size: 12.5px; box-shadow: var(--db-shadow-popover); opacity: 0; pointer-events: none; transition: .18s ease; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .click-pulse { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--db-primary) 55%, transparent); }
     .hidden { display: none !important; }
     @keyframes blink { 50% { opacity: 0; } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
     .cursor-block { display: inline-block; width: 7px; height: 15px; vertical-align: -2px; background: var(--db-text); animation: blink 1s steps(1) infinite; }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
   </style>
@@ -893,8 +1053,9 @@
     <symbol id="i-file" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect><path d="M9.5 4.5v15"></path><path d="M12 9h5.5"></path><path d="M12 13h5.5"></path></g></symbol>
     <symbol id="i-terminal" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="4.5" width="17.6" height="15" rx="2.2"></rect><path d="M7.8 10l2.6 2.4-2.6 2.4"></path><path d="M12.8 15.2h3.6"></path></g></symbol>
     <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"></circle><path d="M3.8 12h16.4"></path><path d="M12 3.8c2.1 2.2 3.2 5.1 3.2 8.2s-1.1 6-3.2 8.2c-2.1-2.2-3.2-5.1-3.2-8.2s1.1-6 3.2-8.2z"></path></g></symbol>
-    <symbol id="i-max" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5H19.5V9.5"></path><path d="M19.5 4.5L13.8 10.2"></path><path d="M9.5 19.5H4.5V14.5"></path><path d="M4.5 19.5L10.2 13.8"></path></g></symbol>
-    <symbol id="i-min" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8H3V3M16 8h5V3M8 16H3v5M16 16h5v5"/></g></symbol>
+    <!-- 全屏 / 退出全屏是一对：四角括号，朝外＝展开，朝内＝收回（Lucide maximize / minimize） -->
+    <symbol id="i-max" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></g></symbol>
+    <symbol id="i-min" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></g></symbol>
     <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8.64453 1.5V7.34961H14.5V8.65039H8.64453V14.5H7.34473V8.65039H1.5V7.34961H7.34473V1.5H8.64453Z" fill="currentColor"></path></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10M17 7 7 17"/></g></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></g></symbol>
@@ -930,31 +1091,33 @@
     <aside id="sidebar" class="sidebar column">
       <header class="topbar">
         <div class="traffic" aria-label="窗口控制"><i class="red"></i><i class="amber"></i><i class="green"></i></div>
-        <button id="collapseSidebar" class="icon-button" title="收起侧边栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
         <strong class="brand">DeepBuddy</strong>
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="grow"></span>
+        <button id="collapseSidebar" class="icon-button" title="收起侧边栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
       </header>
       <div class="tagline">向着未知出发，把每一步都变成脚印。</div>
-      <button id="newTask" class="new-task"><svg class="icon"><use href="#i-compose"></use></svg>新建任务</button>
+      <button id="newTask" class="new-task"><span>新建任务</span><svg class="icon"><use href="#i-plus"></use></svg></button>
       <div id="sidebarSearch" class="sidebar-search">
         <svg class="icon"><use href="#i-search"></use></svg>
         <input id="sidebarSearchInput" type="search" placeholder="搜索会话" autocomplete="off">
         <button id="closeSidebarSearch" class="icon-button" title="关闭搜索"><svg class="icon"><use href="#i-close"></use></svg></button>
       </div>
       <div class="sidebar-tools">
-        <span class="label grow">工作区</span>
+        <span class="label grow">工作空间</span>
         <button id="openSidebarSearch" class="icon-button" title="搜索"><svg class="icon"><use href="#i-search"></use></svg></button>
         <button id="workspaceViewOptions" class="icon-button" title="视图选项"><svg class="icon"><use href="#i-sliders"></use></svg></button>
         <button id="addWorkspace" class="icon-button" title="添加工作区"><svg class="icon"><use href="#i-folder-plus"></use></svg></button>
       </div>
       <div class="workspace-list">
         <section class="workspace">
-          <div class="row workspace-title"><svg class="icon folder"><use href="#i-folder"></use></svg><span class="truncate mono">film-studio</span></div>
-          <div class="row session-row current" data-session="Hello Greeting"><span class="truncate grow">Hello Greeting</span><span class="time">6小时</span></div>
+          <div class="row workspace-title"><svg class="icon folder"><use href="#i-folder"></use></svg><span class="truncate">film-studio</span></div>
+          <div class="row session-row current" data-state="run" data-session="Hello Greeting"><span class="truncate grow">Hello Greeting</span><span class="time">6小时</span></div>
           <div class="row session-row" data-session="Hi Hi Hi Greeting..."><span class="truncate grow">Hi Hi Hi Greeting...</span><span class="time">8小时</span></div>
         </section>
         <section class="workspace">
-          <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate mono">GPT-Image2分享</span></div>
-          <div class="row session-row" data-session="Simple Greetings"><span class="truncate grow">Simple Greetings</span><span class="time">18小时</span></div>
+          <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate">GPT-Image2分享</span></div>
+          <div class="row session-row" data-state="await" data-session="Simple Greetings"><span class="truncate grow">Simple Greetings</span><span class="time">18小时</span></div>
           <div class="row session-row" data-session="用 bash 运行 echo"><span class="truncate grow">用 bash 运行 echo …</span><span class="time">18小时</span></div>
           <div class="row session-row" data-session="运行echo命令执行report"><span class="truncate grow">运行echo命令执行rep...</span><span class="time">18小时</span></div>
           <div class="row session-row" data-session="Bash 运行 echo result"><span class="truncate grow">Bash 运行 echo re...</span><span class="time">18小时</span></div>
@@ -966,7 +1129,7 @@
           <div class="more" data-count="16">展开其余 16 个会话</div>
         </section>
         <section class="workspace">
-          <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate mono">deepseek-harness</span></div>
+          <div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span class="truncate">deepseek-harness</span></div>
           <div class="row session-row" data-session="AI助手自我介绍"><span class="truncate grow">AI助手自我介绍</span><span class="time">1天</span></div>
           <div class="row session-row" data-session="介绍自己"><span class="truncate grow">介绍自己</span><span class="time">1天</span></div>
           <div class="row session-row" data-session="中文普通话学习助手介绍"><span class="truncate grow">中文普通话学习助手介绍</span><span class="time">1天</span></div>
@@ -982,7 +1145,9 @@
         <section class="workspace"><div class="row workspace-title"><svg class="icon"><use href="#i-folder"></use></svg><span>未分组</span></div><div class="row session-row" data-session="临时会话"><span class="truncate grow">临时会话</span><span class="time">3天</span></div></section>
         <div id="sessionEmpty" class="session-empty">没有匹配的会话</div>
       </div>
-      <div id="openSettings" class="settings-row" role="button" tabindex="0"><svg class="icon"><use href="#i-settings"></use></svg><span>设置</span></div>
+      <div class="settings-shelf">
+        <div id="openSettings" class="settings-row" role="button" tabindex="0"><svg class="icon"><use href="#i-settings"></use></svg><span>设置</span><span class="kbd">⌘,</span></div>
+      </div>
     </aside>
     <div id="sideHandle" class="resize-handle side-handle" title="拖拽调整侧栏宽度 · 双击重置"></div>
 
@@ -994,19 +1159,19 @@
       <div class="main-chrome">
         <header class="topbar">
           <span id="mainTitle" class="main-title truncate">Hello Greeting</span>
-          <span class="mode-label"><span>♧</span>创造模式</span>
+          <span class="mode-label"><span class="state-dot"></span>运行中</span>
           <span class="grow"></span>
+          <nav class="view-tabs">
+            <button class="view-tab active" data-main-view="chat">对话</button>
+            <button class="view-tab" data-main-view="trace">轨迹</button>
+          </nav>
           <button id="toggleDock" class="icon-button" title="打开停靠栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
         </header>
-        <nav class="view-tabs">
-          <button class="view-tab active" data-main-view="chat">对话</button>
-          <button class="view-tab" data-main-view="trace">轨迹</button>
-        </nav>
       </div>
       <div class="main-body">
         <section id="hero" class="hero">
           <div class="hero-card">
-            <div class="hero-mark"><img class="hero-logo" alt="" src="data:image/png;base64,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"><span>探索未至之境</span></div>
+            <div class="hero-mark"><img class="hero-logo-img" alt="DeepBuddy" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGYktHRAAAAAAAAPlDu38AAAAHdElNRQfqCBcDJAECHNnKAAAAiHpUWHRBSUdDAAAImatW90lMSs1Rt1JQN1TXUVB3zs8rSc0rCSjKTylNTi0CiRsYGBpaGhoaGhgamPo6OnuZeRs6WzgaGgDFQTqgSj1dQGqNTcwtTIDKLQwMzC2MzczMjUBKglKLU4vKUlOc81NSDUHKUG0qSExPLMkvgknARKBGohtgBBasBQBNyTOQ+UqlagAAACV0RVh0ZGF0ZTpjcmVhdGUAMjAyNi0wOC0xN1QxMjo0Mjo0NCswMDowMDTpz6oAAAAldEVYdGRhdGU6bW9kaWZ5ADIwMjYtMDgtMTdUMTI6NDI6MzcrMDA6MDB+mWSSAAAAKHRFWHRkYXRlOnRpbWVzdGFtcAAyMDI2LTA4LTIzVDAzOjM2OjAxKzAwOjAwIzHtnQAAJT5JREFUeNrtnXeYHVX5+D/vmZnbtqcnhJAQSIHQBAQhQTBgRAWliaAYIqggJATQL+1LCYiAIghBpIgQQnkQRKogEKSoJCA9QBIgpJfdJJttt015f3/cNnN3AxI26vf55X2em507M/fMOW9vZwJbYStsha2wFbbCVtgKW2ErbIX/30D+0xP474MuJj+SZEAN38v5XC9w1bzlesUp+won7mx6/WlbCRCCWW/5vNcCRhjSlpfH3IA9LGFevxqdJNC23xDhKzv0LhF6n6T/h2HybGFVp5B25Rt5T/fwAyVQdkq77NqWhX+s6v1nbiVACC47TBnbV1NuoEcAoIIXUJfOybG/PgRxLPjZS36vPnMrAULQloPWLCN8ZTdVAAVVfOXYs+fIgavawRG45G8Bc5b2DiG2EqAIKzsDsr7gBTJKVfpo+Yqg0C/j6q9jFgecs69hYwbSnnL1vM9OhP9TRvj5RT5vfOTTkBJWt0EmDzUJ6J8KUISTDox9htHXc+KjTdTFdHrG5dqCBAhQIIUIWEaaHaP3xCy5df5a3j1wJHg+XDR+8/n4v5oA973q8+eXoakWPloDrV3QmVHeXSZk7vHlLx8ik0bmgu1+nGT4QGjthF+cIBy6m/Wpn/XaSp+L/y5sV68/y3pyQUEDaYgEICKIgBE+jFmcuapTHz1khHDo9rBd479GhMtf9LENrE0LgmL/p5HcE5x+h8/4nYTZzygbOuHFS40c+atgYMxiTF2KsXuP1pHjLzYDLEvil/rJzLb9eT9mc09tgo86Mpv3TDeAfACWYBuBQEHL/FkggRbEgkBlZB6uH9HIinfW6ett3ifz8TOLXf6+0iIQOGBwIH9cLLsAukUIcNVDHsP6wz/eE1ZvhM604itglJwr2JZiiWBZSsyG+pSwbV+44njhp3fBW0th1l+Vg3ZmQDLGhAkXB4f6Afv5vm4XBKSkzJYKUhBj28Jb2aJX2dbmCXWflDC4BhDaJKR2AASpPE9BRVFleN7jxJnfcV+/5a8xZrzg054D1wcjBctRlxCGN8D3LzS836q0ZZVdB0vs/g/NKRlXzxch2ysEuPQBnwuPMnxvps/qDcIfX4LXPlTOPVKcVa1ah9BgoN4y1HhGLduAZciL0AW0KbT9cBKdV4wPgn1G29b85cGOe+3A0S3tHOX57ByoOkFQwIEAqgXkSOF7NpWQOxpr9N6RQ4Q+tZu5CIWkDUZYhYhKkf0VpaKEKCvtQCHnM+7cB53EmyvJDm8g3pFjh5jFCCMYP2C1CIun7OZtuO7wmO7QhPX+eka/tlLP8FUm+0rcCNnNtgFPvBZw81MB/epgSbOwcJVyyB6SWtHC9jmfXRXd3fdkjOvpMFX6INSIIaYBRgwo+AI5ETqMYa1j86Exst71GOAH7O8Fum3RCyx8Qs8ucaZjk07GuGDUUPnNkrXqbmiH208z7LLt5hnFM/7iYxn273LlSVVqVbUkC0UiaZkIAhjDw/uO4Og3l8t+OU/PUGU80ASIQpdl5ENVfTtm06Yqg11fv+ArQ6W4CNvoO5+aAI//0+OOv0JdEhauhMP3EevZt9g563Jo3uXLnq/jFPqhGD8ocJApsWtoLREoGLYKkkUqiw2tu2QRRcAYSCS48oITrAtufjgI0jnl0mMs9hm5+X7FuXN8EAa05eQZP2CXAgEkNOXKnCyDJmOcGvi0eoFcn/d1YEFEpThnLa/ViBS/FwyvamG9qRg3fSpWmTzT4/0WaOkQRgzEjttMeOglvW19uz7VmdYrszn9kuczwPcLyAfFFBdQ+pQwKSE8ldSKlqQ9KBm90A0hAqqAY/PuwEZuuOkhP0jG4S/n2p8J+QB9E3Dl+abZNvo8omWvp4R8oeAJmYKSz1uG1Z7PMa6vA035Xq1MXAEVgkJKo8hbhftEaDfCw/8SAV5Z5HPIDJ8NnXDObYJjsfOf/8lNbWkeyeSZ7HkM9H0IVIuI1KILV1lASHoLoU1Ip5TwHvU5ogQqTrosLbYtcx84o2Xl0eMN9/z407udPUHahdMuCbAN9xuRNhGwRHEsPrIMz9mGdw3qFxkm3pnlGMfit3GLRw3qFlmratSQElNFVREB2+bFPjX87RMJcM6dLlNuUHxfaawlsdeO/Ki1Qx/N5DnJ82nUavtUlrySKBan0AN2JXReQifL3kdZdMKLksKYgQIxkpbw1/d6Jy1w+GilKQ594vpS3NIHHUuJO9xSZ/OjZMDMeovpNQ4XGGhDhUDlOEWmNST5rWNxAdAV9syqpl0Gy5B2LG5a1U7nx8rseXf4XHGqsP90pbFGB6/r4NJsnslBgFPWClUIlJCqiFzvyQaEz0XUTdEGSNXF4nkFkjEWDunHV3KuLPlwrXL0voYZR26e8b3gqQDHKgR6RpRULViGcR6cR57ft3ZxlSq7oqyNWfyvJNg568lPK6ZNmx1hmrFkYs7jByXbV4Lw0oyBuMPvt+/DqW1Z8puc8bmzPa440bD7qUpNgtFr2+TOdJaTfR8nMrD2/PtP1MbSw3ehZ+6poo0I5H1Gr22Vy5NxBjbVCuuzyuTbPr0kXD7HxwL61WGJMFJgh8FJYu+vkPlDmmRqJst2GrCnKo7CUNfntIThJcvQFQSKFyi+MsCDk5O2PiVCFtHIXEtLMwYci9fiNpcvayWf8zaRjLvwPpcrp1nsOj2gqYZd1ndwZy6vB4cMezfq9oj0ktfCppFa4nItKy6JXJKiMQyvpCQgGZfjV6zjgdoEE284Xsll4ejr/3Ui3PNaQNzAt3bwZfFaTst5PNeV57mFa7h7QJ1+Y10zuWK84pfm49h0IoJqAXehtQ3rcun0Au0szFHKayl5bbZhcdLhjI4si59bJowf1t1i8NaHHsf9WmiohdoEYzd0MCvn6t4aikciHkwIN1SdD+G3os97oJaGxqm+VqBheLCoEREEx2Fd3GHGvqO5+d2luJk8fHsCfH/8xxvncx73yflCzGJ8R07/5Cv9Sv6BEclahrcVGgPVHYs5oHnJmFzmWhyR8/SkwjrLKnJ+bYwL0p7c6SsNGoTXr9gWb9bGmLZwvbxwwjhlVRdM3dPqLgFn3Sn0b4D6pA5e167XZ/K6dxBEkRX2aCDqQmqVStLwX614POFP6QbV6I8q2j96d8m7KhE372q/TI6r5y1iRm2cmngMHpgLFz7sbRL5Ly4JqIvBNrWayHpMD6ggHyBQTXiB7u0HumPRb2/vk+In8YRu6wd6YjE7WmYay7DQtmSAQB2qmKK3ZlmaidvcnXLkWxuzvPCdnZV16QLyoUoFnXiDTyIG2/Yjsa5dZuRdDtagiOCgu7oP1SxQLbvv3aBMnGpcVkX5FSJIiAgSsdVStu4URabg1vlKvDOj56xs06trUzQagZfeEc68v2ciPLMImtPCmrSMz/s6SYt+cEQSQxAoda1pfujmWRizuCphy1JT9EctA0lHnnN9vqiqxghYRjfEbX00bnPs8AY92Qt00c1PwvoM/OhzFcksE+D1Dzz23FF5+nVYtJrvZfM62Q8qCCpzvvaMvyo8VmIRrXyv5NhLIJVrEYJVjxb+mRaRLuXAKOS3mqwrp6xoYaZjMcCJwQtvwz09FE5SMdh9CJbr8z2F2tLQ3by5EgECJO9xQkeamcZldYOjJ8csPcsxPFgT44GGhM5TVcsx3J10OKsmxqRhDfot1+fRLleyKQuemQ6nfC6qFsuPOWSGR1uXkIwxrrWTR1xXR5TCo+rJVOv30rmwvpeqp0RsQWigSq5du7utoeCgHGVKSe+GVhCOkothfk2Sh/s1MHVDB8ufuVWZeZMwdWJh8W+u8rnrDcHA2PacPuMHDAlPaxOCXFmnoIGyIG7zTN8a7u7ThzfUVT/nETt6lJe5fF5MG+NKvxS0pGGPAcoJu/ac9zQA59zuU5eEz49SpyOjP3E9HVHm0GJ0G4lcwyqliqfDYhG5HoqIK1JRipirF17Eaniscgp0Ew5uJUEGBjIu31jbyh01CUYdMEU4/UuGM+4tSMJRN3m0Z8ENmKDKkLDAhSPyblxanL8fIKqM9QKmdubYf8EycgF4COknltj6ykd5DtxOOW8/i2sOtjaJ/PLYB1zo0dElxGwmdWZ5wPe1tpoNxJSDDsJSUebsEIf0FIRVx1pU3yfSw7VCMqx0LCIRq1VOcxR/Y0zl91o0gokYc+sSnLIxy5sHjlI6c7DTdnDylRannRjc6isnl5mqmghS+RLRipX1+DGbb+c9Hjj/SzC88dOnRMyct3zqEsLIwSTSeU7xfa1V7W4fKUnCJkKssC0oc3nIDgQ93Bu2J2VJCLlWJURIUfVoSOwk9Hup+l6uGwDZvO7bluGufrWMf+JdgydCYwoYBY5hqWPxdszmnwZawswSRn75vETnDbTZhg+SzuYhH8C+6kFoaYdEjPG+z8ElxEW4CwosFZ6URrm8fG/xvIZZPryeqnEral7KK4vUw6USonUneIlo0WvRDIfgBYxb38Gdg2r1jOtny6OrvyGYTshnuS/t8X7eI2iq1U7Hkh/kA44IZ8PDyyh7SsVjY7GkJi5LPzHq/xgwgxrh/KPFZPIc5xW5H7Q7FxPyVqoKJdX+e+S4p2thnJcQppXaUzcjrj2NHeH9bsQJq8RAwVNGdHn87itf1pONMOJr4/Sij1p4ZMU6bl/dyp2L18hZeZcbBV6LJBALqmy9bZhjGZ5yDGvLOR2buZcfQuvAho8z2x8P8oVzfYyww4ZO5nieDgsvblORaXluPfjNEaQWD8LnIt5NVaKuOhrWqmulg8i8yipDi2NLxJ8XAUzBHmDAskhbhmZfGV6SVFM4j2PpNWOHSnuXyyWlcR2Lf1jCz1s2ElOw+zeQ9mGaGHZKxPhu3uP5xhTMOGgzVdDaVmiq5UDf121L3k3YzYtokhBrRe1DBUkRL6KKk8tqJ2TYypF8FSNrSNUV7pWiOgpPoqiIiimJiExI6KPFexSCgJQqw5GINi10QShj8z4PBVooJFk2KyyY8c5Svo3heAHT0s6zw/px5XYDWdOQkoUaKJNGG2ZsFvrBTPmS2nmPiUFpbdAtnVDSNUai66qOxsLZ0U0KZbWBry7MlA1cD+pFQzdVOa2Fv0qVcESTgJtw9kuxQyImi+I2g0wxPrEtHl++ju1VmBIocV9xfGXSyg3c8N5S+j3zpgZ5H8b22XwrYM95W4Z4PruH3a2w/rSEvAhLLaOrEDYGSmCElCqNQH9V+irUg0jZV6+WlLDxChOPorEufo8a9e46vtQmVTKCFQkLYTgUCEZc4TDSq1SiZfBti7mDGnk063IFFO2Gy8Ksx67GlCREEQMqslPeZ0zW48X/Gf/ZqnF2Os+4QBka4djiIhxLl9Sl5MLGlDzbVM/G+lrNt+dUrUDsdRs15vo0ZPMyxPN0tB/oPp4v+wSqY72AmpJKKBXRw95OuFghWtH1kXbAosrQEHOJ9MT1lfkiUZIVnahwaqlC7OKNcZvnGmu4sW8D6y1bpuQ93TsUn/RzDKu8oDJOEToxvJuKfybcA2Dyru7hB1pTEu8SsoxRUgmuX9WidymsAk2nM3hdXeJrQM4IHcAKP+DlzpzMfuVXzunb9tcvN6T0sFRMr3EsXShVWZ3C4sNuVU9Z1Gp9plExKioaDVva0typTmFEeKpbvCCAbfPO2G1pMza35Tz9bkm5GQPG8OVBjbwoylygUIwvMMjquM1Htb1AANsLZBdVDcs5WuDGNCKv9m2Epga4Z7rT4wCvLvC56emAI+/yeGMJra4vf33lV9ZfD73E+3VbRo7IeTrF82U3LTIRhA42QZtoQLapH2g5U1oK2UxI7Um3u6PSViK663LI6g08Jg5uuIFABDyfvWqSfGebRs5e3cH9rscQEbAtWTC0iZZMvhcI4Ae6fXjhgRZ4zLbE71srOdeHe6dvWs/tOSZ67QczXSbd4/HSQpYvWMn1E3bmDy0b9btZl9Ncn+HVrtGmUjtEkBX1g8OBohHtsoR5MUffMRaS99nZC9hTjNR3SzL14GnlPUYtXaMH7TJSZna5XOMF2GHPTATTkWOQF1AXUM43vfr0u7iv/dQw8zMSwKjKoPCESjP1fSWbV3L5Txdk3DrV4ZLjY+w3Rlg/28bzWTNvsbm6qUa/noxxl2XIl3ES1s1KOfMfDgLLwqkaSUUUOX5dTYJTRg/Vw5593Ux75hVr6oi+wdcbkhyZcPRpEzEUPdC44JbiISetXs9KS7ivdLsCluEv7V3c1drFeZ5HXVFF543w6uBGuOq5gM8KJlCaIvMri7FY6TyJdG7zBr74OAcRYVC9ctW3A1xf3tl9OD+oTeg0I6zsjhepQnAl+VduEezuOr5+woHmDy8tMukJu8FRBwQopHMecwY3clzc1luMEFQLQvUXP6Dv2o2c39XF7KTNC0XP6NHA5cqV6/mfQNkLLWgHA2vrErzbmIJzNzP4ihBAILUJPRBXoV8+gOfe3nxK3zYtRv9GJRUTWtrJvvqB3FyT0GPjlr7SE0Z6zDgU/xbcz4pRDgI+P+tZ/e3ABi5OxDjCGOpXtVr4vtCZk/WDGuUnyRizS5JQMiXVnoEfQNZlz5UbmOq6XFbj6JRcRn6zpJkLsh6HBkHFPbeEdwbVsbJf6jPjvjCnHX/sq+9XRU/FVG5tijNbNvLriXsKd5722al93DUufevgxXdhcCMj13dwXd6Xr3VLUxP1ZqKuZjEWMJWeS2MEy+Bbhgf61TPVC2jxLbCNkooxqLlD7nV9DiwPJt29JZFCOsIyvBJzeNNTmegHOiII2SJjoCbORUvWcdmb5woin32HlymPUcV6qqA+o1b+Xtl9eO9Q+96zHEThzfcgnefDQU2cFHe4qyfPMVrCLCelKWdAixFxzOahuoSeGqguzHl67IZOPW7BcuX4/YUNXcL6LlmTdDjHMqwIG+WInSmeDgJwffZO5zk57+mIoFSS1RKyyDgW/xjeD37zt81PwEUJAPnS4qrF3w0Y882rTeqv7/QOAQBm/tBh1tnQkYaNXaxNxoJpcZu7yi52iO2rT1UmWYx/DbmGOrlx1Ua5KZXgzyIghs+9f12a1esCJo4K+ML2ystL5eW4zS+k0BIfHSvkH5czvVW18NKBbfioNs47jSk4fULv9KOaQkBVQX2YCJ7PjutaGbKhDV7+oPf2x04+xGHX4UrOBRHTOrQfZzs2D0dmUES0hqM1KAZhpXS5xNu7OH1wE2fmPTlcCkFZVqSWuoRy6TEOa9rhwFFKvzruiNs8WXJjy653OK8XylOVuzxCCLGEl+84Xtbu0L/XUIFBtSWSz4+K5MBMlnEb25Xbn+29hwLMOiPG7tv7CLCuneb6pE5zLF6ovi9Sl4hm6wgCyOX18I6MXpN3GVXMRa3a8UzlxjkFx+HWKTYbuoSWDjpq4vzSCBvCSO+pj6n8zKDyXCMEtsWzk36junJjLxJAkeXlJ1ctPFCcnKdffGdmwE7b9i4BAG45NcEeO8KbS5W2jCyrT3GGbVgEUY+np6aAUht8yZcv2QsDcXxYsaRiIL+1Z8CgBmX0QP2bbXismgBapYJK18LPM7A65TCvTw18e89eJIARXUhpxUQrXMVQfcLBl1p9HnoZVqz77IFHNVzzPZtjD4BbTlFWrueNmgQ/NULrJ5q4sBopd28oOVf333Ok1n95X8Mpswpq85SJNu0Z4dVl4idjPAS4PWXcy/mkqmsC2BYvj9uWJUP7wEEje0f/AxjH4jUR3DARypQAPJ+xG9vZc+165ezbe8fyV8MtP3S48Ulh75HK85e1PxJ3+AUUNlaG+4C6xQhI1ItR8Hz2a83ID+6bZrF6Azz2nsuP7vA5bA/BLuR3Nvo+Xtn4bkLCwg8SQW3D40++Qf7VZb27dpNIyFvGktbqIknZI1BSeVcPn3/9Iob02SL4B+DWH9tkXfjq5fUM6csNiRh/KribVR5aKG9VqgVooCE1Ik46z0UH/sy/EGXQ1/ex+cPfhJPGL6QxKdvl8pyMktxUrboa+cXM6LJkjOcGNMD0gz5LCb47yKQZXsPiZnncddk/qgyLNwjEbD4Y1FcO9pWlE3eHGcf0nghWwwEXevg+JGOM2dDJnzyfMZhSG2IRxaWJhXRGeT+XUOqk0GRC3rYs/iFCq20zyPXYL+8xuhz4hYKyUu04fL50LRXj92cdJj944jUNrj2yd9cu7KTsdHDwq0yWs0pGLUpjxbJE61Jy+qoWvbH5LgNb8B0fv3/GY8pEi9FTffo3cHxXlt+pSrK62Qs0hMBwiasStZaLc8Uot5xdjRbQKudMtHxZ3MuVqUtyVNblicGNMOuE3iWAGTsxIBnjWWPIVdVKih/B85FsnuM/N0YaJ16iXPvn3n1nThi+f7DNiTf4jBkqjB0qDyQcuaeUkItCeT97KF9Uscxl76h4yfcL34Mg6l6G11sdjYpAzOKVfnX8fVADTNm/99drBjRAXYJXjGGhyKb1m+vp3s2tfHXhMuXMa3tXD1bDrKk2nRlYsELzNQm9yjIsEAkHYEWCqITsVdiKUtzEVzruOfUQub8q3igKhToWd7+znPY7nw44cPveV73mCyMDnpttmh2bv3wM/vF8jWWzespeo6Xx0AOU73yKrUCbA9O+Ai/+LMPSZt5PxPiFoPlw4S6EO0o1sZI0aKliH/JyPukTNsqlQ9vizZoEj2zbFy757paxe3LcLz3eWSk4Fl9o7dLHfZ+mbixSlE/HFq+uhlOaW7lt5e0Wm6x09BKccL1LS5uQjJFasZ7ZOY8jIdSsVfqnyj6IiRrlsNEVU9W0JQU/M7wPWQrvstBUgjM2dDBz3vmGj9MOn4kAAIdc4lGXJD5/qdyTd/XI7pV0kKJ1dmx5e1Bf+ZrrsbxfEzx27pbziAD2PddDFRIx9mlP87AfMDBS1ZQoQkuGVkrbh8LtDNL9fkIGu3zNQDzGPwc38XXXZ22fOvjtsVtmnQZgZavwxmLJJRxuFyED0TJqmLu8gF02dnLaS1eK1CbgrDu3rCo64SAYu43y/GXWvJjNraEe3ipBlcj3kkfXTW1VMVepxygcFhhDPulw3aKVrL3vXt1iyC+j9TePeTwwFxIxSS1eo/dl83w9XPguz0wKnQiWxYb6GvlWZ4Y5zW3Qds+WlYIjrnTpzAmOzZDmNh7Ou+xVmr1Q4FiIcnU4nx3tX9Wimil0UYghwvkikEzw4A6DOSGdI73jILjwK1uYAAAjfuQBQn1Sv9ye5v4goD7SPBm5G+Ix+fvgfhyTybHaNvCPKz55ksf+yifuwBsfFfIM9QllSH9o7YBTD4Vj9vmY1xcd7LHTztC3Vo7qyOqdgZIqNy+UVIkIIlpuohCkguBy613p3gIRqFJFjs2Khlq+mXN51XHgsdO3LHOVI6qfHAajhii7DJdn4w4PdOtirpLkvKf7t7Ry/o6DxEnG4ahfep/4sMLbsbAsw162xaHGMHrYILHXrIMH/w5fu9zjHwt7VmnnTYYx28BOQ/WRmMM9Yb6oeDuFt5JIGdeV7VWKRNVRSLxL4xhRLxnTq558OXj186Ng8vgtivsoAU77uk1HBuYvxWuokWstw0eR3HjVJwggk9OT5y8LTppzjWA7cMy1H28P3vgI5i5g344uHulM83DzRp6d84rOqksxcfS22OvbYb/RPtNndR/nihNsMnlYtAa3Tw2/sAzvRQLHoFLJ0lKSrsfcYbG8WeWCGgPxmNw9uInbvrmfYfUGOGb3Lcv9EQIAHDRWOXCcz8sfyPxknF8ZwYtsxAjfXCBCojPNpXucpF979Hno0wATLty0JGTzih/oKBUdHPjqeB5DujIcv7GDBx96ietsS7bf5vuGZc1w6M88Eslo68GU/ZRnL3mKD9fyfjLGDMvQFUmflxgmlJyLBAKEtz1FyIFj9KU+NVzY0kYmk1N+18sph3+JAJdPdliwSpgwJmBYf+5wbP5YNmDd83SFeoGv/btyev24kUyY+ybsNkyYsokgLZUAx2aZKXpapfE8pb4zzY/XtevDQwfIUUd9CZPOwIjvt3P/3MpY3/qSw4m/OYSdhir7jNYH4g43h3M5EppXZcO3VCSiLCEFUpSKPo7NB/VJmd68UZe/vRy+d8C/73223Z705IUO6bywqlW6+tRxUTzG/PBGh3CbZil/ks3p9us7uMmy9Qv3/V3xRDny6u6S0FQDNQneMEbeCXsmJYR5HuPaOvX2K2frjLgtjckEHLOvz0m/rRBh1ukOOU94Y7H4feu4KmbzdGTfWShdXUpZVG+11aCQxij0ebIqEZNpH6zm5VO+Ikw5UDhmj/8gAQCO+2LAG9cYlrWwqC7JT22LlrCLV71XDMAP2Km9kzu36yeTZt8EXWn44v96/PnNCvJmHq+8sVjWp2LMMoYeNbTraV0mywVr23VWQ62MHnWahbHg2F9Xxjl634Dmdmjtork+xU9sw8IC0sOxQLTNscz5xTSFqmIZ3dBUK9PaO/SJCeNg7kK45LB/j+r5WAKcfZjDd671GT9Gee0u68maOOfZhs5oU354oUKg4Prs0Nald+w6kR/usI047Rn46m6GE28oSMPMZ4Vxw5SmWr3XMqECvFb0d1GXSDrH4WvW631NtUy89bfQ1QVfvqRAhJMPjvGl3QL+9jP4aC1v1SQ407FYW0lNS3R+Eb0pIbMgGd+jfe6lFkvXQmeXwoEuFz/0yR5db8HHJji+NsMl48GRE8Tc+AhndmW5LFCSpR9q1QCFTRaKZUk2EeP22pRctWiFLt15O/j7z69j+qxp3Pc3Q10cauIc25nR2UHxBVBl41huFCtszHYc1tTEueiAseb215eot64DTj8UfjTJYtptHtm8csuDFhP28U/ozMr1gUpjGONSLOaUfFMpsp0pbvo26LqapPyhvpZ7Bjfo63PmS3r4QBjcoOw/Vlm8Vph6kDC07xZMRWwKHr/YwQ2E258iGNZfr6tJ8jNjyEZS8KH7tRgV+QGJriynbuzQR4f152TL0Nc+8gyee1sY1h9sCxxbW7RYHO82RkkSANdlUEea655/T3+eStAUcyBwhO/M9Lj+JJtcHr450eeFy5pnx2x+Kmh76fU6BfdUKfdZlVVnZfdOoNKvM6s/bm7l8QUr5ZFh/TnXsdjPGBpOvdnw1jJh6Ejh0i0kFf9Sim/s6S7GCDtvh/3uUqZ1ZZjhBdT2JAE9PMCPObyaTPBoPMZc25ZWz2VwZ1rPyroc1JMlEAm9rbNU4RJIODzeWC/nz18cvLX3GMOi1XD2Ycpj/wwwRrj82EBO/Z2ZknP5ha/StzynUGa0nKWoqn5BMSlXyIS2G6PvxRx5qi7J7Lkf6Ptrr7e2SEb0Xx5xl+keKQemfj0wVz4gk7tycoXnM/BjBw0lIY0BY5FVJSeQCJR4eKvQx05KKmPYNouTMX45bKDc894ybR8+SNhzh4AFywrS86dzLA640D+8MyNXewE7dssFFV+eWkpDlHNDof3FxbPFvcO81KdWjwyUNY+f1fuv2v6X/a23f20Td5Q75kgw/wVze0MNJ8Qd3u72KhsiGqQs9n4ArkvC92jwPOKBH239q6qJ9NjLHxT6lLbvyjBz8Sp9sKmGb4sw8PJjL+KtpYYl6wxfvFhpaZdH+tZxeF2Sey2LXLlQQ7iZq5gtLcYK5blG3FhQGJP36ef2fktU+TmfCg691KU2WXgz+nb9Gb2hk8uzLkf4AaUXSH3yw6RnKYmcqi6yEMr3Uy60u47NAsdinu0w37FZ01gjXmsXYgn1oHt0ZjnCMtLlBzoUSJW8rXJhxkQLN2FpsS28miS3jxzM9Gye9J0n974h3iyl9p1rXe4+07D7dGWb/tQtWcsPMjnO9vzSu3cKclAydOFIulrvhjRDdGJhfd2TbQmpllJBxbYIjEH9ALEsMY6lzQI/H9LEH9q6dJdA5StZj30CZfsAGo0hbkREi94bgufYkjaGNcbitUSMhwY28Xh7ms5kDO479b+EAABXP+Ry9wuG+pTy/H0We33D/3xHmvNyHl8NfGJBGPmERLsH7i82v1a4MESQ6jRDaPNcJYcfJghg23iJmDzRUMPlT1+Xn3f4T2Ks3ajMewKOPVHrOrIyJJ3ToSIMAOpcH3EsXAzrk3FZXZuU5XuP0uYH5oo/fAC0peGCo4UJ2/0X/kduh//cpX8DzFsojBhIzfJmPaIzy+l5T/Yu4bWk0yOIj/QfaYjLJap6JEq0sJqISEElnz+/NinXbdOf+1avp+Pzo2FDJ9TYysB6eGu50pEV2jOK5xcGDop6yYlBXUpoSAl96pUP18DUrwqH7/JvKMh8Frj8Po8/vlzI9SxYASMHav8NnRyd95iS92QPPwj9VylVVbbuRIhOaVNvZAkj3rLAtngvFeeuhlpmv7tUln9uR2jrgkl7wXn/5vTCp4FedWx/dIPLzY/B/rvBq4uF8WO1X3MbkzI5jvUC2S8I6FtOGVdNoBuXVyG7dFz6a1lgGzodm1cTMe6vr5FHnp7L8on7KM9cZDH1joAbpvz3Ir4EW6TX4pw7XK6cvJKD/ncbPlwj7DcqiC9ukXHpnBzsenqQH8g4L9D+qlL+f6e6pZfoTgQjuLbNBktYEI/xYk1CnunfoK+9/iEdIwYJX/18wJuLhdlT/yv/b6IeYYsQoAQzH81zzSMWY4cGrN4IH6wRDt09SC1dJ9tn8uwRKHt6PmNVGa5Kf5S6QAs71UXwBDrFyHrQZTFb3nNsXksleH1Qo3xw/7O0f34XGNykPHyvcNbZyjWT/+8gfitsha2wFbbCVtgKW2ErbIWtsBW2wn8I/h+QuH0m1YQtxwAAAABJRU5ErkJggg=="><div class="hero-wordmark">DeepBuddy</div><div class="hero-slogan">桌面上的 Agent 工作台 · 想到什么，直接开始</div></div>
             <div class="hero-chips"><button id="heroWorkspace" class="hero-chip"><svg class="icon small"><use href="#i-folder-real"></use></svg><span>film-studio</span><svg class="icon" style="width:12px;height:12px"><use href="#i-chevron-real"></use></svg></button><button id="heroMode" class="hero-chip"><svg class="icon small"><use href="#i-mode"></use></svg><span>创造模式</span><svg class="icon" style="width:12px;height:12px"><use href="#i-chevron-real"></use></svg></button></div>
             <div class="composer hero-composer">
               <textarea id="heroInput" placeholder="描述你想要构建的内容"></textarea>
@@ -1025,7 +1190,7 @@
           <div id="chatPanel" class="conversation-scroll">
             <div id="chatMessages" class="chat-column">
               <div class="message-block">
-                <div class="user-line"><div class="user-bubble mono">hi hi hi</div></div>
+                <div class="user-line"><div class="user-bubble">hi hi hi</div></div>
                 <div class="copy-user"><button class="icon-button copy-action" title="复制"><svg class="icon"><use href="#i-copy"></use></svg></button></div>
                 <div class="context-row"><span>▣</span><span>上下文注入 · <span class="mono">@deepseek-ai/dsh-system-prompt</span></span></div>
                 <div class="context-row"><span>▣</span><span>上下文注入 · <span class="mono">skill-catalog</span></span></div>
@@ -1052,7 +1217,6 @@
                   <button class="pill-button permission"><svg class="icon small"><use href="#i-shield"></use></svg><span>Full access</span>⌄</button>
                   <span class="grow"></span>
                   <button class="pill-button model"><span>DeepSeek-V4-Flash-Vision-Exp High</span>⌄</button>
-                  <span class="dim">◯</span>
                   <button class="send chat-send" title="发送" disabled><svg class="icon"><use href="#i-send"></use></svg></button>
                 </div>
               </div>
@@ -1476,10 +1640,14 @@
         closeSettings();
         closeSidebarSearch();
       }
+      if ((event.metaKey || event.ctrlKey) && event.key === ",") {
+        event.preventDefault();
+        openSettings();
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j" && state.mainMode === "conversation") {
         event.preventDefault();
         state.dock = !state.dock;
-        state.dockMax = false;
+        state.dockMax = state.dock && !canSplitDock();
         if (state.dock) state.dockWidth = dockDefault();
         applyLayout();
       }
@@ -1527,13 +1695,22 @@
     }));
 
     // Layout and pointer-captured resize gestures.
-    function sideContribution() { return state.sidebar ? state.sidebarWidth + 1 : 0; }
+    // 浮岛几何：比例按窗口宽算，预算项吃掉窗口内边距（2×GAP）与列间缝（各 GAP）。
+    const GAP = 10;
+    function sideContribution() { return state.sidebar ? state.sidebarWidth + GAP : 0; }
     function clampSidebar(width) { return Math.min(Math.max(width, 232), 380); }
+    // dock 可用预算 = 窗口宽 − 窗口内边距 − 侧栏及其缝 − dock 自己的缝
+    function dockBudget() { return window.innerWidth - 2 * GAP - sideContribution() - GAP; }
     function clampDock(width) {
       const min = Math.max(window.innerWidth * .30, 416);
-      const max = Math.max(min, Math.min(window.innerWidth * .70, window.innerWidth - sideContribution() - 460));
+      // 上限：窗口的 1/3（用户原则：右栏不超过 1/3），且主列必须保住 460
+      const max = Math.max(min, Math.min(window.innerWidth / 3, dockBudget() - 460));
       return Math.min(Math.max(width, min), max);
     }
+    // 与实现层 geometry.dockFits 同语义：分栏形态必须保得住主列 460 + 停靠栏 416
+    function dockFits() { return dockBudget() - 460 >= 416; }
+    // 分栏只在断点之上且装得下时用；否则停靠栏以全屏浮层（dock-max）打开，不挤压主列
+    function canSplitDock() { return window.innerWidth >= 1100 && dockFits(); }
     function dockDefault() { return clampDock(Math.round(window.innerWidth * .30)); }
     function applyLayout() {
       app.classList.toggle("sidebar-off", !state.sidebar);
@@ -1546,7 +1723,10 @@
       $("#closeDock").classList.toggle("hidden", state.dockMax);
       $("#toggleDockMax").title = state.dockMax ? "退出全屏" : "全屏显示";
       $("#toggleDockMax").innerHTML = svg(state.dockMax ? "i-min" : "i-max");
-      $("#toggleDock").title = state.dock ? "关闭停靠栏" : "打开停靠栏";
+      // 右列开关归右列状态栏（DESIGN_INTENT §4）：停靠栏开着时它自己有收起键，
+      // 主列这颗只在停靠栏关着时露出来当「打开」用——与左列 收起/展开 的分工对称。
+      $("#toggleDock").title = "打开停靠栏";
+      $("#toggleDock").classList.toggle("hidden", app.classList.contains("dock-open"));
     }
     function trackDrag(handle, pointerId, move, done) {
       let queued = null;
@@ -1576,9 +1756,11 @@
         handle.removeEventListener("lostpointercapture", finish);
         window.removeEventListener("blur", finish);
         document.body.style.cursor = "";
+        handle.classList.remove("dragging");
         if (done) done();
       };
       document.body.style.cursor = "col-resize";
+      handle.classList.add("dragging");
       handle.addEventListener("pointermove", onMove);
       handle.addEventListener("pointerup", finish);
       handle.addEventListener("pointercancel", finish);
@@ -1615,13 +1797,19 @@
     $("#toggleDock").addEventListener("click", () => {
       state.dock = !state.dock;
       if (state.dock) state.dockWidth = dockDefault();
-      state.dockMax = false;
+      state.dockMax = state.dock && !canSplitDock();
       applyLayout();
     });
     $("#closeDock").addEventListener("click", () => { state.dock = false; state.dockMax = false; applyLayout(); });
-    $("#toggleDockMax").addEventListener("click", () => { state.dockMax = !state.dockMax; applyLayout(); });
+    $("#toggleDockMax").addEventListener("click", () => {
+      // 退出全屏时若分栏放不下（本来就是因此才浮起来的），直接收起停靠栏
+      if (state.dockMax && !canSplitDock()) { state.dock = false; state.dockMax = false; }
+      else state.dockMax = !state.dockMax;
+      applyLayout();
+    });
     window.addEventListener("resize", () => {
-      if (window.innerWidth < 1100) { state.dock = false; state.dockMax = false; }
+      // 只有分栏形态吃响应式收列；全屏浮层不占分栏预算，留给用户自己关
+      if (state.dock && !state.dockMax && !canSplitDock()) state.dock = false;
       if (window.innerWidth < 860) state.sidebar = false;
       state.dockWidth = clampDock(state.dockWidth || dockDefault());
       applyLayout();
@@ -1653,7 +1841,8 @@
       if (state.currentSession) state.sessionHtml[state.currentSession] = $("#chatMessages").innerHTML;
       state.mainMode = "hero";
       state.currentSession = null;
-      state.dock = false;
+      // 不清 state.dock：hero 态由 applyLayout 隐藏停靠栏，
+      // 切回会话时恢复用户上次的 dock 开关偏好（DESIGN_INTENT §3）
       state.dockMax = false;
       $("#hero").classList.remove("hidden");
       $("#conversation").classList.add("hidden");

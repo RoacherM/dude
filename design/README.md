@@ -58,3 +58,16 @@ DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 
 后续改动按 `prototype/README.md` 的「先原型后实现」流程迭代；
 第三个同类需求出现前不抽象扩展协议（见 `notes/UI_EXTENSION_TRIGGERS.md`）。
+
+## 视觉 v2（2026-08-25）· 待落实现
+
+按 `deepbuddy_redesign/` 交付包升级了视觉语言，**只落在 `prototype/`**，
+`plugins/deepbuddy/` 尚未跟进：
+
+- 三列改浮岛：窗口底 `#0b0b0c`，10px 缝，面板 20px 圆角 + 1px 白 5% 描边；
+- 正文字体 Departure Mono → Archivo（+ 中文回退），像素字只留品牌字标；
+- 红 `#ec3013` 定为品牌色（字标点 / 选中左条），蓝 `#679efe` 降为纯行动色；
+- 会话行加运行/等待/空闲状态点；视图 Tab 收进主列状态栏，省掉独立一行。
+
+细则见 [`DESIGN_INTENT.md §2 / §10`](./DESIGN_INTENT.md)，
+落地进度见 `.agents/handoffs/2026-08-25-visual-v2.md`。
