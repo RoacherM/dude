@@ -1,0 +1,16 @@
+# 拖拽手势生命周期修复 handoff
+- 日期 / agent：2026-08-24 / codex
+- 目标：修复 dock/侧栏拖拽在窗口外松手后手势不终止、webview 冻结旧宽度的问题，并扩大拖拽把手命中区。
+- 已完成：
+  - `plugins/deepbuddy/src/client/shell/layout-store.ts`：`trackDrag` 改为 Pointer Events；把手通过 `setPointerCapture(pointerId)` 持有手势；`pointerup`、`pointercancel`、`lostpointercapture`、`window blur` 统一进入幂等 `finish()`；保留 rAF 合帧、末位置 flush 和 clamp no-op；全量删除 resize shield。
+  - `plugins/deepbuddy/src/client/shell/layout-store.ts`：`freezeDockEmbeds` 跳过测量宽度为 0 的 embed，且 thaw 幂等。
+  - `plugins/deepbuddy/src/client/shell/ColumnFrame.tsx`：把手改为 `onPointerDown`；透明命中区扩大为 8px，通过 `margin: 0 -3.5px` 保持布局只占 1px，内部继续绘制 1px 分隔线；双击重置不变。
+  - `plugins/deepbuddy/tests/plugin.test.mjs`：覆盖 pointer capture、pointerId 过滤、rAF 合帧、最终位置 flush、`pointerup` / `pointercancel` / `lostpointercapture` / `blur` 终止、finish/thaw 幂等、shield 缺席、8px 命中区和 0 宽 embed 跳过；插件测试 63/63 通过。
+  - 已撤掉上一版 BrowserView ResizeObserver/宽度 dataset workaround；`plugins/deepbuddy/src/client/features/browser/BrowserView.tsx` 当前无本次未提交 diff。
+  - 桌面包已生成：`apps/desktop/dist/DeepBuddy-0.1.0-arm64.dmg`。
+- 未完成 & 下一步：真实 Electron + CDP 手势未在本 session 复测；验收方按任务书 D3 路径执行“按下把手 → 拖过已加载 webview → 窗口外松手”，确认 dock 停止跟随、body cursor 恢复、webview thaw 到当前宽度，并目测两条 8px 把手不引发布局位移。
+- 关键决策与约束：真正根因是窗口外松手导致旧 window mouseup 生命周期不闭合；本次以 pointer capture 取代 shield，不保留兼容分支或 Browser 宽度缓存；零 fork、未 commit，只修改任务指定源码与测试。
+- 复测入口：
+  - `pnpm build && pnpm typecheck && pnpm test`
+  - `(cd apps/desktop && pnpm build)`
+  - `git diff --check`

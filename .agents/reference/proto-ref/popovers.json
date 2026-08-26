@@ -1,0 +1,97 @@
+{
+  "_source": "real app http://127.0.0.1:3086 harvested 2026-08-25 via chrome-devtools evaluate_script (computed styles)",
+  "popoverBase": {
+    "bg": "rgb(53, 54, 56)",
+    "radius": "12px",
+    "border": "1px solid rgba(255,255,255,0.06)",
+    "shadow": "0 0 1px rgba(0,0,0,0.2), 0 0 4px rgba(0,0,0,0.02), 0 12px 32px rgba(0,0,0,0.08)",
+    "padding": "4px",
+    "zIndex": "1100 (portal) / 100 (inline absolute)"
+  },
+  "itemBase": {
+    "height": 40, "padding": "8px 10px", "radius": "10px", "gap": "8px",
+    "fontSize": "14px", "color": "rgb(249,250,251)",
+    "icon": { "size": 16, "color": "rgb(173,178,184)" },
+    "check": { "size": 16, "color": "rgb(249,250,251)", "position": "right, row align-items center" }
+  },
+  "workspaceDropdown": {
+    "anchor": "hero workspace chip, below-left",
+    "width": 218,
+    "rows": ["film-studio (folder icon, check)", "GPT-Image2分享", "deepseek-harness", "Docs"],
+    "rowStruct": "icon(folder 16) + label(flex) + check(if selected)",
+    "footer": {
+      "borderTop": "1px solid rgba(255,255,255,0.12)", "marginTop": "4px", "paddingTop": "4px",
+      "row": "plus icon + 添加工作区…",
+      "plusSvg": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\"><path d=\"M8.64453 1.5V7.34961H14.5V8.65039H8.64453V14.5H7.34473V8.65039H1.5V7.34961H7.34473V1.5H8.64453Z\" fill=\"currentColor\"/></svg>"
+    }
+  },
+  "modeDropdown": {
+    "anchor": "hero 创造模式 chip, below-left",
+    "width": 334,
+    "rowStruct": "label only: column gap 2px — itemName 13px/20px rgb(249,250,251) + itemDesc 12px/16px rgb(129,133,140); check 16 right, row align center; pad 8px 10px",
+    "rows": [
+      { "name": "标准模式", "desc": "功能完整的编码 Agent，支持文件编辑、Shell、文件与网页检索、Skills、计划、目标、子代理和工作流。" },
+      { "name": "PTC 模式", "desc": "具备标准模式的全部能力，并通过 Code Mode SDK 呈现工具，让模型用一个 TypeScript 程序组合多步操作。" },
+      { "name": "极简模式", "desc": "仅提供持久 bash 与 str_replace_editor 的双工具编码 Agent。" },
+      { "name": "创造模式", "desc": "用于创建自定义 Agent preset：具备标准模式的全部能力，并提供运行时检查、插件实验和 preset 创作指导。", "selected": true }
+    ]
+  },
+  "permissionMenu": {
+    "anchor": "composer Full access button, ABOVE (sideTop), left-aligned",
+    "width": 218, "height": 130,
+    "rows": ["Read Only", "Workspace Write", "Full access (selected)"],
+    "icons": {
+      "Read Only": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\"><path d=\"M8.20554 0.899994L14.7901 3.36857V7.01026C14.7901 12 11.0466 14.2103 8.20554 15.3C5.36446 14.2103 1.62012 12 1.62012 7.01026V3.36857L8.20554 0.899994Z\" stroke=\"currentColor\" stroke-width=\"1.31831\" stroke-linejoin=\"round\"/><path d=\"M12.1654 5.7552L8.9447 9.41475C8.73044 9.65816 8.53628 9.8804 8.35774 10.0423C8.1713 10.2114 7.94235 10.3717 7.64016 10.4254C7.48207 10.4535 7.32 10.4552 7.16151 10.4294C6.85843 10.3801 6.62728 10.2223 6.43836 10.0559C6.25752 9.89653 6.06037 9.67732 5.84264 9.43705L4.72925 8.20897L5.63557 7.38707L6.74897 8.61594C6.98603 8.87755 7.12974 9.03533 7.24673 9.13839C7.31033 9.19443 7.34485 9.21476 7.35823 9.22122C7.38068 9.22484 7.40352 9.22515 7.42593 9.22122C7.40522 9.22502 7.42893 9.23294 7.53583 9.136C7.65132 9.03126 7.79316 8.87139 8.02643 8.60638L11.2479 4.94763L12.1654 5.7552Z\" fill=\"currentColor\"/></svg>",
+      "Workspace Write": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\"><path d=\"M8.08887 0.251709C8.20479 0.23085 8.32486 0.241168 8.43652 0.282959L15.0215 2.75171C15.2787 2.84819 15.4492 3.09414 15.4492 3.3689V7.0105C15.4492 7.10986 15.4441 7.2081 15.4414 7.30542C15.0285 7.07175 14.5905 6.87695 14.1309 6.73022V3.82495L8.20508 1.60327L2.2793 3.82495V7.0105C2.27936 9.7171 3.4745 11.5379 5.02734 12.7947C5.01025 12.9942 5 13.1962 5 13.4001C5.00001 13.7617 5.02722 14.1169 5.08008 14.4636C2.91555 13.0393 0.961014 10.752 0.960938 7.0105V3.3689C0.960938 3.09417 1.13146 2.84821 1.38867 2.75171L7.97461 0.282959L8.08887 0.251709Z\" fill=\"currentColor\"/><path d=\"M11.3525 5.64688V6.85688H5V5.64688H11.3525Z\" fill=\"currentColor\"/><path d=\"M9.5824 8.29376V9.50376H5V8.29376H9.5824Z\" fill=\"currentColor\"/><path d=\"M14.6647 15.6852H10.0338C10.3878 15.3751 10.7567 15.0517 11.0772 14.7706C11.2531 14.6164 11.4144 14.4746 11.5511 14.3547H14.6647V15.6852Z\" fill=\"currentColor\"/><path d=\"M8.14852 14.1308L7.33925 15.4976C7.22458 15.6912 7.42245 15.9194 7.63037 15.8333L9.09785 15.2254L15.0399 10.0719L14.0905 8.97733L8.14852 14.1308Z\" fill=\"currentColor\"/></svg>",
+      "Full access": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\"><path d=\"M8.20554 0.899994L14.7901 3.36857V7.01026C14.7901 12 11.0466 14.2103 8.20554 15.3C5.36446 14.2103 1.62012 12 1.62012 7.01026V3.36857L8.20554 0.899994Z\" stroke=\"currentColor\" stroke-width=\"1.31831\" stroke-linejoin=\"round\"/><path d=\"M9.10094 4.5V8.75939H7.59888V4.5H9.10094Z\" fill=\"currentColor\"/><path d=\"M9.10094 9.8114V11.5H7.59888V9.8114H9.10094Z\" fill=\"currentColor\"/></svg>"
+    }
+  },
+  "commandMenu": {
+    "trigger": "composer + button (aria-label 命令, haspopup=listbox) — NOT an attachment menu",
+    "anchor": "above composer, left-aligned",
+    "level1": {
+      "width": 537, "head": "命令 (12px muted, pad 8 10, h32)",
+      "row": "h40 pad 8 10 r10 gap 8; itemName white 14 + itemDescription muted 14; active bg rgba(255,255,255,0.08)",
+      "commands": [
+        ["compact", "Compact older conversation history"],
+        ["export", "Download this Session log as a ZIP archive"],
+        ["feedback", "record feedback about this session"],
+        ["goal", "set or view the goal for a long-running task"],
+        ["permission", "Switch the permission preset (sandbox mode + approval policy)"],
+        ["plan", "Enter or leave plan mode"],
+        ["model", "Select the model for this conversation"]
+      ]
+    },
+    "level2": {
+      "note": "clicking a command with args swaps panel to arg candidates (same anchor)",
+      "card": "w351 pad4 r12 bg #353638",
+      "search": "input h31 pad 6 8 r8 fs13 border rgba(255,255,255,.06), focus outline 2px rgb(103,158,254), placeholder 搜索…",
+      "row": "h36 pad 6 8 r8 fs13; label white 13 + detail muted 12 right + check 16 (e.g. model rows: name + provider)"
+    }
+  },
+  "modelMenu": {
+    "anchor": "composer model button, ABOVE, right-aligned",
+    "root": {
+      "width": 337, "height": 90,
+      "cellStruct": "button h40 pad 0 10 gap 8 r10: cellLabel 14px white + cellValue 14px rgb(173,178,184) flex-1 text-right + chevron-right 14 muted",
+      "cells": [
+        { "label": "模型", "value": "DeepSeek-V4-Flash-Vision-Exp" },
+        { "label": "推理等级", "value": "High" }
+      ]
+    },
+    "modelSubmenu": {
+      "width": 301, "maxHeight": 360, "pad": "4px", "note": "replaces root panel in place, anchored above button",
+      "groupTitle": "12px rgb(173,178,184) weight 500 pad 5px 8px 3px",
+      "option": "h38 pad 6px 8px r10 fontSize ~13.3px, check right when selected",
+      "groups": [
+        { "title": "DeepSeek", "options": ["DeepSeek-V4-Flash", "DeepSeek-V4-Pro", "DeepSeek-V4-Flash-Vision-Exp (selected)"] },
+        { "title": "anthropic", "options": ["Claude Fable 5", "Claude Opus 5", "Claude Sonnet 5"] }
+      ]
+    },
+    "effortSubmenu": {
+      "width": 240, "height": 162,
+      "options": ["Off", "Low", "High (selected)", "Max"],
+      "option": "h38, same style as modelSubmenu option"
+    }
+  }
+}
