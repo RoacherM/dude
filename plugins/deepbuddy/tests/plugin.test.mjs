@@ -577,14 +577,19 @@ test('the window drag surfaces are exactly the three declared ones', async () =>
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // The shell runs `titleBarStyle: 'hiddenInset'`, so the only thing that
   // moves the window is a declared drag region: a column that forgets one
-  // leaves a dead strip the user cannot grab. Two surfaces declare drag:
+  // leaves a dead strip the user cannot grab. Three surfaces declare drag:
   // the shared ColumnFrame top bar (the single 52px header line every
-  // column draws — the native lights ride it too) and the main column's
-  // strip (the official ConversationRoot declares no app-region of its own).
+  // column draws — the native lights ride it too), the main column's strip
+  // (the official ConversationRoot declares no app-region of its own), and
+  // the window ground (自由拖动: the frame ring and the island seams).
   const drag = bundle.match(/WebkitAppRegion: "drag"/g) ?? []
-  assert.equal(drag.length, 2, 'top bar + main-column strip')
+  assert.equal(drag.length, 3, 'top bar + main-column strip + window ground')
   assert.match(bundle, /height: METRICS\.topbar/)
-  // Controls sitting inside those rows must opt back out, or they stop
+  // The islands opt their bodies out of the ground's region (their top bars
+  // re-add themselves), and the seam handles stay column resizes.
+  assert.match(bundle, /PANEL = \{[\s\S]{0,400}WebkitAppRegion: "no-drag"/)
+  assert.match(bundle, /\.dbdy-handle \{[\s\S]{0,500}-webkit-app-region: no-drag/)
+  // Controls sitting inside the drag rows must opt back out, or they stop
   // answering clicks and drag the window instead.
   assert.match(bundle, /NO_DRAG = \{ WebkitAppRegion: "no-drag" \}/)
   const optOut = bundle.match(/NO_DRAG/g) ?? []

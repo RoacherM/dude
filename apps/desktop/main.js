@@ -208,7 +208,9 @@ function createWindow(url) {
     // content repaints — it must match the UI's ground (--dsw-alias-bg-base
     // per scheme; the theme presenter follows the system by default), or the
     // window flashes the wrong shade.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
+    // Matches --db-window per scheme (ui/tokens.ts): the compositor flash
+    // during fast drag/resize must show the island window ground.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0c' : '#dcdde1',
     title: 'DeepBuddy',
     webPreferences: {
       webviewTag: true,

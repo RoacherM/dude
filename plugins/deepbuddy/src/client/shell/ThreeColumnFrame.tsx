@@ -296,14 +296,19 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             // The window ground: the deepest layer, and the only separator
             // between the three islands — the padding is the frame's margin
             // and the seams are the same 10px of it showing through
-            // (DESIGN_INTENT §10).
+            // (DESIGN_INTENT §10). The ground is also a window drag surface
+            // (自由拖动): the frame ring and the island seams move the window,
+            // the islands themselves opt out (PANEL) and their top bars opt
+            // back in, and the resize handles opt out in tokens.ts so a seam
+            // press still resizes.
+            WebkitAppRegion: 'drag',
             padding: 'var(--db-gap)',
             background: 'var(--db-window)',
             color: 'var(--db-text)',
             fontFamily: 'var(--db-font)',
             fontSize: 13.5,
             userSelect: 'none',
-          }}
+          } as CSSProperties}
         >
           {/* Deliberately NOT a positioned box: the full-frame dock insets
               itself by the gap against the root's padding box, which is what
@@ -369,7 +374,8 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               minWidth: 0,
               overflow: 'hidden',
               borderLeft: detailsOpen ? '1px solid var(--db-line)' : 'none',
-            }}
+              WebkitAppRegion: 'no-drag',
+            } as CSSProperties}
           >
             {renderSlot('details', {})}
           </div>

@@ -97,7 +97,11 @@ export const PANEL: CSSProperties = {
   border: '1px solid var(--db-line-panel)',
   borderRadius: 'var(--db-r-panel)',
   overflow: 'hidden',
-}
+  // The window ground (the root frame) is a drag surface; an island's body
+  // is content and opts back out. Region collection is paint-ordered, so a
+  // TopBar INSIDE the panel re-adds its own drag rect on top of this.
+  WebkitAppRegion: 'no-drag',
+} as CSSProperties
 
 /**
  * One column: the shared status bar over the shared content frame. Columns

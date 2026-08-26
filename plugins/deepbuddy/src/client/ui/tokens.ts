@@ -166,6 +166,27 @@ const CSS = `
      scrollbars and native widgets inside .dbdy under the light theme. */
 }
 
+/* ── the light scheme's island stack ───────────────────────────────────── */
+/* Chained tokens follow the official light palette on their own; the
+   unchained island roles are literals, so their light values are stated
+   here. The presenter's body attribute is the switch (dsh/theme-presenter.ts
+   removes it for light). Same material logic, inverted: the window ground is
+   the DARKEST layer in dark and the DEEPEST (most saturated gray) in light,
+   panels float brighter on it, and the embedded void reads as paper. */
+body:not([data-ds-dark-theme]) .dbdy {
+  --db-window: #dcdde1;
+  --db-panel: #f4f4f6;
+  --db-raised: #ffffff;
+  --db-void: #ffffff;
+  --db-popover: #ffffff;
+  --db-dialog: #ffffff;
+  --db-line-panel: rgba(0, 0, 0, .08);
+  --db-offline: #a3a3ab;
+  --db-shadow-popover: 0 16px 40px rgba(0, 0, 0, .16);
+  --db-shadow-menu: 0 16px 40px rgba(0, 0, 0, .16);
+  --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .22);
+}
+
 .dbdy, .dbdy * { box-sizing: border-box; }
 /* Font only — never color: official surfaces (the settings dialog, the
    conversation column) render inside .dbdy too, and \`color: inherit\` here
@@ -222,6 +243,9 @@ const CSS = `
   cursor: col-resize;
   touch-action: none;
   background: transparent;
+  /* The ground around it drags the window; a press on the handle itself must
+     stay a column resize. */
+  -webkit-app-region: no-drag;
 }
 .dbdy-handle::after {
   content: "";
@@ -327,7 +351,9 @@ button, a, input, textarea, select,
   z-index: 50;
   pointer-events: none;
 }
-.dbdy-overlay > * { pointer-events: auto; }
+/* Overlay entries float over the draggable ground: interactive again, and
+   never window-drag surfaces. */
+.dbdy-overlay > * { pointer-events: auto; -webkit-app-region: no-drag; }
 `
 
 /**
