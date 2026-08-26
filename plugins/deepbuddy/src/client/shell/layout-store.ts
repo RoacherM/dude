@@ -81,6 +81,14 @@ export interface LayoutState {
    * this fact and renders whatever its active tab means.
    */
   tabs: Readonly<Record<string, PaneTabs>>
+  /**
+   * The session-fence generation. The assembly bumps it (with the ledgers
+   * dropped) when the conversation's subject changes; the inspector keys its
+   * kept-alive view bodies on it, so every view's local state dies with the
+   * session it belonged to. The store never reads session ids — the number is
+   * a remount token, not a session fact.
+   */
+  fence: number
 }
 
 const NO_TABS: PaneTabs = { items: [], active: null }
@@ -96,6 +104,7 @@ export class LayoutStore {
     title: null,
     sessionStarted: false,
     tabs: {},
+    fence: 0,
   }
 
   /**
@@ -402,11 +411,13 @@ export class LayoutStore {
     this.writeTabs(pane, { ...cur, active: id })
   }
 
-  /** Drop one view's whole ledger in one notification (session fence change). */
-  clearTabs = (pane: string): void => {
-    const cur = this.tabsOf(pane)
-    if (cur.items.length === 0 && cur.active === null) return
-    this.writeTabs(pane, NO_TABS)
+  /**
+   * The session fence: drop every view's ledger and bump the fence generation
+   * in one notification. Called by the assembly's session watch, never by a
+   * view — a view carries no per-session reset logic of its own.
+   */
+  fenceTabs = (): void => {
+    this.patch({ tabs: {}, fence: this.state.fence + 1 })
   }
 
   // ── drag handles ──────────────────────────────────────────────────────────

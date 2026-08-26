@@ -37,8 +37,6 @@ export interface InspectorViewProps {
   onOpenTab(tab: TabRef): void
   /** Close an instance; focus falls to its neighbour. */
   onCloseTab(id: string): void
-  /** Clear this view's instance ledger in one store update. */
-  onResetTabs(): void
   /** Focus an existing instance. */
   onFocusTab(id: string): void
 }
@@ -49,6 +47,13 @@ export interface InspectorViewTypeDefinition {
   title: string
   icon?: IconName
   Component: ComponentType<InspectorViewProps>
+  /**
+   * Drop the feature's module-level per-session resources. The assembly's
+   * session fence calls it on a current-session change, right after the shell
+   * ledgers are dropped; component-local state dies by remount instead (the
+   * inspector keys view bodies on the fence generation).
+   */
+  onSessionFence?: () => void
 }
 
 /** Inspector view types, in segment order; the first is the dock's default. */

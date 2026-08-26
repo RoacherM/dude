@@ -231,13 +231,16 @@ test('layout tab updates suppress no-ops and clear a pane in one notification', 
   layout.focusTab('browser', 'browser-1')
   assert.equal(notifications, 3)
 
-  // A session fence drops the whole Files ledger atomically, rather than
-  // closing N tabs and publishing N intermediate states.
-  layout.clearTabs('browser')
+  // The session fence drops EVERY ledger atomically and bumps the fence
+  // generation (the inspector's remount key), rather than closing N tabs and
+  // publishing N intermediate states.
+  layout.openTab('terminal', { id: 'term-1', label: '终端 1' })
   assert.equal(notifications, 4)
-  assert.deepEqual(layout.state.tabs.browser, { items: [], active: null })
-  layout.clearTabs('browser')
-  assert.equal(notifications, 4)
+  const fenceBefore = layout.state.fence
+  layout.fenceTabs()
+  assert.equal(notifications, 5)
+  assert.deepEqual(layout.state.tabs, {})
+  assert.equal(layout.state.fence, fenceBefore + 1)
   off()
 })
 

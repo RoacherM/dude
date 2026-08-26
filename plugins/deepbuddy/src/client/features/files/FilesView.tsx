@@ -6,7 +6,7 @@
  * Opening a file is two calls: read the body and open the tab. Neither store
  * knows about the other.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { FilesStore } from './store.ts'
@@ -221,27 +221,16 @@ function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNo
 /**
  * The explorer view.
  *
- * A session switch fences the file tree; tabs from the old workspace point
- * at paths this session may not have. The store owns the tree reset, the
- * view owns dropping its own tabs — each clears what it opened.
+ * A session switch fences the file tree: the store resets the tree it owns,
+ * and the assembly's session fence drops the tab ledger and remounts this
+ * view — no per-session logic lives here.
  */
 export function FilesView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, visible, onOpenTab, onCloseTab, onResetTabs, onFocusTab } = props
+  const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
   const { files } = useAppDeps()
   useStore(files)
   const s = files.state
-
-  // Drop this view's tabs when the session changes. The shell callback is
-  // stable, so ordinary tab actions do not retrigger the fence effect.
-  const first = useRef(true)
   const sessionId = s.sessionId
-  useEffect(() => {
-    if (first.current) {
-      first.current = false
-      return
-    }
-    onResetTabs()
-  }, [sessionId, onResetTabs])
 
   const rootState = s.fsChildren['root']
   useEffect(() => {

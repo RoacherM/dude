@@ -35,6 +35,12 @@ interface BrowserResourceState {
 const browserResources = new Map<string, BrowserResourceState>()
 let browserCounter = 1
 
+/** The session fence's share: drop every kept page and restart the numbering. */
+export function fenceBrowserSession(): void {
+  browserResources.clear()
+  browserCounter = 1
+}
+
 /** Add the intended scheme without turning localhost into an HTTPS request. */
 export function normalizeBrowserUrl(raw: string): string {
   const value = raw.trim()

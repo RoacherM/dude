@@ -100,6 +100,21 @@ export function apply(ctx: ClientContext): void {
     return () => { files.dispose() }
   }, 'deepbuddy: files store')
 
+  // The one session fence. A current-session change drops the shell's tab
+  // ledgers (which also remounts the kept-alive view bodies via the fence
+  // generation) and each feature's module-level resources. It lives in the
+  // assembly because it needs both worlds: the session wire and the catalog.
+  ctx.effect(() => {
+    let fenced = dsh.sessions.list.getSnapshot().current
+    return dsh.sessions.list.subscribe(() => {
+      const cur = dsh.sessions.list.getSnapshot().current
+      if (cur === fenced) return
+      fenced = cur
+      layout.fenceTabs()
+      for (const view of INSPECTOR_VIEW_TYPES) view.onSessionFence?.()
+    })
+  }, 'deepbuddy: session fence')
+
   // ── the containers ────────────────────────────────────────────────────────
   //
   // The root registration re-declares the official frame slots from

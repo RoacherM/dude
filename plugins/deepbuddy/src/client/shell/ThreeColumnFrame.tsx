@@ -145,7 +145,6 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, tabs, visibl
 }): ReactNode {
   const onOpenTab = useCallback((tab: { id: string; label: string }) => { layout.openTab(view.id, tab) }, [layout, view.id])
   const onCloseTab = useCallback((id: string) => { layout.closeTab(view.id, id) }, [layout, view.id])
-  const onResetTabs = useCallback(() => { layout.clearTabs(view.id) }, [layout, view.id])
   const onFocusTab = useCallback((id: string) => { layout.focusTab(view.id, id) }, [layout, view.id])
   const Component = view.Component
   return (
@@ -160,7 +159,6 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, tabs, visibl
         visible={visible}
         onOpenTab={onOpenTab}
         onCloseTab={onCloseTab}
-        onResetTabs={onResetTabs}
         onFocusTab={onFocusTab}
       />
     </div>
@@ -177,6 +175,7 @@ function InspectorColumn(): ReactNode {
   const dockMax = useLayoutSelection(layout, current => current.state.dockMax)
   const pane = useLayoutSelection(layout, current => current.state.pane)
   const tabsByView = useLayoutSelection(layout, current => current.state.tabs)
+  const fence = useLayoutSelection(layout, current => current.state.fence)
   const views = INSPECTOR_VIEW_TYPES
   const active = pickEntry(views, pane)
   return (
@@ -243,9 +242,13 @@ function InspectorColumn(): ReactNode {
                 <KIT.EmptyState>没有装配任何停靠面板。</KIT.EmptyState>
               </div>
             )
+          // The fence generation in the key is the keep-alive rule's one
+          // exception: view bodies survive tab switches and dock closes, but
+          // a session change remounts them, so no per-session reset logic
+          // exists inside any view.
           : views.map(view => (
               <InspectorViewMount
-                key={view.id}
+                key={`${view.id}:${fence}`}
                 view={view}
                 tabs={tabsByView[view.id]}
                 visible={view.id === active.id}

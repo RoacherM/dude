@@ -22,7 +22,12 @@ interface TerminalMessage {
   status?: 'running' | 'exited'
 }
 
-const terminalCounters = new Map<string, number>()
+let terminalCounter = 1
+
+/** The session fence's share: restart the tab numbering with the session. */
+export function fenceTerminalSession(): void {
+  terminalCounter = 1
+}
 
 function terminalSocketUrl(sessionId: string, termId: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -34,13 +39,13 @@ function send(socket: WebSocket | null, message: object): void {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message))
 }
 
-function nextTerminalTab(sessionId: string, tabs: readonly TabRef[]): TabRef {
+function nextTerminalTab(tabs: readonly TabRef[]): TabRef {
   const greatest = tabs.reduce((max, tab) => {
     const match = /^term-(\d+)$/.exec(tab.id)
     return match === null ? max : Math.max(max, Number(match[1]))
   }, 0)
-  const number = Math.max(terminalCounters.get(sessionId) ?? 1, greatest + 1)
-  terminalCounters.set(sessionId, number + 1)
+  const number = Math.max(terminalCounter, greatest + 1)
+  terminalCounter = number + 1
   return { id: `term-${number}`, label: `终端 ${number}` }
 }
 
@@ -234,7 +239,9 @@ export function TerminalView(props: InspectorViewProps): ReactNode {
   const currentSession = useCallback(() => dsh.sessions.list.getSnapshot().current as string | undefined, [dsh])
   const sessionId = useSyncExternalStore(dsh.sessions.list.subscribe, currentSession, currentSession)
   const controls = useRef(new Map<string, () => void>())
-  const initializedSession = useRef<string | null>(null)
+  // Once per mount: the session fence remounts this view, so a new session
+  // gets its own first-tab auto-open without any session tracking here.
+  const initialized = useRef(false)
   const onControl = useCallback((termId: string, close: (() => void) | null): void => {
     if (close === null) controls.current.delete(termId)
     else controls.current.set(termId, close)
@@ -248,12 +255,12 @@ export function TerminalView(props: InspectorViewProps): ReactNode {
 
   const add = useCallback((): void => {
     if (sessionId === undefined) return
-    onOpenTab(nextTerminalTab(sessionId, tabs))
+    onOpenTab(nextTerminalTab(tabs))
   }, [sessionId, tabs, onOpenTab])
 
   useEffect(() => {
-    if (!visible || sessionId === undefined || initializedSession.current === sessionId) return
-    initializedSession.current = sessionId
+    if (!visible || sessionId === undefined || initialized.current) return
+    initialized.current = true
     if (tabs.length === 0) add()
   }, [visible, sessionId, tabs.length, add])
 
