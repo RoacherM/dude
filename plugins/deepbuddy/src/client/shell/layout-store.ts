@@ -22,6 +22,7 @@ import {
   GAP, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
   canSplitDock, clampDock, clampSidebar, dockDefault,
 } from './geometry.ts'
+import { dblog } from '../log.ts'
 
 /** One tab of a dock pane, as the shell's strip knows it. */
 export interface TabRef {
@@ -317,7 +318,9 @@ export class LayoutStore {
       this.patch({ pane })
       return
     }
-    this.patch({ dock: true, pane, dockMax: !canSplitDock(window.innerWidth, this.sideWidth()) })
+    const overlay = !canSplitDock(window.innerWidth, this.sideWidth())
+    if (overlay) dblog('layout', 'dock opened as overlay — split does not fit', { vw: window.innerWidth, side: this.sideWidth() })
+    this.patch({ dock: true, pane, dockMax: overlay })
     // The element mounts on this same synchronous commit, so its opening width
     // is set on the next frame rather than read back as zero here.
     requestAnimationFrame(() => {
@@ -343,6 +346,7 @@ export class LayoutStore {
   toggleDockMax = (): void => {
     if (!this.state.dock) return
     if (this.state.dockMax && !canSplitDock(window.innerWidth, this.sideWidth())) {
+      dblog('layout', 'overlay exit closed the dock — split still does not fit', { vw: window.innerWidth, side: this.sideWidth() })
       this.patch({ dock: false, dockMax: false })
       return
     }

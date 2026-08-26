@@ -4,6 +4,7 @@ import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { TabRef } from '../../shell/layout-store.ts'
 import { IN_ELECTRON } from '../../shell/ColumnFrame.tsx'
+import { dbwarn } from '../../log.ts'
 import { KIT } from '../../ui/kit.tsx'
 import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
 import { ArrowLeft, ArrowRight, ExternalLink, Globe, Refresh } from '../../ui/icons.tsx'
@@ -152,6 +153,9 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
       const failure = event as WebviewNavigationEvent
       if (failure.isMainFrame === false || failure.errorCode === -3) return
       if (failure.validatedURL !== undefined && failure.validatedURL !== '' && failure.validatedURL !== currentNavigation.current) return
+      // The UI collapses every failure into one refusal card; the error code
+      // (Chromium net error) only survives here.
+      dbwarn('browser', 'page load failed', { tabId, errorCode: failure.errorCode, url: failure.validatedURL ?? currentNavigation.current })
       setFailed(true)
     }
     const title = (event: Event): void => {

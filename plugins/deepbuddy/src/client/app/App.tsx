@@ -21,6 +21,7 @@ import { LayoutStore, useLayoutSelection } from '../shell/layout-store.ts'
 import { DeepBuddySidebar, createThreeColumnFrame } from '../shell/ThreeColumnFrame.tsx'
 import { FilesStore } from '../features/files/index.ts'
 import { INSPECTOR_VIEW_TYPES } from './catalog.ts'
+import { dblog } from '../log.ts'
 import { useAppDeps } from './context.tsx'
 import type { AppDeps } from './context.tsx'
 import { KIT } from '../ui/kit.tsx'
@@ -109,6 +110,7 @@ export function apply(ctx: ClientContext): void {
     return dsh.sessions.list.subscribe(() => {
       const cur = dsh.sessions.list.getSnapshot().current
       if (cur === fenced) return
+      dblog('fence', 'session changed — dropping tab ledgers and view state', { from: fenced, to: cur })
       fenced = cur
       layout.fenceTabs()
       for (const view of INSPECTOR_VIEW_TYPES) view.onSessionFence?.()

@@ -7,6 +7,7 @@ import xtermCss from '@xterm/xterm/css/xterm.css'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { TabRef } from '../../shell/layout-store.ts'
 import { useAppDeps } from '../../app/context.tsx'
+import { dblog, dbwarn } from '../../log.ts'
 import { KIT } from '../../ui/kit.tsx'
 import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
 import { Refresh } from '../../ui/icons.tsx'
@@ -145,6 +146,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
         try { message = JSON.parse(String(event.data)) as TerminalMessage }
         catch { return }
         if (message.type === 'snapshot') {
+          dblog('terminal', 'attached', { termId, cwd: message.cwd, status: message.status })
           terminal.reset()
           if (message.data !== undefined) terminal.write(message.data)
           setDetail(message.cwd ?? '')
@@ -161,6 +163,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
           setState('closed')
         }
         else if (message.type === 'error') {
+          dbwarn('terminal', 'host refused the terminal', { termId, message: message.message })
           manuallyClosed = true
           setDetail(message.message ?? '终端连接失败')
           setState('error')
@@ -170,7 +173,10 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
         if (socketRef.current === socket) {
           socketRef.current = null
         }
-        if (!disposed && !manuallyClosed) reconnectTimer = window.setTimeout(connect, 800)
+        if (!disposed && !manuallyClosed) {
+          dbwarn('terminal', 'socket dropped — reconnecting in 800ms', { termId })
+          reconnectTimer = window.setTimeout(connect, 800)
+        }
       })
     }
 
