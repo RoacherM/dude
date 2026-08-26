@@ -1,6 +1,6 @@
 /** Kept-alive multi-tab browser: desktop webviews with an iframe fallback. */
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { TabRef } from '../../shell/layout-store.ts'
 import { IN_ELECTRON } from '../../shell/ColumnFrame.tsx'
@@ -72,6 +72,23 @@ function EmbedRefusal({ url }: { url: string }): ReactNode {
       </div>
     </div>
   )
+}
+
+/**
+ * The page area: the same embedded void the terminal and the file preview sit
+ * in, so a loaded page, an empty address bar and a refused embed all occupy
+ * one block instead of three differently-shaped regions.
+ */
+const PAGE_BLOCK: CSSProperties = {
+  flex: '1 1 auto',
+  minHeight: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  margin: 12,
+  border: '1px solid var(--db-line-panel)',
+  borderRadius: 'var(--db-r-card)',
+  background: 'var(--db-void)',
+  overflow: 'hidden',
 }
 
 const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: string; onLabel: (label: string) => void }): ReactNode {
@@ -157,7 +174,9 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ height: 42, flex: '0 0 42px', display: 'flex', alignItems: 'center', gap: 3, padding: '0 8px', borderBottom: '1px solid var(--db-line)' }}>
+      {/* The toolbar floats over the panel with no rule under it — the page
+          block below carries its own edge. */}
+      <div style={{ height: 42, flex: '0 0 42px', display: 'flex', alignItems: 'center', gap: 3, padding: '12px 12px 0' }}>
         <KIT.IconButton title="后退" size={28} disabled={!IN_ELECTRON || !history.back} onClick={() => { webview?.goBack() }}><ArrowLeft size={13} /></KIT.IconButton>
         <KIT.IconButton title="前进" size={28} disabled={!IN_ELECTRON || !history.forward} onClick={() => { webview?.goForward() }}><ArrowRight size={13} /></KIT.IconButton>
         <KIT.IconButton title="刷新" size={28} disabled={url === ''} onClick={() => {
@@ -173,38 +192,43 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
           placeholder="输入网址"
           mono
           size={30}
-          style={{ flex: '1 1 auto', minWidth: 80, borderRadius: 8 }}
+          // The address bar is a filled field, not an outlined one: at this
+          // size a stroke reads as a second toolbar edge. Keyboard focus is
+          // still visible — the global :focus-visible ring in tokens.ts.
+          style={{ flex: '1 1 auto', minWidth: 80, border: 0, borderRadius: 'var(--db-r-control)', background: 'var(--db-fill-2)', fontSize: 12.5 }}
         />
         <KIT.IconButton title="在系统浏览器打开" size={28} disabled={url === ''} onClick={() => { openExternal(url) }}><ExternalLink size={13} /></KIT.IconButton>
       </div>
-      {url === ''
-        ? (
-            <div style={{ flex: '1 1 auto', display: 'grid', placeItems: 'center' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--db-text-5)' }}>
-                <Globe size={28} />
-                <span style={{ fontSize: 12.5 }}>输入地址开始浏览</span>
+      <div style={PAGE_BLOCK}>
+        {url === ''
+          ? (
+              <div style={{ flex: '1 1 auto', display: 'grid', placeItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--db-text-5)' }}>
+                  <Globe size={28} />
+                  <span style={{ fontSize: 12.5 }}>输入地址开始浏览</span>
+                </div>
               </div>
-            </div>
-          )
-        : failed
-          ? <EmbedRefusal url={url} />
-          : IN_ELECTRON
-            // allowpopups lets window.open/_blank requests REACH the main
-            // process, where the desktop shell's setWindowOpenHandler denies
-            // the popup and navigates this same webview instead. Without it
-            // Electron drops the request before any handler runs — result
-            // links on search pages click dead.
-            ? <webview ref={webviewRef} src={url} allowpopups="true" style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }} />
-            : (
-                <iframe
-                  key={`${url}:${reload}`}
-                  src={url}
-                  title="浏览器"
-                  onLoad={() => { setFailed(false) }}
-                  onError={() => { setFailed(true) }}
-                  style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }}
-                />
-              )}
+            )
+          : failed
+            ? <EmbedRefusal url={url} />
+            : IN_ELECTRON
+              // allowpopups lets window.open/_blank requests REACH the main
+              // process, where the desktop shell's setWindowOpenHandler denies
+              // the popup and navigates this same webview instead. Without it
+              // Electron drops the request before any handler runs — result
+              // links on search pages click dead.
+              ? <webview ref={webviewRef} src={url} allowpopups="true" style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }} />
+              : (
+                  <iframe
+                    key={`${url}:${reload}`}
+                    src={url}
+                    title="浏览器"
+                    onLoad={() => { setFailed(false) }}
+                    onError={() => { setFailed(true) }}
+                    style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }}
+                  />
+                )}
+      </div>
     </div>
   )
 })

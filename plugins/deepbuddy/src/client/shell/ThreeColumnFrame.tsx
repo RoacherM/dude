@@ -29,7 +29,7 @@ import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutSelection } from './layout-store.ts'
 import type { LayoutStore, PaneTabs } from './layout-store.ts'
-import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, TrafficLights } from './ColumnFrame.tsx'
+import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, PANEL, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
 import { Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
@@ -57,35 +57,39 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
         width: METRICS.sidebar,
         flex: '0 0 auto',
         minWidth: 0,
-        background: 'var(--db-rail)',
       }}
       header={(
         <>
-          {/* Lights and the sidebar toggle share the ONE header line every
-              column draws, so the toggle sits level with the dock toggle
-              across the frame — and it keeps this exact spot in the collapsed
-              state (the corner cluster below), so collapsing never teleports
-              the control the user just clicked. The margin keeps it from
-              crowding the dots. */}
+          {/* Lights, then the wordmark and the one red square on screen, then
+              the toggle pushed to the column's right edge — where the dock's
+              own close control sits, so the two column switches mirror each
+              other across the frame. */}
           <TrafficLights />
-          <div style={{ ...NO_DRAG, marginLeft: 6 }}>
-            <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
-              <PanelLeft size={16} />
-            </KIT.IconButton>
-          </div>
           <span style={{
             minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            fontSize: 16,
-            fontWeight: 600,
-            letterSpacing: '-.01em',
+            fontFamily: 'var(--db-brandfont)',
+            fontSize: 13,
+            fontWeight: 400,
+            letterSpacing: '.02em',
             color: 'var(--db-text)',
             lineHeight: 1.2,
           }}
           >
             DeepBuddy
+          </span>
+          {/* Brand red, used exactly once in the whole window (DESIGN_INTENT
+              §10). Nothing else — no selection, no status — may borrow it. */}
+          <span
+            aria-hidden
+            style={{ width: 7, height: 7, flex: '0 0 7px', borderRadius: 2, background: 'var(--db-brand)' }}
+          />
+          <span style={{ ...NO_DRAG, marginLeft: 'auto' }}>
+            <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
+              <PanelLeft size={16} />
+            </KIT.IconButton>
           </span>
         </>
       )}
@@ -182,9 +186,11 @@ function InspectorColumn(): ReactNode {
       style={dockMax
         // Maximized: an overlay over the whole frame. The columns underneath
         // stay mounted and laid out, so restoring loses no scroll or state —
-        // and the header regains the lights cluster it now covers.
-        ? { position: 'absolute', inset: 0, zIndex: 8, width: 'auto', background: 'var(--db-window)' }
-        : { flex: '0 0 auto', minWidth: 0, background: 'var(--db-window)' }}
+        // and the header regains the lights cluster it now covers. It insets
+        // by the gap rather than to zero, so the full-frame panel is still an
+        // island floating on the window ground and not a lid over it.
+        ? { position: 'absolute', inset: 'var(--db-gap)', zIndex: 8, width: 'auto' }
+        : { flex: '0 0 auto', minWidth: 0 }}
       header={(
         <>
           {dockMax && (
@@ -282,6 +288,11 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             height: '100vh',
             width: '100%',
             overflow: 'hidden',
+            // The window ground: the deepest layer, and the only separator
+            // between the three islands — the padding is the frame's margin
+            // and the seams are the same 10px of it showing through
+            // (DESIGN_INTENT §10).
+            padding: 'var(--db-gap)',
             background: 'var(--db-window)',
             color: 'var(--db-text)',
             fontFamily: 'var(--db-font)',
@@ -289,7 +300,11 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             userSelect: 'none',
           }}
         >
-          <div style={{ position: 'relative', flex: '1 1 0', minHeight: 0, display: 'flex' }}>
+          {/* Deliberately NOT a positioned box: the full-frame dock insets
+              itself by the gap against the root's padding box, which is what
+              lands it exactly on the island grid instead of a second gap in
+              from it. */}
+          <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>
           {sidebar && (
             <>
               {/* DeepBuddy unmounts the column instead of keeping the official
@@ -306,7 +321,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               growing column-flex wrapper (and its `overflow: hidden`) the
               conversation would size to its content max-width and leave the
               rest of the frame black (wave8-fix D1). */}
-          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column', ...PANEL }}>
             {/* The main column's window-drag strip: the official
                 ConversationRoot declares no app-region, so without this the
                 window can only be moved by the 268px sidebar bar. It sits
@@ -325,15 +340,11 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
                 control never moves vertically; the dbdy-noside class indents
                 the official header title clear of them (tokens.ts). */}
             {!sidebar && (
-              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center' }}>
+              <div style={{ position: 'absolute', top: (METRICS.topbar - 28) / 2, left: 12, zIndex: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
                 <TrafficLights />
-                {/* 14 = the TopBar gap (8) + toggle margin (6) the expanded
-                    sidebar header uses, so the button lands on the same x. */}
-                <div style={{ marginLeft: 14 }}>
-                  <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
-                    <PanelLeft size={16} />
-                  </KIT.IconButton>
-                </div>
+                <KIT.IconButton title="展开侧边栏" onClick={deps.layout.toggleSidebar}>
+                  <PanelLeft size={16} />
+                </KIT.IconButton>
               </div>
             )}
             {renderSlot('conversation', {})}

@@ -39,7 +39,7 @@ export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd }: Inspect
             minWidth: 74,
             margin: '5px 0',
             padding: '0 6px 0 10px',
-            borderRadius: 'var(--db-r-chip)',
+            borderRadius: 'var(--db-r-control)',
             background: tab.id === active ? 'var(--db-fill-4)' : 'transparent',
             cursor: 'pointer',
             transition: 'background var(--db-tint)',
@@ -61,7 +61,7 @@ export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd }: Inspect
             <KIT.IconButton
               title="关闭标签"
               size={26}
-              style={{ width: 20, height: 20, flex: '0 0 20px', borderRadius: 6 }}
+              style={{ width: 16, height: 16, flex: '0 0 16px', borderRadius: 5 }}
               onClick={() => { onClose(tab.id) }}
             >
               <Close size={11} />

@@ -53,13 +53,13 @@ export const PanelLeft = (p: IconProps): ReactNode =>
 export const PanelRight = (p: IconProps): ReactNode =>
   svg(<><rect x="3" y="4" width="18" height="16" rx="2.5" /><path d="M14.5 4v16" /></>, p)
 
-/** Grow a panel to the whole window. */
+/** Grow a panel to the whole window: four corner brackets facing out. */
 export const Maximize = (p: IconProps): ReactNode =>
-  svg(<><path d="M14.5 4.5H19.5V9.5" /><path d="M19.5 4.5L13.8 10.2" /><path d="M9.5 19.5H4.5V14.5" /><path d="M4.5 19.5L10.2 13.8" /></>, p)
+  svg(<><path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" /></>, p)
 
-/** Shrink a maximized panel back to its column. */
+/** Shrink a maximized panel back to its column: the same brackets, facing in. */
 export const Minimize = (p: IconProps): ReactNode =>
-  svg(<><path d="M19.5 9.5H14.5V4.5" /><path d="M20 4L14.5 9.5" /><path d="M4.5 14.5H9.5V19.5" /><path d="M4 20l5.5-5.5" /></>, p)
+  svg(<><path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" /></>, p)
 
 // ── navigation ──────────────────────────────────────────────────────────────
 

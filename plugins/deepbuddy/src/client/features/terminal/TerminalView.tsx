@@ -69,13 +69,14 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
       convertEol: false,
       cursorBlink: true,
       fontFamily: styles.getPropertyValue('--db-mono').trim() || 'monospace',
-      fontSize: 13,
-      lineHeight: 1.25,
+      fontSize: 12,
+      lineHeight: 1.8,
       scrollback: 5000,
       theme: {
-        background: styles.getPropertyValue('--db-window').trim() || '#151517',
-        foreground: styles.getPropertyValue('--db-text-2').trim() || '#cfd3d6',
-        cursor: styles.getPropertyValue('--db-text').trim() || '#f9fafb',
+        // The screen is the embedded void, not the panel it sits on.
+        background: styles.getPropertyValue('--db-void').trim() || '#0e0e10',
+        foreground: styles.getPropertyValue('--db-text-3').trim() || '#a6a6ad',
+        cursor: styles.getPropertyValue('--db-text').trim() || '#f4f4f5',
         selectionBackground: styles.getPropertyValue('--db-fill-6').trim() || '#3a3a3e',
       },
     })
@@ -190,8 +191,11 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
   }, [visible])
 
   return (
-    <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'var(--db-window)' }}>
-      <div style={{ height: 34, flex: '0 0 34px', display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 12px', borderBottom: '1px solid var(--db-line)' }}>
+    <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* No rule under the meta row: the black screen below it already reads
+          as a separate surface, and a hairline on top of that is the second
+          separator DESIGN_INTENT §10 forbids. */}
+      <div style={{ height: 34, flex: '0 0 34px', display: 'flex', alignItems: 'center', gap: 8, padding: '0 8px 0 12px' }}>
         <KIT.Dot tone={state === 'ready' ? 'run' : state === 'connecting' ? 'await' : 'offline'} size={6} />
         <span title={detail} style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--db-mono)', fontSize: 11.5, color: state === 'error' ? 'var(--db-await)' : 'var(--db-text-4)' }}>
           {state === 'connecting' ? '正在连接…' : detail || (state === 'closed' ? '终端已关闭' : '终端')}
@@ -202,7 +206,23 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
           </KIT.IconButton>
         )}
       </div>
-      <div ref={mountRef} style={{ flex: '1 1 auto', minHeight: 0, padding: '8px 8px 4px', userSelect: 'text', overflow: 'hidden' }} />
+      {/* The terminal is a block set INTO the panel, not the panel's floor:
+          it keeps the column's 12px margin on three sides and carries its own
+          hairline and card radius. */}
+      <div
+        ref={mountRef}
+        style={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          margin: '0 12px 12px',
+          padding: '12px 14px',
+          border: '1px solid var(--db-line-panel)',
+          borderRadius: 'var(--db-r-card)',
+          background: 'var(--db-void)',
+          userSelect: 'text',
+          overflow: 'hidden',
+        }}
+      />
     </div>
   )
 })

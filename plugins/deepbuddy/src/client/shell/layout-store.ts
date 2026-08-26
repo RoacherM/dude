@@ -19,8 +19,8 @@
 import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { createRef, useCallback, useRef, useSyncExternalStore } from 'react'
 import {
-  DOCK_BREAKPOINT, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
-  clampDock, clampSidebar, dockDefault, dockFits,
+  GAP, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
+  canSplitDock, clampDock, clampSidebar, dockDefault,
 } from './geometry.ts'
 
 /** One tab of a dock pane, as the shell's strip knows it. */
@@ -165,11 +165,15 @@ export class LayoutStore {
    * Collapse ordering under a shrinking window: the dock goes first, the
    * sidebar second. A dock the user closed by hand stays closed when the
    * window grows back — the automatic reopen is for the automatic close only.
+   *
+   * Only the SPLIT shape answers to this. A full-frame dock is an overlay: it
+   * spends none of the column budget, so nothing about a narrowing window
+   * makes it not fit, and closing it would be the shell overriding a choice
+   * the user can undo themselves with the control right there in its bar.
    */
   private onResize = (): void => {
     const vw = window.innerWidth
-    // A maximized dock is an overlay — column-fit arithmetic does not apply.
-    if (this.state.dock && !this.state.dockMax && (vw < DOCK_BREAKPOINT || !dockFits(vw, this.sideWidth()))) {
+    if (this.state.dock && !this.state.dockMax && !canSplitDock(vw, this.sideWidth())) {
       this.patch({ dock: false })
     }
     if (vw < SIDEBAR_BREAKPOINT && this.state.sidebar) this.patch({ sidebar: false })
@@ -191,12 +195,16 @@ export class LayoutStore {
 
   // ── measurements ──────────────────────────────────────────────────────────
 
-  /** Rendered sidebar width including its handle; 0 while collapsed. */
+  /**
+   * Rendered sidebar width including its seam; 0 while collapsed. The seam is
+   * the full gap now: the handle fills it edge to edge instead of straddling
+   * a 1px rule.
+   */
   private sideWidth(): number {
     const el = this.sideRef.current
     if (!this.state.sidebar || el === null) return 0
     const dragged = Number.parseFloat(el.style.width)
-    return (Number.isFinite(dragged) ? dragged : SIDEBAR_DEFAULT) + 1
+    return (Number.isFinite(dragged) ? dragged : SIDEBAR_DEFAULT) + GAP
   }
 
   /** Hold the dock inside its range after the window changed size. */
@@ -283,11 +291,24 @@ export class LayoutStore {
     this.patch({ sidebar: !this.state.sidebar })
   }
 
+  /**
+   * Open the dock on `pane` — always. A window too narrow for the split gets
+   * the dock as a full-frame overlay instead of a toggle that does nothing:
+   * the intent is satisfied, the conversation column is never squeezed under
+   * its reserve, and there is no dead switch on screen (DESIGN_INTENT §2
+   * rule 5).
+   */
   openDock = (pane: string): void => {
     this.userClosedDock = false
     if (this.state.dock && this.state.pane === pane) return
-    if (!dockFits(window.innerWidth, this.sideWidth())) return
-    this.patch({ dock: true, pane })
+    // An open dock switching view types is a pane change, not an opening: the
+    // shape it is already in (split or maximized) is the user's, and picking
+    // Terminal must not drop the dock out of full frame.
+    if (this.state.dock) {
+      this.patch({ pane })
+      return
+    }
+    this.patch({ dock: true, pane, dockMax: !canSplitDock(window.innerWidth, this.sideWidth()) })
     // The element mounts on this same synchronous commit, so its opening width
     // is set on the next frame rather than read back as zero here.
     requestAnimationFrame(() => {
@@ -303,9 +324,19 @@ export class LayoutStore {
     this.patch({ dock: false, dockMax: false })
   }
 
-  /** Grow the open dock to cover the frame, or shrink it back. */
+  /**
+   * Grow the open dock to cover the frame, or shrink it back — except that
+   * leaving full frame on a window that cannot host the split closes the dock
+   * instead. That window is exactly why it opened full-frame; restoring it to
+   * a column would squeeze the conversation under its reserve, and the button
+   * would have to refuse the click it just accepted.
+   */
   toggleDockMax = (): void => {
     if (!this.state.dock) return
+    if (this.state.dockMax && !canSplitDock(window.innerWidth, this.sideWidth())) {
+      this.patch({ dock: false, dockMax: false })
+      return
+    }
     this.patch({ dockMax: !this.state.dockMax })
   }
 
@@ -411,6 +442,7 @@ export class LayoutStore {
       handle.removeEventListener('lostpointercapture', onLostPointerCapture)
       window.removeEventListener('blur', finish)
       document.body.style.cursor = ''
+      handle.classList.remove('dragging')
       done?.()
     }
     const onUp = (e: PointerEvent): void => {
@@ -425,6 +457,9 @@ export class LayoutStore {
       if (e.pointerId === pointerId) finish()
     }
     document.body.style.cursor = 'col-resize'
+    // The seam's rule stays lit for the whole gesture, including after the
+    // pointer has left the 10px handle (tokens.ts `.dbdy-handle.dragging`).
+    handle.classList.add('dragging')
     handle.addEventListener('pointermove', onMove)
     handle.addEventListener('pointerup', onUp)
     handle.addEventListener('pointercancel', onCancel)

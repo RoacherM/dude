@@ -27,10 +27,10 @@ export const IN_ELECTRON = typeof navigator !== 'undefined' && navigator.userAge
 export function TrafficLights(): ReactNode {
   if (IN_ELECTRON) return <div style={{ width: 54, flex: '0 0 auto' }} />
   return (
-    <div style={{ display: 'flex', gap: 8, flex: '0 0 auto' }}>
-      <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />
-      <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#febc2e', display: 'block' }} />
-      <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#28c840', display: 'block' }} />
+    <div style={{ display: 'flex', gap: 7, alignItems: 'center', flex: '0 0 auto' }}>
+      <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />
+      <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e', display: 'block' }} />
+      <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840', display: 'block' }} />
     </div>
   )
 }
@@ -63,7 +63,14 @@ export function TopBar({ pad = 14, children, style }: { pad?: number; children: 
 /** Controls inside a top bar must opt out of the window drag region. */
 export const NO_DRAG = { WebkitAppRegion: 'no-drag' } as CSSProperties
 
-/** An 8px grab target whose negative margins preserve the 1px column seam. */
+/**
+ * The grab target between two islands. It fills the 10px seam exactly — the
+ * gap IS the separation, so there is no rule to preserve and no negative
+ * margin to preserve it with. Its whole appearance (the seam rule that lights
+ * up on hover and through a drag) lives in `.dbdy-handle` in ui/tokens.ts,
+ * because hover and the drag class are the two things inline styles cannot
+ * express.
+ */
 export function Handle({ onDown, onReset, title }: {
   onDown: (e: React.PointerEvent<HTMLDivElement>) => void
   onReset: () => void
@@ -71,33 +78,25 @@ export function Handle({ onDown, onReset, title }: {
 }): ReactNode {
   return (
     <div
+      className="dbdy-handle"
       onPointerDown={onDown}
       onDoubleClick={onReset}
       title={title}
-      style={{
-        position: 'relative',
-        flex: '0 0 8px',
-        width: 8,
-        margin: '0 -3.5px',
-        cursor: 'col-resize',
-        background: 'transparent',
-        touchAction: 'none',
-        zIndex: 5,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: '0 auto 0 50%',
-          width: 1,
-          transform: 'translateX(-0.5px)',
-          background: 'var(--db-line)',
-          pointerEvents: 'none',
-        }}
-      />
-    </div>
+    />
   )
+}
+
+/**
+ * The island: one rounded panel on the window ground, shared by all three
+ * columns. Radius, ground and outline are NOT props — the three columns being
+ * the same panel is the whole point of the visual (DESIGN_INTENT §10), and a
+ * per-column override is how that stops being true.
+ */
+export const PANEL: CSSProperties = {
+  background: 'var(--db-panel)',
+  border: '1px solid var(--db-line-panel)',
+  borderRadius: 'var(--db-r-panel)',
+  overflow: 'hidden',
 }
 
 /**
@@ -120,7 +119,7 @@ export function ColumnFrame({ header, headerPad = 14, rootRef, style, children }
   return (
     <div
       ref={rootRef as Ref<HTMLDivElement>}
-      style={{ display: 'flex', flexDirection: 'column', minWidth: 0, ...style }}
+      style={{ display: 'flex', flexDirection: 'column', minWidth: 0, ...PANEL, ...style }}
     >
       <TopBar pad={headerPad}>{header}</TopBar>
       <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>

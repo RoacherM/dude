@@ -2,7 +2,7 @@
  * The distribution's design tokens, and the few rules inline styles cannot
  * carry (hover tints, focus rings, keyframes, scrollbars, the overlay layer).
  *
- * UI-unify (wave): every `--db-*` value now references the harness's official
+ * UI-unify (wave): most `--db-*` values reference the harness's official
  * `--dsw-*` / `--ds-*` variables (injected by the enabled ui-conversation /
  * ui-layout rows) with a hardcoded fallback, so DeepBuddy's sidebar and dock
  * share the official main column's palette instead of a parallel Synara set.
@@ -10,19 +10,36 @@
  * via getComputedStyle — the alias names were read off the live DOM, not
  * guessed from names.
  *
+ * Visual v2 (浮岛 + Archivo) breaks that chain for one family of roles, on
+ * purpose: the floating-island frame needs a WINDOW GROUND darker than any
+ * panel (`--db-window`), a panel ground the three columns share
+ * (`--db-panel`), an embedded black for terminals and previews
+ * (`--db-void`), a raised step inside a panel (`--db-raised`), a brand red
+ * that is not a state colour (`--db-brand`), a hairline for the island
+ * outline (`--db-line-panel`) and a radius ladder at 20/24/14/16/12/10/9.
+ * The official palette has no such roles and no such radii, so those tokens
+ * carry literals — a chain there would resolve to the wrong thing, not to a
+ * near-enough thing. Everything that CAN keep following the official palette
+ * still does (text, lines, fills, run / await / primary): the fallbacks
+ * below were refreshed to the v2 values, but the official variable still
+ * wins, which is also what keeps the light theme working
+ * (dsh/theme-presenter.ts).
+ *
  * Three disciplines the token set exists to enforce (they are what separates
- * this from a palette swap — see `design/STUDY-synara.md`):
+ * this from a palette swap — see `design/DESIGN_INTENT.md` §10):
  *
  * 1. **Separation is material, not line.** `--db-fill-*` carry the weight;
- *    `--db-line` is reserved for STRUCTURAL seams (column to column, top bar
- *    to body, composer outline, popover outline). Row- and card-level borders
- *    are not drawn.
+ *    `--db-line` is reserved for STRUCTURAL seams (top bar to body, composer
+ *    outline, popover outline) and column-to-column separation is the 10px
+ *    window ground showing through. Row- and card-level borders are not
+ *    drawn.
  * 2. **Hierarchy is opacity, not weight.** Five text steps, one 600 weight
  *    used only for the wordmark, the hero line and dialog titles. No
  *    uppercase micro-labels, no letter-spacing tricks.
  * 3. **Accent belongs to state.** `--db-run` / `--db-await` / `--db-primary`
  *    mark running, awaiting-approval and the single primary action on screen.
- *    Nothing decorative is coloured.
+ *    `--db-brand` marks identity and nothing else — the one red square beside
+ *    the sidebar wordmark. Selection is fill, never colour.
  *
  * Everything is scoped under `.dbdy` so the stock shell's `--dsw-*` theme and
  * these tokens never fight.
@@ -32,6 +49,12 @@
 export const METRICS = {
   /** Every column draws its own top bar at this height. */
   topbar: 52,
+  /**
+   * The floating-island gap: window padding, column seam and drag-handle
+   * width are the same 10px. It lives here and not only in CSS because the
+   * dock arithmetic has to subtract it (shell/geometry.ts).
+   */
+  gap: 10,
   /** macOS traffic-light reservation at the window's left edge. */
   traffic: 88,
   /** Sidebar width; it collapses to 0 rather than to an icon rail. */
@@ -48,60 +71,85 @@ export const METRICS = {
 
 const CSS = `
 .dbdy {
-  /* ── grounds: official main frame / sidebar / menu / panel ─────────────── */
-  --db-window: var(--dsw-alias-bg-base, #151517);
-  --db-rail: var(--dsw-specific-sidebar-fill, #1b1b1c);
-  --db-popover: var(--dsw-specific-menu, #353638);
-  --db-dialog: var(--dsw-specific-menu, #2c2c2e);
+  /* ── grounds (unchained): the island stack ─────────────────────────────── */
+  /* Window ground is the deepest layer and IS the seam between columns; the
+     three columns are同色 panels floating on it, so nothing here can borrow
+     the official base/sidebar pair — that pair distinguishes rail from frame,
+     which v2 explicitly refuses to do. */
+  --db-window: #0b0b0c;
+  --db-panel: #151517;
+  --db-raised: #1c1c1f;
+  --db-void: #0e0e10;
+  --db-rail: var(--db-panel);
+  --db-popover: #1f1f23;
+  --db-dialog: #171719;
+  --db-gap: ${METRICS.gap}px;
 
   /* ── surface fills: card → hover → selected ───────────────────────────── */
-  --db-fill-1: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover, #ffffff14) 40%, transparent);
-  --db-fill-2: var(--dsw-alias-interactive-bg-hover, #ffffff14);
-  --db-fill-3: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover, #ffffff14) 140%, transparent);
-  --db-fill-4: var(--dsw-alias-interactive-bg-active, #ffffff24);
-  --db-fill-5: color-mix(in srgb, var(--dsw-alias-interactive-bg-active, #ffffff24) 130%, transparent);
-  --db-fill-6: color-mix(in srgb, var(--dsw-alias-interactive-bg-active, #ffffff24) 160%, transparent);
+  --db-fill-1: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, .045)) 40%, transparent);
+  --db-fill-2: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, .045));
+  --db-fill-3: color-mix(in srgb, var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, .045)) 140%, transparent);
+  --db-fill-4: var(--dsw-alias-interactive-bg-active, rgba(255, 255, 255, .085));
+  --db-fill-5: color-mix(in srgb, var(--dsw-alias-interactive-bg-active, rgba(255, 255, 255, .085)) 130%, transparent);
+  --db-fill-6: color-mix(in srgb, var(--dsw-alias-interactive-bg-active, rgba(255, 255, 255, .085)) 160%, transparent);
 
   /* ── text: official primary / secondary / tertiary / caption + a dimmer ── */
-  --db-text: var(--dsw-alias-label-primary, #f9fafb);
-  --db-text-2: var(--dsw-alias-label-secondary, #cfd3d6);
-  --db-text-3: var(--dsw-alias-label-tertiary, #adb2b8);
-  --db-text-4: var(--dsw-alias-label-caption, #81858c);
-  --db-text-5: color-mix(in srgb, var(--dsw-alias-label-caption, #81858c) 78%, transparent);
+  --db-text: var(--dsw-alias-label-primary, #f4f4f5);
+  --db-text-2: var(--dsw-alias-label-secondary, #d6d6db);
+  --db-text-3: var(--dsw-alias-label-tertiary, #a6a6ad);
+  --db-text-4: var(--dsw-alias-label-caption, #6f6f78);
+  --db-text-5: color-mix(in srgb, var(--dsw-alias-label-caption, #6f6f78) 78%, transparent);
 
   /* ── strokes: official border tiers ────────────────────────────────────── */
-  --db-line: var(--dsw-alias-border-l1, #ffffff0f);
-  --db-line-card: var(--dsw-alias-border-l1, #ffffff0f);
-  --db-line-container: var(--dsw-alias-border-l2, #ffffff1f);
-  --db-line-input: var(--dsw-alias-border-l2, #ffffff1f);
-  --db-line-input-2: var(--dsw-alias-border-l3, #ffffff29);
-  --db-line-emphasis: var(--dsw-alias-border-l3, #ffffff29);
-  --db-line-focus: var(--dsw-alias-border-l4, #fff3);
-  --db-line-hover: var(--dsw-alias-interactive-bg-active, #ffffff24);
-  --db-line-dashed: var(--dsw-alias-border-l2, #ffffff1f);
+  /* The island outline is unchained: it is a hairline ON the window ground,
+     a role the official border tiers (all drawn inside one panel) have no
+     entry for. */
+  --db-line-panel: rgba(255, 255, 255, .05);
+  --db-line: var(--dsw-alias-border-l1, rgba(255, 255, 255, .06));
+  --db-line-card: var(--dsw-alias-border-l1, rgba(255, 255, 255, .08));
+  --db-line-container: var(--dsw-alias-border-l2, rgba(255, 255, 255, .08));
+  --db-line-input: var(--dsw-alias-border-l2, rgba(255, 255, 255, .09));
+  --db-line-input-2: var(--dsw-alias-border-l3, rgba(255, 255, 255, .14));
+  --db-line-emphasis: var(--dsw-alias-border-l3, rgba(255, 255, 255, .14));
+  --db-line-focus: var(--dsw-alias-border-l4, rgba(255, 255, 255, .22));
+  --db-line-hover: var(--dsw-alias-interactive-bg-active, rgba(255, 255, 255, .28));
+  --db-line-dashed: var(--dsw-alias-border-l2, rgba(255, 255, 255, .14));
 
   /* ── semantics: the only colours on screen ─────────────────────────────── */
-  --db-run: var(--dsw-alias-state-success-primary, #22c55e);
-  --db-run-soft: color-mix(in srgb, var(--dsw-alias-state-success-primary, #22c55e) 80%, var(--dsw-alias-label-primary, #f9fafb));
-  --db-run-wash: color-mix(in srgb, var(--dsw-alias-state-success-primary, #22c55e) 14%, transparent);
-  --db-await: var(--dsw-alias-state-warning-primary, #d97757);
-  --db-await-wash: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #d97757) 13%, transparent);
+  /* Brand red is unchained and is NOT a state: it marks identity once, beside
+     the sidebar wordmark, and is never borrowed for selection or warning
+     (DESIGN_INTENT §10). The official palette's red is an error colour. */
+  --db-brand: #ec3013;
+  --db-brand-wash: color-mix(in srgb, #ec3013 14%, transparent);
+  --db-run: var(--dsw-alias-state-success-primary, #3ecf8e);
+  --db-run-soft: color-mix(in srgb, var(--dsw-alias-state-success-primary, #3ecf8e) 80%, var(--dsw-alias-label-primary, #f4f4f5));
+  --db-run-wash: color-mix(in srgb, var(--dsw-alias-state-success-primary, #3ecf8e) 14%, transparent);
+  --db-await: var(--dsw-alias-state-warning-primary, #e9a23b);
+  --db-await-wash: color-mix(in srgb, var(--dsw-alias-state-warning-primary, #e9a23b) 13%, transparent);
   --db-primary: var(--dsw-alias-state-business-primary, #679efe);
-  --db-offline: var(--dsw-alias-label-caption, #81858c);
+  --db-offline: #55555e;
 
   /* ── type ──────────────────────────────────────────────────────────────── */
+  /* Body is Archivo, code is the system mono stack, and the pixel face is
+     demoted to the brand wordmark alone — all three set in ui/fonts.ts. */
   --db-font: var(--dsw-font-family);
   --db-mono: var(--ds-font-family-code);
+  --db-brandfont: "Departure Mono", ui-monospace, Menlo, monospace;
 
-  /* ── radii: official row 8px, cards/pills 22px / 999px ─────────────────── */
+  /* ── radii (unchained): panel 20 / dialog 24 / popover 14 / input 16 /
+        card 12 / row 10 / control 9 / chip 8 ────────────────────────────── */
+  --db-r-panel: 20px;
+  --db-r-dialog: 24px;
+  --db-r-popover: 14px;
   --db-r-badge: 8px;
   --db-r-chip: 8px;
   --db-r-swatch: 10px;
-  --db-r-row: 8px;
-  --db-r-input: 14px;
-  --db-r-card: 22px;
-  --db-r-surface: 22px;
-  --db-r-editor: 22px;
+  --db-r-control: 9px;
+  --db-r-row: 10px;
+  --db-r-input: 16px;
+  --db-r-card: 12px;
+  --db-r-surface: 12px;
+  --db-r-editor: 12px;
 
   /* ── motion: official transition durations / ease ──────────────────────── */
   --db-in: var(--ds-transition-duration-fast, 0.1s) var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1));
@@ -109,9 +157,9 @@ const CSS = `
   --db-tint: var(--ds-transition-duration-fast, 0.1s) var(--ds-ease-in-out, cubic-bezier(.4, 0, .2, 1));
 
   /* ── elevation ─────────────────────────────────────────────────────────── */
-  --db-shadow-popover: 0 22px 54px rgba(0, 0, 0, .68);
-  --db-shadow-menu: 0 24px 60px rgba(0, 0, 0, .70);
-  --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .74);
+  --db-shadow-popover: 0 16px 40px rgba(0, 0, 0, .5);
+  --db-shadow-menu: 0 16px 40px rgba(0, 0, 0, .5);
+  --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .6);
 
   /* color-scheme is NOT pinned here: the theme presenter sets it on the root
      per snapshot, and inheritance carries it — a dark pin would keep dark
@@ -158,6 +206,36 @@ const CSS = `
 .dbdy-row .dbdy-act { opacity: 0; pointer-events: none; transition: opacity var(--db-tint); }
 .dbdy-row:hover .dbdy-rest { opacity: 0; pointer-events: none; }
 .dbdy-row:hover .dbdy-act { opacity: 1; pointer-events: auto; }
+
+/* ── the column seam ───────────────────────────────────────────────────── */
+/* The drag handle fills the 10px gap exactly, so the grab target IS the seam
+   and the window ground shows through it. The rule inside it is invisible at
+   rest — the gap already separates the islands — and lights up in the action
+   colour only while it is being pointed at or dragged. Hover and the drag
+   class are the two things an inline style cannot express, so the whole
+   handle is drawn here (shell/ColumnFrame.tsx renders the element). */
+.dbdy-handle {
+  position: relative;
+  flex: 0 0 var(--db-gap);
+  width: var(--db-gap);
+  z-index: 10;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+.dbdy-handle::after {
+  content: "";
+  position: absolute;
+  inset: 22px auto 22px 50%;
+  width: 2px;
+  border-radius: 2px;
+  transform: translateX(-1px);
+  background: transparent;
+  pointer-events: none;
+  transition: background var(--db-tint);
+}
+.dbdy-handle:hover::after,
+.dbdy-handle.dragging::after { background: var(--db-primary); }
 
 /* ── motion ────────────────────────────────────────────────────────────── */
 @keyframes dbdy-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
@@ -214,8 +292,10 @@ button, a, input, textarea, select,
 /* Sidebar collapsed (both shells): the lights (native reservation under
    Electron, simulated dots in a browser) + expand toggle float at the main
    column's top-left on the 52px header line (ThreeColumnFrame), so the
-   header title steps right of the lockup (12 + ~54 lights + 14 + 28 toggle). */
-.dbdy-noside header[class*="_header"] > div[class*="_titleRow"] { padding-left: 122px; }
+   header title steps right of the lockup: 12 left + 54 lights reservation
+   (the browser's three 11px dots at gap 7 are narrower) + 12 gap + 28
+   toggle = 106, plus a little air. */
+.dbdy-noside header[class*="_header"] > div[class*="_titleRow"] { padding-left: 112px; }
 
 /* One character per span, popping in sequence and waving out; fill-mode
    backwards keeps a char invisible through its stagger delay. */

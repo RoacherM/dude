@@ -7,7 +7,7 @@
  * knows about the other.
  */
 import { useEffect, useRef } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { FilesStore } from './store.ts'
 import type { DirectoryChild } from '../../dsh/files.ts'
@@ -38,6 +38,19 @@ function Note({ pad, tone, children }: { pad: number; tone?: 'error'; children: 
   )
 }
 
+/**
+ * A file tree is a monospace list, not a rail: 28px lines, code face, the
+ * control radius. Depth, height, face and radius are the tree's own facts and
+ * arrive as overrides — the selected fill and the row's structure stay the
+ * kit's, so a tree row is still recognisably the same row as a session row.
+ */
+const TREE_ROW: CSSProperties = {
+  height: 28,
+  borderRadius: 'var(--db-r-control)',
+  fontFamily: 'var(--db-mono)',
+  fontSize: 12.5,
+}
+
 /** One expanded directory level of the live tree (root at depth 0). */
 function TreeLevel({ store, onOpen, active, dirKey, depth }: {
   store: FilesStore
@@ -58,14 +71,11 @@ function TreeLevel({ store, onOpen, active, dirKey, depth }: {
           const open = store.state.fsExpanded[child.path] === true
           return (
             <div key={child.path}>
-              {/* Depth is the tree's own fact, so it arrives as a padding
-                  override; height, radius and the selected fill stay the
-                  kit's. */}
               <KIT.Row
                 dense
                 title={child.path}
                 onClick={() => { store.toggleFolder(child.path) }}
-                style={{ paddingLeft: pad, gap: 6 }}
+                style={{ ...TREE_ROW, paddingLeft: pad, gap: 6 }}
                 icon={(
                   <>
                     {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
@@ -87,7 +97,7 @@ function TreeLevel({ store, onOpen, active, dirKey, depth }: {
             current={current}
             title={child.path}
             onClick={() => { onOpen(child) }}
-            style={{ paddingLeft: pad + 17, gap: 6, fontFamily: 'var(--db-mono)', fontSize: 12 }}
+            style={{ ...TREE_ROW, paddingLeft: pad + 17, gap: 6, fontSize: 12 }}
             icon={<FileText size={13} />}
           >
             {child.name}
@@ -190,8 +200,11 @@ function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNo
   }
   return (
     <div style={{ padding: 16 }}>
+      {/* File text is embedded content, so it sits in the same void block the
+          terminal and the browser page do, not on a tinted fill. */}
       <pre style={{
-        margin: 0, padding: 14, borderRadius: 'var(--db-r-card)', background: 'var(--db-fill-1)',
+        margin: 0, padding: '14px 16px', border: '1px solid var(--db-line-panel)',
+        borderRadius: 'var(--db-r-card)', background: 'var(--db-void)',
         fontFamily: 'var(--db-mono)', fontSize: 12, lineHeight: 1.7, color: 'var(--db-text-2)',
         whiteSpace: 'pre-wrap', wordBreak: 'break-word',
       }}

@@ -248,7 +248,11 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
   let nextFrame = null
 
   globalThis.window = {
-    innerWidth: 1440,
+    // Wide enough that the gesture's 600–660px range sits INSIDE the drag
+    // clamp (30% = 594, a third = 660): this test is about coalescing and
+    // termination, and a window where every candidate pinned to the same
+    // bound would stop telling the two apart.
+    innerWidth: 1980,
     addEventListener(type, listener) { windowListeners.set(type, listener) },
     removeEventListener(type, listener) {
       if (windowListeners.get(type) === listener) windowListeners.delete(type)
@@ -269,7 +273,11 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
       let capturedPointer = null
       let styleWrites = 0
       const handleListeners = new Map()
+      // The seam's lit state is a class the gesture owns, so every exit path
+      // below is also asserting that the handle does not stay lit.
+      const classes = new Set()
       const handle = {
+        classList: { add(name) { classes.add(name) }, remove(name) { classes.delete(name) } },
         addEventListener(type, listener) { handleListeners.set(type, listener) },
         removeEventListener(type, listener) {
           if (handleListeners.get(type) === listener) handleListeners.delete(type)
@@ -306,6 +314,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
       })
       return {
         capturedPointer,
+        classes,
         dockStyle,
         handleListeners,
         hiddenStyle,
@@ -320,6 +329,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
     assert.equal(drag.prevented, true)
     assert.equal(drag.capturedPointer, drag.pointerId)
     assert.equal(document.body.style.cursor, 'col-resize')
+    assert.deepEqual([...drag.classes], ['dragging'], 'the seam lights up for the gesture')
     assert.equal(drag.dockStyle.overflow, 'hidden')
     assert.deepEqual(drag.visibleStyle, {
       width: '584px', minWidth: '584px', maxWidth: '584px', pointerEvents: 'none',
@@ -338,7 +348,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
 
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1200 })
     nextFrame()
-    assert.equal(drag.dockStyle.width, '432px', 'rightward shrink still respects the existing 30% floor')
+    assert.equal(drag.dockStyle.width, '594px', 'rightward shrink still respects the 30%-of-window floor')
     assert.equal(drag.styleWrites(), 4)
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1300 })
     nextFrame()
@@ -355,6 +365,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
       width: '100%', minWidth: '', maxWidth: '', pointerEvents: '',
     })
     assert.deepEqual([...drag.handleListeners.keys()], [])
+    assert.deepEqual([...drag.classes], [], 'the seam goes dark when the gesture ends')
     assert.equal(windowListeners.has('blur'), false)
 
     drag.visibleStyle.width = 'after-finish'
@@ -372,6 +383,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
       assert.equal(ended.dockStyle.overflow, '')
       assert.equal(document.body.style.cursor, '')
       assert.deepEqual([...ended.handleListeners.keys()], [])
+      assert.deepEqual([...ended.classes], [], `${terminalEvent} unlights the seam`)
     }
   }
   finally {
@@ -380,9 +392,10 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
   }
 })
 
-test('drag structure uses Pointer Events without a shield and keeps an 8px hit target', async () => {
+test('drag structure uses Pointer Events without a shield and fills the column seam', async () => {
   const layout = await readFile(join(root, 'src/client/shell/layout-store.ts'), 'utf8')
   const column = await readFile(join(root, 'src/client/shell/ColumnFrame.tsx'), 'utf8')
+  const tokens = await readFile(join(root, 'src/client/ui/tokens.ts'), 'utf8')
 
   assert.match(layout, /setPointerCapture\(pointerId\)/)
   assert.match(layout, /addEventListener\('pointercancel', onCancel\)/)
@@ -390,13 +403,22 @@ test('drag structure uses Pointer Events without a shield and keeps an 8px hit t
   assert.match(layout, /if \(finished\) return/)
   assert.match(layout, /item\.measuredWidth > 0/)
   assert.doesNotMatch(layout, /deepbuddyResizeShield|ensureResizeShield|addEventListener\('mousemove'|addEventListener\('mouseup'/)
+  // The seam rule stays lit for the whole gesture, not just while the pointer
+  // is over the 10px strip — added on capture, removed on every exit path.
+  assert.match(layout, /handle\.classList\.add\('dragging'\)/)
+  assert.match(layout, /handle\.classList\.remove\('dragging'\)/)
 
+  // The handle is the seam: the gap's full width, no negative margins, and no
+  // resting rule to preserve — the window ground between the islands is the
+  // separator (DESIGN_INTENT §10).
   assert.match(column, /onPointerDown=\{onDown\}/)
-  assert.match(column, /flex: '0 0 8px'/)
-  assert.match(column, /width: 8/)
-  assert.match(column, /margin: '0 -3\.5px'/)
-  assert.match(column, /touchAction: 'none'/)
-  assert.match(column, /width: 1/)
+  assert.match(column, /className="dbdy-handle"/)
+  assert.doesNotMatch(column, /margin: '0 -3\.5px'/)
+  assert.match(tokens, /\.dbdy-handle \{[^}]*width: var\(--db-gap\)/s)
+  assert.match(tokens, /\.dbdy-handle \{[^}]*cursor: col-resize/s)
+  assert.match(tokens, /\.dbdy-handle \{[^}]*touch-action: none/s)
+  assert.match(tokens, /\.dbdy-handle::after \{[^}]*background: transparent/s)
+  assert.match(tokens, /\.dbdy-handle:hover::after,\s*\n\.dbdy-handle\.dragging::after \{ background: var\(--db-primary\); \}/)
   assert.doesNotMatch(column, /boxShadow/)
 })
 
@@ -640,24 +662,47 @@ test('geometry: the sidebar clamp follows the handoff', async () => {
   assert.equal(g.clampSidebar(9999), 380)
 })
 
-test('geometry: the dock opens at 30% and drags between 30% and 70%', async () => {
+test('geometry: the dock opens at 30% of the window and never passes a third of it', async () => {
   const g = await import(join(root, 'src/client/shell/geometry.ts'))
-  // 1440px window, 269px sidebar (268 + its 1px seam).
-  assert.equal(g.dockDefault(1440, 269), Math.round(1440 * 0.30))
-  // Upper bound is the stricter of 70% (1008) and what the chat column can
-  // survive (1440 - 269 - 460 = 711).
-  assert.equal(g.clampDock(10_000, 1440, 269), 711)
+  // 1440px window, 278px sidebar contribution (268 + its 10px seam). The
+  // dock's budget is the window less its own 2×10 padding, the sidebar with
+  // its seam, and the dock's own seam: 1440 - 20 - 278 - 10 = 1132.
+  assert.equal(g.GAP, 10)
+  assert.equal(g.dockDefault(1440, 278), Math.round(1440 * 0.30))
+  // Upper bound is the stricter of a third of the WINDOW (480) and what the
+  // chat column can survive (1132 - 460 = 672). The third binds.
+  assert.equal(g.clampDock(10_000, 1440, 278), 480)
   // Lower bound is the stricter-in-the-other-direction of 30% (432) and the
   // panel's own 416px floor.
-  assert.equal(g.clampDock(0, 1440, 269), 432)
+  assert.equal(g.clampDock(0, 1440, 278), 432)
   // On a very wide window the 416px floor stops mattering; 30% binds.
   assert.equal(g.clampDock(0, 2560, 0), 768)
-  // Without a sidebar the 70% cap binds: min(1008, 1440 - 460 = 980) = 980.
-  assert.equal(g.clampDock(10_000, 1440, 0), 980)
-  // The dock is refused rather than opened at an unusable width.
-  assert.equal(g.dockFits(1440, 269), true)
-  assert.equal(g.dockFits(1100, 269), false)
-  assert.equal(g.dockFits(1145, 269), true)
+  // Ratios are measured against the window, so collapsing the sidebar does
+  // NOT widen the cap — it is still a third of 1440.
+  assert.equal(g.clampDock(10_000, 1440, 0), 480)
+  // Where the third and the 416px floor disagree — a narrow window — the
+  // floor wins and the drag range collapses onto it: at 1240 a third is
+  // 413.3, so both ends of the range are the floor.
+  assert.equal(g.clampDock(10_000, 1240, 278), 416)
+  assert.equal(g.clampDock(0, 1240, 278), 416)
+})
+
+test('geometry: fitting the split is a shape question, not a veto', async () => {
+  const g = await import(join(root, 'src/client/shell/geometry.ts'))
+  // The split needs chat's 460 and the dock's 416 inside the gap budget, so
+  // it turns over at 416 + 460 + 20 + 278 + 10 = 1184 with the sidebar open.
+  assert.equal(g.dockFits(1440, 278), true)
+  assert.equal(g.dockFits(1184, 278), true)
+  assert.equal(g.dockFits(1183, 278), false)
+  assert.equal(g.dockFits(1100, 278), false)
+  // Collapsing the sidebar buys back its width and its seam.
+  assert.equal(g.dockFits(906, 0), true)
+  // canSplitDock adds the design's own floor: under 1100px the window belongs
+  // to one column at a time even when the arithmetic would fit.
+  assert.equal(g.canSplitDock(1440, 278), true)
+  assert.equal(g.canSplitDock(1183, 278), false)
+  assert.equal(g.canSplitDock(1000, 0), false)
+  assert.equal(g.canSplitDock(1100, 0), true)
 })
 
 test('slots: DeepBuddy declares sidebar.settings; the official apply owns conversation.*', async () => {
