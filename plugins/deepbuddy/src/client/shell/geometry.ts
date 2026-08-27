@@ -18,24 +18,24 @@ import { METRICS } from '../ui/tokens.ts'
 /** Sidebar default width; it collapses to 0, never to an icon rail. */
 export const SIDEBAR_DEFAULT = METRICS.sidebar
 
-/** Sidebar drag range. The handoff fixes one width; the drag keeps the
- *  reading column usable on a narrow window without letting the rail grow
- *  into a second content column. */
+/** Sidebar drag range: a 232px floor (a session row's title plus its
+ *  timestamp stays readable) up to a quarter of the WINDOW — the rail may
+ *  scale with the screen but never grows into a second content column. */
 export const SIDEBAR_MIN = 232
-export const SIDEBAR_MAX = 380
+export const SIDEBAR_MAX_RATIO = 1 / 4
 
 /** The island gap: window padding on each side, and one per column seam. */
 export const GAP = METRICS.gap
 
-/** Dock share of the WINDOW: default, and the ends of its drag range. */
+/** The dock OPENS at 30% of the window; the drag range below is wider. */
 export const DOCK_DEFAULT_RATIO = 0.30
-export const DOCK_MIN_RATIO = 0.30
 /** The dock never takes more than half of the window (DESIGN_INTENT §2). */
 export const DOCK_MAX_RATIO = 1 / 2
 
-/** Dock floor in pixels: below this the panel's own top bar stops fitting
- *  its resource strip plus the trailing controls. Where the half-of-a-
- *  window cap and this floor disagree — a narrow window — the floor wins. */
+/** Dock floor in pixels — also the drag's lower bound: below this the
+ *  panel's own top bar stops fitting its resource strip plus the trailing
+ *  controls. A fixed floor, not a window ratio, so a wide screen does not
+ *  inflate how narrow the user may drag the panel. */
 export const DOCK_MIN = 416
 
 /** Conversation column reservation held back during a dock drag. */
@@ -64,9 +64,10 @@ function dragCeiling(vw: number, other: number): number {
 
 /**
  * Clamp a sidebar drag candidate — the mirror of {@link clampDock}: its own
- * 232–380 taste range, capped by the shared ceiling so the drag stops where
- * the conversation column would start paying. Where the ceiling and the 232px
- * floor disagree — a narrow window — the floor wins, same as the dock's rule.
+ * taste range (232px floor, quarter-of-the-window cap), further capped by
+ * the shared ceiling so the drag stops where the conversation column would
+ * start paying. Where the caps and the 232px floor disagree — a narrow
+ * window — the floor wins, same as the dock's rule.
  * @param w - candidate width in px.
  * @param vw - window inner width.
  * @param dock - rendered dock width including its seam (0 when closed or
@@ -74,7 +75,7 @@ function dragCeiling(vw: number, other: number): number {
  * @returns the width to apply.
  */
 export function clampSidebar(w: number, vw: number, dock: number): number {
-  const max = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, dragCeiling(vw, dock)))
+  const max = Math.max(SIDEBAR_MIN, Math.min(vw * SIDEBAR_MAX_RATIO, dragCeiling(vw, dock)))
   return Math.min(Math.max(w, SIDEBAR_MIN), max)
 }
 
@@ -92,18 +93,17 @@ export function dockDefault(vw: number, side: number): number {
  * Clamp a dock drag candidate.
  *
  * The upper bound is the stricter of half of the window and what the
- * conversation column can survive; the lower bound is the stricter-in-the-
- * other-direction of 30% and the panel's own 416px floor, so a very narrow
- * window never lets the range collapse below a usable panel.
+ * conversation column can survive; the lower bound is the panel's own 416px
+ * floor, so a very narrow window never lets the range collapse below a
+ * usable panel.
  * @param w - candidate width in px.
  * @param vw - window inner width.
  * @param side - rendered sidebar width including its seam (0 when collapsed).
  * @returns the width to apply.
  */
 export function clampDock(w: number, vw: number, side: number): number {
-  const min = Math.max(vw * DOCK_MIN_RATIO, DOCK_MIN)
-  const max = Math.max(min, Math.min(vw * DOCK_MAX_RATIO, dragCeiling(vw, side)))
-  return Math.min(Math.max(w, min), max)
+  const max = Math.max(DOCK_MIN, Math.min(vw * DOCK_MAX_RATIO, dragCeiling(vw, side)))
+  return Math.min(Math.max(w, DOCK_MIN), max)
 }
 
 /**

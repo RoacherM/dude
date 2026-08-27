@@ -329,7 +329,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
 
   globalThis.window = {
     // Wide enough that the gesture's 600–660px range sits INSIDE the drag
-    // clamp (30% = 594, half = 990): this test is about coalescing and
+    // clamp (416px floor, half = 990): this test is about coalescing and
     // termination, and a window where every candidate pinned to the same
     // bound would stop telling the two apart.
     innerWidth: 1980,
@@ -428,7 +428,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
 
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1200 })
     nextFrame()
-    assert.equal(drag.dockStyle.flex, '0 0 594px', 'rightward shrink still respects the 30%-of-window floor')
+    assert.equal(drag.dockStyle.flex, '0 0 416px', 'rightward shrink still respects the 416px floor')
     assert.equal(drag.styleWrites(), 2)
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1300 })
     nextFrame()
@@ -856,29 +856,30 @@ test('presets: every inventory phase has a label', async () => {
   assert.equal(p.pluginPhaseLabel({ fiberPhase: null, enabled: false }), '已禁用')
 })
 
-test('geometry: the sidebar clamp follows the handoff and the shared ceiling', async () => {
+test('geometry: the sidebar drags 232px to a quarter, under the shared ceiling', async () => {
   // The client sources are TS; shell/geometry.ts is valid JS after type
   // stripping, which node >= 22.6 performs natively, so the arithmetic is
   // exercised directly instead of through the bundle.
   const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 268 is the handoff's one sidebar width; the drag range brackets it.
-  // With the dock closed (spend 0) a wide window leaves the taste range
-  // 232–380 fully open.
+  // With the dock closed (spend 0) the cap is a quarter of the WINDOW:
+  // 360 at 1440, 640 at 2560 — the rail scales with the screen.
   assert.equal(g.SIDEBAR_DEFAULT, 268)
   assert.equal(g.clampSidebar(100, 1440, 0), 232)
   assert.equal(g.clampSidebar(268, 1440, 0), 268)
-  assert.equal(g.clampSidebar(9999, 1440, 0), 380)
+  assert.equal(g.clampSidebar(9999, 1440, 0), 360)
+  assert.equal(g.clampSidebar(9999, 2560, 0), 640)
   // The clamp is the dock clamp's mirror: with the dock parked at its widest
   // (1710px window, dock 855 + its 10px seam) the shared ceiling is
-  // 1710 - 20 - 865 - 10 - 460 = 355, so the drag stops where the
-  // conversation column would start paying — no debt for release to settle.
+  // 1710 - 20 - 865 - 10 - 460 = 355 — stricter than the quarter (427.5) —
+  // so the drag stops where the conversation column would start paying.
   assert.equal(g.clampSidebar(9999, 1710, 865), 355)
   // A ceiling below the 232px floor collapses the range onto the floor,
   // the same floor-wins rule the dock has.
   assert.equal(g.clampSidebar(9999, 1100, 426), 232)
 })
 
-test('geometry: the dock opens at 30% of the window and never passes half of it', async () => {
+test('geometry: the dock opens at 30%, drags 416px to half the window', async () => {
   const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 1440px window, 278px sidebar contribution (268 + its 10px seam). The
   // dock's budget is the window less its own 2×10 padding, the sidebar with
@@ -888,14 +889,13 @@ test('geometry: the dock opens at 30% of the window and never passes half of it'
   // Upper bound is the stricter of half the WINDOW (720) and what the
   // chat column can survive (1132 - 460 = 672). The chat reserve binds.
   assert.equal(g.clampDock(10_000, 1440, 278), 672)
-  // Lower bound is the stricter-in-the-other-direction of 30% (432) and the
-  // panel's own 416px floor.
-  assert.equal(g.clampDock(0, 1440, 278), 432)
-  // On a very wide window the 416px floor stops mattering; 30% binds.
-  assert.equal(g.clampDock(0, 2560, 0), 768)
-  // Ratios are measured against the window, so collapsing the sidebar does
-  // NOT move the half-window cap — it frees the chat reserve instead, and
-  // the cap (720) becomes the binding bound.
+  // The lower bound is the fixed 416px floor on every screen — 30% is only
+  // the OPENING width, so a wide window does not inflate how narrow the
+  // user may drag the panel.
+  assert.equal(g.clampDock(0, 1440, 278), 416)
+  assert.equal(g.clampDock(0, 2560, 0), 416)
+  // Collapsing the sidebar does NOT move the half-window cap — it frees the
+  // chat reserve instead, and the cap (720) becomes the binding bound.
   assert.equal(g.clampDock(10_000, 1440, 0), 720)
   // On a narrow window the chat reserve binds before the half cap (620):
   // budget 932 - 460 = 472. Push it narrower and the 416px floor wins.
