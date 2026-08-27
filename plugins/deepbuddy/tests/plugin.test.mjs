@@ -445,6 +445,18 @@ test('column widths are committed state: remembered across max round-trips and r
     assert.equal(layout.state.sidePx, 380, 'a committed sidebar width survives collapse/expand')
     assert.equal(layout.state.dock, false, 'a sidebar too wide for the split closes the dock instead of squeezing the conversation')
 
+    // The shell's own close is responsive, so growing the window undoes it;
+    // a USER close sticks (responsive rule 3 cuts both ways).
+    globalThis.window.innerWidth = 1980
+    layout.onResize()
+    assert.equal(layout.state.dock, true, 'a reflow-closed dock reopens once the split fits again')
+    layout.closeDock()
+    globalThis.window.innerWidth = 1200
+    layout.onResize()
+    globalThis.window.innerWidth = 1980
+    layout.onResize()
+    assert.equal(layout.state.dock, false, 'a user-closed dock never reopens itself')
+
     // A width that is not rendering is a dormant PREFERENCE (responsive
     // rule 4): shrinking the window while the dock is closed or full-frame
     // must not overwrite it. Only the moment it renders again re-clamps.

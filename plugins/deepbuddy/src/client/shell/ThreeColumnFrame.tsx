@@ -315,6 +315,7 @@ type RootProps = PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shel
 export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => ReactNode {
   return function DeepBuddyRoot({ renderSlot }: RootProps): ReactNode {
     const sidebar = useLayoutSelection(deps.layout, current => current.state.sidebar)
+    const sidePx = useLayoutSelection(deps.layout, current => current.state.sidePx)
     const dock = useLayoutSelection(deps.layout, current => current.state.dock)
     const dockMax = useLayoutSelection(deps.layout, current => current.state.dockMax)
     const sessionStarted = useLayoutSelection(deps.layout, current => current.state.sessionStarted)
@@ -358,8 +359,10 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               {/* DeepBuddy unmounts the column instead of keeping the official
                   compact rail, so `collapsed` is false wherever this runs.
                   'sidebar' is a reserved surface — the owner share exists for
-                  contract fidelity, not for a third party to read. */}
-              {renderSlot('sidebar', { collapsed: false, width: METRICS.sidebar } satisfies SidebarOwnerProps)}
+                  contract fidelity, not for a third party to read; it still
+                  must state the REAL width, which is committed drag state,
+                  not the 268px default. */}
+              {renderSlot('sidebar', { collapsed: false, width: sidePx } satisfies SidebarOwnerProps)}
               <Handle onDown={deps.layout.startSideDrag} onReset={deps.layout.resetSideWidth} title="拖拽调整侧栏宽度 · 双击重置" />
             </>
           )}

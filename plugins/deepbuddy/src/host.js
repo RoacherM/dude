@@ -253,8 +253,12 @@ async function streamMedia(ctx, req, res, sessionId, path) {
   const streamFile = (options) => {
     const stream = options === undefined ? createReadStream(filePath) : createReadStream(filePath, options)
     stream.on('error', () => {
-      if (!res.headersSent) res.statusCode = 500
-      res.destroy()
+      // `destroy()` never flushes a status line — the client would see a
+      // connection reset, not a 500. Actually answer when nothing was sent
+      // yet; abort only a response already mid-stream.
+      if (res.headersSent) { res.destroy(); return }
+      res.writeHead(500)
+      res.end()
     })
     stream.pipe(res)
   }
@@ -776,8 +780,9 @@ export function apply(ctx, config) {
         // A rejected promise here would be an unhandled rejection — Node ≥15
         // exits the process for those. Fail the one response instead.
         streamMedia(ctx, req, res, sessionId, path).catch(() => {
-          if (!res.headersSent) res.statusCode = 500
-          res.destroy()
+          if (res.headersSent) { res.destroy(); return }
+          res.writeHead(500)
+          res.end()
         })
       },
     }), 'deepbuddy: media route')

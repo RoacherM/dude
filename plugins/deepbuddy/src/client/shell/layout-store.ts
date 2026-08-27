@@ -150,6 +150,14 @@ export class LayoutStore {
    */
   dockFallback: string | null = null
 
+  /**
+   * True while the split dock is closed by reflow's own space check rather
+   * than the user. Not rendered state: it exists so the next reflow that
+   * fits can undo the shell's close — a USER close (closeDock, overlay
+   * exit) clears it and sticks.
+   */
+  private dockAutoClosed = false
+
   // ── store plumbing ────────────────────────────────────────────────────────
 
   private patch(next: Partial<LayoutState>): void {
@@ -229,6 +237,13 @@ export class LayoutStore {
     const dockMax = patch.dockMax ?? this.state.dockMax
     if ((patch.dock ?? this.state.dock) && !dockMax && !canSplitDock(vw, side)) {
       patch.dock = false
+      // The SHELL closed this, not the user — remember that, so growing the
+      // window back undoes it (responsive rule 3: only user closes stick).
+      this.dockAutoClosed = true
+    }
+    else if (!(patch.dock ?? this.state.dock) && this.dockAutoClosed && canSplitDock(vw, side)) {
+      patch.dock = true
+      this.dockAutoClosed = false
     }
     // Clamp only a width that is actually RENDERING as a split column. While
     // the dock is closed or full-frame, dockPx is a dormant preference —
@@ -322,6 +337,7 @@ export class LayoutStore {
    * rule 5).
    */
   openDock = (pane: string): void => {
+    this.dockAutoClosed = false
     if (this.state.dock && this.state.pane === pane) return
     // An open dock switching view types is a pane change, not an opening: the
     // shape it is already in (split or maximized) is the user's, and picking
@@ -345,6 +361,7 @@ export class LayoutStore {
   }
 
   closeDock = (): void => {
+    this.dockAutoClosed = false
     this.patch({ dock: false, dockMax: false })
   }
 
@@ -359,6 +376,7 @@ export class LayoutStore {
     if (!this.state.dock) return
     if (this.state.dockMax && !canSplitDock(window.innerWidth, this.sideBudget())) {
       dblog('layout', 'overlay exit closed the dock — split still does not fit', { vw: window.innerWidth, side: this.sideBudget() })
+      this.dockAutoClosed = false
       this.patch({ dock: false, dockMax: false })
       return
     }

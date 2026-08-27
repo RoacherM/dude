@@ -95,10 +95,12 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
     const fit = new FitAddon()
     terminal.loadAddon(fit)
     terminal.open(mount)
-    // ThemePresenter flips `data-ds-dark-theme` on body; the kept-alive pane
-    // must follow it or it keeps the stale scheme until a remount.
+    // ThemePresenter flips `data-ds-dark-theme` on body AND writes theme
+    // alias tokens via body.style — a token-only theme switch (dark → other
+    // dark) never touches the attribute, so the kept-alive pane must watch
+    // both or it keeps the stale scheme until a remount.
     const themeObserver = new MutationObserver(() => { terminal.options.theme = readTheme() })
-    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme', 'style'] })
 
     let disposed = false
     let reconnectTimer: number | undefined
