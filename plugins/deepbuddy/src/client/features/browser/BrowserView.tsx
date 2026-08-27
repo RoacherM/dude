@@ -17,6 +17,7 @@ interface WebviewElement extends HTMLElement {
   goForward(): void
   reload(): void
   getURL(): string
+  loadURL(url: string): Promise<void>
 }
 
 interface WebviewNavigationEvent extends Event {
@@ -152,8 +153,20 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
     setFailed(false)
     setInputState(next)
     setUrlState(next)
-    setSrc(next)
     persist(next, next)
+    // A live webview navigates imperatively: `src` is a React prop, so
+    // re-entering the URL the guest has since left (same string as the last
+    // explicit navigation) diffs as no-op and the Enter goes dead. `src`
+    // still seeds the element on (re)mount.
+    if (IN_ELECTRON && webview !== null) {
+      void Promise.resolve(webview.loadURL(next)).catch(() => { /* did-fail-load 已兜底 */ })
+    }
+    else {
+      setSrc(next)
+      // The iframe fallback has the same dead-Enter shape (`src={url}` +
+      // remount key) — bump the key so every Enter is a real (re)load.
+      setReload(current => current + 1)
+    }
     if (!IN_ELECTRON) onLabelRef.current(hostnameOf(next))
   }
 

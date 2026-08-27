@@ -226,11 +226,17 @@ export class LayoutStore {
     const vw = window.innerWidth
     const patch: Partial<LayoutState> = { ...extra }
     const side = this.sideBudget(patch.sidebar ?? this.state.sidebar, patch.sidePx ?? this.state.sidePx)
-    if ((patch.dock ?? this.state.dock) && !this.state.dockMax && !canSplitDock(vw, side)) {
+    const dockMax = patch.dockMax ?? this.state.dockMax
+    if ((patch.dock ?? this.state.dock) && !dockMax && !canSplitDock(vw, side)) {
       patch.dock = false
     }
+    // Clamp only a width that is actually RENDERING as a split column. While
+    // the dock is closed or full-frame, dockPx is a dormant preference —
+    // re-clamping it against a transient window size would overwrite what the
+    // user chose (DESIGN_INTENT responsive rule 4); openDock and the overlay
+    // exit re-clamp at the moment the width matters again.
     const dockPx = patch.dockPx ?? this.state.dockPx
-    if (dockPx > 0) {
+    if (dockPx > 0 && (patch.dock ?? this.state.dock) && !dockMax) {
       const next = clampDock(dockPx, vw, side)
       if (Math.abs(next - dockPx) > 0.5) patch.dockPx = next
     }
@@ -240,13 +246,13 @@ export class LayoutStore {
     if (Object.keys(patch).length > 0) this.patch(patch)
   }
 
-  /** Drag-time fast path: inline width per frame, no store notification. */
+  /** Drag-time fast path: inline width per frame, no store notification.
+   *  Only `flex` — the key the split branch renders. A second `width` key
+   *  would outlive the drag with no render branch owning it. */
   private writeDockWidth(el: HTMLElement, w: number): void {
-    const width = `${w}px`
-    const flex = `0 0 ${width}`
-    if (el.style.width === width && el.style.flex === flex) return
+    const flex = `0 0 ${w}px`
+    if (el.style.flex === flex) return
     el.style.flex = flex
-    el.style.width = width
   }
 
   /**
@@ -330,7 +336,11 @@ export class LayoutStore {
     if (overlay) dblog('layout', 'dock opened as overlay — split does not fit', { vw, side })
     // The opening width: the remembered committed width re-clamped for the
     // current window, or the 30%-of-window default on the first open ever.
-    const dockPx = this.state.dockPx > 0 ? clampDock(this.state.dockPx, vw, side) : dockDefault(vw, side)
+    // An overlay open leaves a remembered width untouched — it is not being
+    // rendered, and this window's clamp must not overwrite the preference.
+    const dockPx = this.state.dockPx > 0
+      ? (overlay ? this.state.dockPx : clampDock(this.state.dockPx, vw, side))
+      : dockDefault(vw, side)
     this.patch({ dock: true, pane, dockMax: overlay, dockPx })
   }
 
@@ -352,7 +362,10 @@ export class LayoutStore {
       this.patch({ dock: false, dockMax: false })
       return
     }
-    this.patch({ dockMax: !this.state.dockMax })
+    // Exiting full frame re-enters the split, so the dormant width preference
+    // meets the current window here — reflow re-clamps it for rendering.
+    if (this.state.dockMax) this.reflow({ dockMax: false })
+    else this.patch({ dockMax: true })
   }
 
   /** The main bar's own dock button; `fallback` is the first registered view. */

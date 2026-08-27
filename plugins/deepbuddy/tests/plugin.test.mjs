@@ -344,24 +344,27 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
     drag.handleListeners.get('pointermove')({ pointerId: 99, clientX: 700 })
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 780 })
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 760 })
-    assert.equal(drag.dockStyle.width, '600px', 'pointermove does not write ahead of the frame')
+    assert.equal(drag.dockStyle.flex, '0 0 600px', 'pointermove does not write ahead of the frame')
     nextFrame()
-    assert.equal(drag.dockStyle.width, '640px', 'the frame applies only the latest matching pointer')
-    assert.equal(drag.styleWrites(), 2)
+    assert.equal(drag.dockStyle.flex, '0 0 640px', 'the frame applies only the latest matching pointer')
+    assert.equal(drag.styleWrites(), 1)
 
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1200 })
     nextFrame()
-    assert.equal(drag.dockStyle.width, '594px', 'rightward shrink still respects the 30%-of-window floor')
-    assert.equal(drag.styleWrites(), 4)
+    assert.equal(drag.dockStyle.flex, '0 0 594px', 'rightward shrink still respects the 30%-of-window floor')
+    assert.equal(drag.styleWrites(), 2)
     drag.handleListeners.get('pointermove')({ pointerId: 7, clientX: 1300 })
     nextFrame()
-    assert.equal(drag.styleWrites(), 4, 'moves beyond the floor do not repeat identical style writes')
+    assert.equal(drag.styleWrites(), 2, 'moves beyond the floor do not repeat identical style writes')
 
     const staleCancel = drag.handleListeners.get('pointercancel')
     const staleLostCapture = drag.handleListeners.get('lostpointercapture')
     const staleBlur = windowListeners.get('blur')
     drag.handleListeners.get('pointerup')({ pointerId: 7, clientX: 740 })
-    assert.equal(drag.dockStyle.width, '660px', 'pointerup flushes the final pointer position')
+    assert.equal(drag.dockStyle.flex, '0 0 660px', 'pointerup flushes the final pointer position')
+    // The fast path owns exactly the key the split branch renders: a second
+    // inline `width` would outlive the drag with no render branch to clear it.
+    assert.equal(drag.dockStyle.width, '600px', 'the drag never touches the width key')
     assert.equal(document.body.style.cursor, '')
     assert.equal(drag.dockStyle.overflow, '')
     assert.deepEqual(drag.visibleStyle, {
@@ -382,7 +385,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
       ended.handleListeners.get('pointermove')({ pointerId: 11, clientX: 780 })
       if (terminalEvent === 'blur') windowListeners.get('blur')()
       else ended.handleListeners.get(terminalEvent)({ pointerId: 11 })
-      assert.equal(ended.dockStyle.width, '620px', `${terminalEvent} flushes the queued move`)
+      assert.equal(ended.dockStyle.flex, '0 0 620px', `${terminalEvent} flushes the queued move`)
       assert.equal(ended.dockStyle.overflow, '')
       assert.equal(document.body.style.cursor, '')
       assert.deepEqual([...ended.handleListeners.keys()], [])
@@ -441,6 +444,25 @@ test('column widths are committed state: remembered across max round-trips and r
     layout.toggleSidebar()
     assert.equal(layout.state.sidePx, 380, 'a committed sidebar width survives collapse/expand')
     assert.equal(layout.state.dock, false, 'a sidebar too wide for the split closes the dock instead of squeezing the conversation')
+
+    // A width that is not rendering is a dormant PREFERENCE (responsive
+    // rule 4): shrinking the window while the dock is closed or full-frame
+    // must not overwrite it. Only the moment it renders again re-clamps.
+    const pref = new LayoutStore()
+    globalThis.window.innerWidth = 1980
+    pref.openDock('terminal')
+    pref.state = { ...pref.state, dockPx: 650 }
+    pref.closeDock()
+    globalThis.window.innerWidth = 800
+    pref.onResize?.()
+    globalThis.window.innerWidth = 1980
+    pref.toggleDock()
+    assert.equal(pref.state.dockPx, 650, 'a closed dock keeps its width through a transient window shrink')
+    pref.toggleDockMax()
+    globalThis.window.innerWidth = 1200
+    globalThis.window.innerWidth = 1980
+    pref.toggleDockMax()
+    assert.equal(pref.state.dockPx, 650, 'a full-frame round-trip over a shrink keeps the width too')
   }
   finally {
     globalThis.window = previousWindow

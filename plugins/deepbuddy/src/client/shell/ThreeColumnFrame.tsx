@@ -281,12 +281,16 @@ function InspectorColumn(): ReactNode {
           // exception: view bodies survive tab switches and dock closes, but
           // a session change remounts them, so no per-session reset logic
           // exists inside any view.
+          // `dock` is part of visibility: the keep-alive column stays mounted
+          // behind display:none, and a view told it is visible there would
+          // act on it — auto-opening a first terminal (spawning a PTY the
+          // user cannot see) or preloading the file tree.
           : views.map(view => (
               <InspectorViewMount
                 key={`${view.id}:${fence}`}
                 view={view}
                 tabs={tabsByView[view.id]}
-                visible={view.id === active.id}
+                visible={dock && view.id === active.id}
                 layout={layout}
               />
             ))}
