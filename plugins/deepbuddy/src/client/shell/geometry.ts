@@ -30,11 +30,11 @@ export const GAP = METRICS.gap
 /** Dock share of the WINDOW: default, and the ends of its drag range. */
 export const DOCK_DEFAULT_RATIO = 0.30
 export const DOCK_MIN_RATIO = 0.30
-/** The dock never takes more than a third of the window (DESIGN_INTENT §2). */
-export const DOCK_MAX_RATIO = 1 / 3
+/** The dock never takes more than half of the window (DESIGN_INTENT §2). */
+export const DOCK_MAX_RATIO = 1 / 2
 
 /** Dock floor in pixels: below this the panel's own top bar stops fitting
- *  its three segments plus the two trailing controls. Where the third-of-a-
+ *  its resource strip plus the trailing controls. Where the half-of-a-
  *  window cap and this floor disagree — a narrow window — the floor wins. */
 export const DOCK_MIN = 416
 
@@ -79,7 +79,7 @@ export function dockDefault(vw: number, side: number): number {
 /**
  * Clamp a dock drag candidate.
  *
- * The upper bound is the stricter of a third of the window and what the
+ * The upper bound is the stricter of half of the window and what the
  * conversation column can survive; the lower bound is the stricter-in-the-
  * other-direction of 30% and the panel's own 416px floor, so a very narrow
  * window never lets the range collapse below a usable panel.

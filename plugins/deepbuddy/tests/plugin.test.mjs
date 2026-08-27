@@ -329,7 +329,7 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
 
   globalThis.window = {
     // Wide enough that the gesture's 600–660px range sits INSIDE the drag
-    // clamp (30% = 594, a third = 660): this test is about coalescing and
+    // clamp (30% = 594, half = 990): this test is about coalescing and
     // termination, and a window where every candidate pinned to the same
     // bound would stop telling the two apart.
     innerWidth: 1980,
@@ -868,28 +868,28 @@ test('geometry: the sidebar clamp follows the handoff', async () => {
   assert.equal(g.clampSidebar(9999), 380)
 })
 
-test('geometry: the dock opens at 30% of the window and never passes a third of it', async () => {
+test('geometry: the dock opens at 30% of the window and never passes half of it', async () => {
   const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 1440px window, 278px sidebar contribution (268 + its 10px seam). The
   // dock's budget is the window less its own 2×10 padding, the sidebar with
   // its seam, and the dock's own seam: 1440 - 20 - 278 - 10 = 1132.
   assert.equal(g.GAP, 10)
   assert.equal(g.dockDefault(1440, 278), Math.round(1440 * 0.30))
-  // Upper bound is the stricter of a third of the WINDOW (480) and what the
-  // chat column can survive (1132 - 460 = 672). The third binds.
-  assert.equal(g.clampDock(10_000, 1440, 278), 480)
+  // Upper bound is the stricter of half the WINDOW (720) and what the
+  // chat column can survive (1132 - 460 = 672). The chat reserve binds.
+  assert.equal(g.clampDock(10_000, 1440, 278), 672)
   // Lower bound is the stricter-in-the-other-direction of 30% (432) and the
   // panel's own 416px floor.
   assert.equal(g.clampDock(0, 1440, 278), 432)
   // On a very wide window the 416px floor stops mattering; 30% binds.
   assert.equal(g.clampDock(0, 2560, 0), 768)
   // Ratios are measured against the window, so collapsing the sidebar does
-  // NOT widen the cap — it is still a third of 1440.
-  assert.equal(g.clampDock(10_000, 1440, 0), 480)
-  // Where the third and the 416px floor disagree — a narrow window — the
-  // floor wins and the drag range collapses onto it: at 1240 a third is
-  // 413.3, so both ends of the range are the floor.
-  assert.equal(g.clampDock(10_000, 1240, 278), 416)
+  // NOT move the half-window cap — it frees the chat reserve instead, and
+  // the cap (720) becomes the binding bound.
+  assert.equal(g.clampDock(10_000, 1440, 0), 720)
+  // On a narrow window the chat reserve binds before the half cap (620):
+  // budget 932 - 460 = 472. Push it narrower and the 416px floor wins.
+  assert.equal(g.clampDock(10_000, 1240, 278), 472)
   assert.equal(g.clampDock(0, 1240, 278), 416)
 })
 

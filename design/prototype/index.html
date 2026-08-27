@@ -1724,8 +1724,8 @@
     function dockBudget() { return window.innerWidth - 2 * GAP - sideContribution() - GAP; }
     function clampDock(width) {
       const min = Math.max(window.innerWidth * .30, 416);
-      // 上限：窗口的 1/3（用户原则：右栏不超过 1/3），且主列必须保住 460
-      const max = Math.max(min, Math.min(window.innerWidth / 3, dockBudget() - 460));
+      // 上限：窗口的 1/2（用户原则：右栏不超过一半），且主列必须保住 460
+      const max = Math.max(min, Math.min(window.innerWidth / 2, dockBudget() - 460));
       return Math.min(Math.max(width, min), max);
     }
     // 与实现层 geometry.dockFits 同语义：分栏形态必须保得住主列 460 + 停靠栏 416
