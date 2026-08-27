@@ -158,6 +158,10 @@ export class LayoutStore {
    */
   private dockAutoClosed = false
 
+  /** The sidebar's twin of {@link dockAutoClosed}, set only by onResize's
+   *  breakpoint collapse; toggleSidebar (the user) clears it. */
+  private sidebarAutoClosed = false
+
   // ── store plumbing ────────────────────────────────────────────────────────
 
   private patch(next: Partial<LayoutState>): void {
@@ -198,7 +202,20 @@ export class LayoutStore {
    * the user can undo themselves with the control right there in its bar.
    */
   private onResize = (): void => {
-    this.reflow(window.innerWidth < SIDEBAR_BREAKPOINT && this.state.sidebar ? { sidebar: false } : {})
+    const patch: Partial<LayoutState> = {}
+    if (window.innerWidth < SIDEBAR_BREAKPOINT && this.state.sidebar) {
+      patch.sidebar = false
+      this.sidebarAutoClosed = true
+    }
+    // The shell's own collapse is responsive both ways, for BOTH columns.
+    // The sidebar restores first (its patch lands before reflow's dock
+    // check), matching the collapse ordering in reverse: dock went first,
+    // so the sidebar comes back first and the dock only if it still fits.
+    else if (window.innerWidth >= SIDEBAR_BREAKPOINT && !this.state.sidebar && this.sidebarAutoClosed) {
+      patch.sidebar = true
+      this.sidebarAutoClosed = false
+    }
+    this.reflow(patch, true)
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
@@ -230,7 +247,7 @@ export class LayoutStore {
    * reserve holds on every path, not just window resize), and the dock width
    * stays inside its clamp.
    */
-  private reflow(extra: Partial<LayoutState> = {}): void {
+  private reflow(extra: Partial<LayoutState> = {}, resize = false): void {
     const vw = window.innerWidth
     const patch: Partial<LayoutState> = { ...extra }
     const side = this.sideBudget(patch.sidebar ?? this.state.sidebar, patch.sidePx ?? this.state.sidePx)
@@ -241,7 +258,10 @@ export class LayoutStore {
       // window back undoes it (responsive rule 3: only user closes stick).
       this.dockAutoClosed = true
     }
-    else if (!(patch.dock ?? this.state.dock) && this.dockAutoClosed && canSplitDock(vw, side)) {
+    // Reopen ONLY on a window resize. Any other reflow that frees space —
+    // collapsing the sidebar, narrowing it — is the user rearranging columns,
+    // and having the dock eat the space they just freed inverts their intent.
+    else if (resize && !(patch.dock ?? this.state.dock) && this.dockAutoClosed && canSplitDock(vw, side)) {
       patch.dock = true
       this.dockAutoClosed = false
     }
@@ -326,6 +346,7 @@ export class LayoutStore {
   toggleSidebar = (): void => {
     // The sidebar's seam is column budget: opening it can push a split dock
     // below the conversation reserve, so the toggle reflows like a resize.
+    this.sidebarAutoClosed = false
     this.reflow({ sidebar: !this.state.sidebar })
   }
 
@@ -437,7 +458,17 @@ export class LayoutStore {
     // Focus falls to the neighbour that took the closed tab's place, then
     // to the one before it — the browser-tab rule users already have.
     const next = cur.active === id ? (items[at] ?? items[at - 1] ?? null) : cur.items.find(t => t.id === cur.active) ?? null
-    this.writeTabs(pane, { items, active: next === null ? null : next.id })
+    const tabs = { ...this.state.tabs, [pane]: { items, active: next === null ? null : next.id } }
+    // The last tab of the SHOWING pane leaving collapses the dock with it
+    // (DESIGN_INTENT: 最后一个 Tab 关闭后右列自动收起) — one patch, and a
+    // user act, so no auto-reopen. A background pane emptying must not
+    // collapse the column another pane is using.
+    if (items.length === 0 && this.state.dock && this.state.pane === pane) {
+      this.dockAutoClosed = false
+      this.patch({ tabs, dock: false, dockMax: false })
+      return
+    }
+    this.patch({ tabs })
   }
 
   /** Focus an existing tab. */

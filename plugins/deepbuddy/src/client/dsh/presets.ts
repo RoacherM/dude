@@ -280,6 +280,10 @@ export class PresetPlane {
 
   private offList: (() => void) | undefined
   private offRoster: (() => void) | undefined
+  /** Monotonic stage-intent generation; every (re)stage bumps it. */
+  private stageSeq = 0
+  /** Set by dispose(): no setState, no drain, no new host calls after. */
+  private disposed = false
 
   private readonly listeners = new Set<() => void>()
   private version = 0
@@ -322,6 +326,10 @@ export class PresetPlane {
   }
 
   dispose(): void {
+    // In-flight mutations resolve after this; the fence keeps them from
+    // writing the abandoned store or draining a stage into a NEW host call
+    // on behalf of a dead fiber.
+    this.disposed = true
     this.offList?.()
     this.offRoster?.()
   }
@@ -350,6 +358,7 @@ export class PresetPlane {
     // Busy is not a reason to DROP the pick — staging it is exactly what the
     // stage exists for. The apply below bails at its own busy guard, and the
     // in-flight mutation's completion drains the stage.
+    this.stageSeq += 1
     this.setState({ stagedPreset: agentPreset, presetError: null })
     void this.applyStagedPreset()
   }
@@ -364,6 +373,10 @@ export class PresetPlane {
    */
   private applyStagedPreset = async (): Promise<void> => {
     const staged = this.state.stagedPreset
+    // The stage's intent generation, not its VALUE: re-picking the same
+    // preset id (for a different session, or just again) is a new intent,
+    // and a string compare would let this apply's completion consume it.
+    const seq = this.stageSeq
     const summary = this.currentSummary
     if (staged === null || summary === undefined || this.state.presetBusy) return
     if (!summary.blank || summary.agentPreset === staged) {
@@ -372,9 +385,10 @@ export class PresetPlane {
     }
     this.setState({ presetBusy: true, presetError: null })
     const r = await this.dsh.presets.select(summary.id as PresetSessionId, staged)
+    if (this.disposed) return
     // Consume only the stage THIS apply carried: a pick staged during the
     // await is a newer intent, and clearing it here would drop it.
-    const consumed = this.state.stagedPreset === staged ? { stagedPreset: null } : {}
+    const consumed = this.stageSeq === seq ? { stagedPreset: null } : {}
     if (!r.ok) {
       this.setState({ presetBusy: false, presetError: r.error, ...consumed })
       this.drainStage()
@@ -391,6 +405,7 @@ export class PresetPlane {
    *  that clears `presetBusy` calls this — the stage never waits for a
    *  session-list change that may not come. */
   private drainStage = (): void => {
+    if (this.disposed) return
     if (this.state.stagedPreset !== null) void this.applyStagedPreset()
   }
 
@@ -400,6 +415,7 @@ export class PresetPlane {
     this.setState({ presetBusy: true, presetError: null })
     void (async () => {
       const r = await this.dsh.presets.setDefault(agentPreset)
+      if (this.disposed) return
       if (!r.ok) {
         this.setState({ presetBusy: false, presetError: r.error })
         this.drainStage()
@@ -421,6 +437,7 @@ export class PresetPlane {
     this.setState({ presetBusy: true, presetError: null })
     try {
       const r = await this.dsh.presets.remove(agentPreset)
+      if (this.disposed) return
       if (!r.ok) {
         this.setState({ presetBusy: false, presetError: r.error })
         return
@@ -446,6 +463,7 @@ export class PresetPlane {
    * takes it once the started session becomes current.
    */
   startCreatorSession = (): void => {
+    this.stageSeq += 1
     this.setState({ stagedPreset: 'cordis', presetError: null })
     this.dsh.workspaces.startSession()
   }

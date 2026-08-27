@@ -337,21 +337,28 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
       else if (cur !== undefined && session === undefined) {
         // Binding not hydrated yet, and hydration does not re-notify `list`.
         // One microtask never covers real IO (a cold start restoring the
-        // current session hydrates over the wire) — poll briefly until the
-        // binding lands, else the dock gate stays shut on a running session.
+        // current session hydrates over the wire) — poll fast until the
+        // binding lands. Hydration has NO other completion signal, so a
+        // give-up would shut the dock gate on a running session forever;
+        // past 5s the poll degrades to 1s and keeps going until the binding
+        // appears or the session changes (which clears the timer above).
         let tries = 0
-        bindingPoll = window.setInterval(() => {
-          tries += 1
+        const poll = (): void => {
           const ready = ctx.sessions.binding(cur)?.session !== undefined
-          if (ready || tries >= 50) {
+          if (ready) {
             window.clearInterval(bindingPoll)
             bindingPoll = undefined
-            if (ready) syncSessionStarted()
-            // A give-up is a real field condition (dock gate stays shut with
-            // no error anywhere) — it must be loud enough to diagnose.
-            else dbwarn('adapter', 'binding never hydrated within 5s — sessionStarted stays false', { session: cur })
+            syncSessionStarted()
+            return
           }
-        }, 100)
+          tries += 1
+          if (tries === 50) {
+            dbwarn('adapter', 'binding not hydrated after 5s — degrading to 1s polling', { session: cur })
+            window.clearInterval(bindingPoll)
+            bindingPoll = window.setInterval(poll, 1000)
+          }
+        }
+        bindingPoll = window.setInterval(poll, 100)
       }
     }
   }

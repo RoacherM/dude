@@ -159,7 +159,12 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
     // explicit navigation) diffs as no-op and the Enter goes dead. `src`
     // still seeds the element on (re)mount.
     if (IN_ELECTRON && webview !== null) {
-      void Promise.resolve(webview.loadURL(next)).catch(() => { /* did-fail-load 已兜底 */ })
+      // loadURL throws SYNCHRONOUSLY when the guest is not attached yet
+      // (element mounted, dom-ready pending) — a .catch on the returned
+      // promise never sees that. Fall back to the src seed, which is what
+      // drives the element until the guest exists anyway.
+      try { void Promise.resolve(webview.loadURL(next)).catch(() => { /* did-fail-load 已兜底 */ }) }
+      catch { setSrc(next) }
     }
     else {
       setSrc(next)

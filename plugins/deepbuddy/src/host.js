@@ -255,8 +255,14 @@ async function streamMedia(ctx, req, res, sessionId, path) {
     stream.on('error', () => {
       // `destroy()` never flushes a status line — the client would see a
       // connection reset, not a 500. Actually answer when nothing was sent
-      // yet; abort only a response already mid-stream.
+      // yet; abort only a response already mid-stream. `writeHead` keeps
+      // headers already queued via setHeader, so the file-sized
+      // Content-Length/Content-Range MUST go, or the empty 500 body reads
+      // as a truncated response (ERR_CONTENT_LENGTH_MISMATCH) and desyncs
+      // the keep-alive parser.
       if (res.headersSent) { res.destroy(); return }
+      res.removeHeader('Content-Length')
+      res.removeHeader('Content-Range')
       res.writeHead(500)
       res.end()
     })
@@ -527,6 +533,12 @@ export class DeepbuddyTerminalManager {
     this.ctx = ctx
     this.resources = new Map()
     this.pending = new Map()
+    // Kill intents that arrived while their PTY was neither in `resources`
+    // nor `pending` (attach still resolving its cwd): key → expiry ms. The
+    // spawn path consumes them so a raced close cannot leave an invisible
+    // PTY; the TTL keeps a stale intent from assassinating a later restart
+    // that legitimately reuses the same term id.
+    this.killIntents = new Map()
   }
 
   keyOf(sessionId, termId) {
@@ -553,6 +565,14 @@ export class DeepbuddyTerminalManager {
     if (existing !== undefined && existing.status.kind === 'exited') this.resources.delete(key)
     const spawning = this.pending.get(key)
     if (spawning !== undefined) return spawning.promise
+    // A kill that raced this creation (arrived while the cwd was resolving,
+    // when the key was in neither map) wins: spawning would leave a PTY no
+    // tab points at.
+    const intent = this.killIntents.get(key)
+    if (intent !== undefined) {
+      this.killIntents.delete(key)
+      if (intent > Date.now()) throw new Error('terminal-closed: kill arrived before the PTY spawned')
+    }
     if (this.runningCount(sessionId) >= TERMINAL_MAX_PER_SESSION) {
       throw new Error(`terminal-limit-reached: max ${TERMINAL_MAX_PER_SESSION} per session`)
     }
@@ -574,14 +594,15 @@ export class DeepbuddyTerminalManager {
   async attach(sessionId, termId, socket) {
     // The message listener must exist BEFORE the (async) resource lookup, or
     // anything the client sends right after open — a kill, an early resize —
-    // arrives with no listener and is silently dropped. Buffer until the
-    // resource is ready, then replay.
+    // arrives with no listener and is silently dropped. Buffer (bounded: a
+    // same-origin client sends at most a couple of frames before the
+    // snapshot, anything more is garbage) until the resource is ready, then
+    // replay.
     const early = []
-    let onMessage = (raw) => { early.push(raw) }
+    let onMessage = (raw) => { if (early.length < 64) early.push(raw) }
     socket.on('message', (raw) => { onMessage(raw) })
     const resource = await this.resourceFor(sessionId, termId)
-    resource.attach(socket)
-    onMessage = (raw) => {
+    const handleMessage = (raw) => {
       let message
       try { message = JSON.parse(String(raw)) }
       catch {
@@ -603,14 +624,32 @@ export class DeepbuddyTerminalManager {
         sendTerminalMessage(socket, { type: 'error', message: 'unsupported terminal message' })
       }
     }
-    for (const raw of early) onMessage(raw)
+    // The same argument that moved the message listener up applies to close:
+    // a socket that died DURING the resource lookup fired 'close' already, so
+    // a listener added now would never run and the dead socket would sit in
+    // `clients` forever. Honor any queued kill, then only attach a live one.
+    onMessage = handleMessage
+    for (const raw of early) handleMessage(raw)
+    if (socket.readyState !== 1) return
+    resource.attach(socket)
     socket.once('close', () => { resource.detach(socket) })
   }
 
   close(sessionId, termId, reason) {
     const key = this.keyOf(sessionId, termId)
     const resource = this.resources.get(key)
-    if (resource === undefined) return
+    if (resource === undefined) {
+      // Not registered YET is not the same as gone: a spawn may be mid-
+      // flight. Chain the kill onto a pending creation, or leave a bounded
+      // intent for a creation whose cwd lookup has not even set `pending`.
+      const spawning = this.pending.get(key)
+      if (spawning !== undefined) {
+        spawning.promise.then(created => { created.kill(reason) }).catch(() => {})
+        return
+      }
+      this.killIntents.set(key, Date.now() + 10_000)
+      return
+    }
     if (resource.status.kind === 'exited') {
       resource.dispose(reason)
       this.resources.delete(key)
@@ -624,6 +663,9 @@ export class DeepbuddyTerminalManager {
       if (resource.sessionId !== sessionId) continue
       resource.dispose(reason)
       this.resources.delete(key)
+    }
+    for (const key of this.killIntents.keys()) {
+      if (key.startsWith(`${sessionId}\u0000`)) this.killIntents.delete(key)
     }
   }
 
@@ -781,6 +823,8 @@ export function apply(ctx, config) {
         // exits the process for those. Fail the one response instead.
         streamMedia(ctx, req, res, sessionId, path).catch(() => {
           if (res.headersSent) { res.destroy(); return }
+          res.removeHeader('Content-Length')
+          res.removeHeader('Content-Range')
           res.writeHead(500)
           res.end()
         })
@@ -795,12 +839,12 @@ export function apply(ctx, config) {
       const sessionId = url.searchParams.get('sessionId')
       const termId = url.searchParams.get('termId')
       if (sessionId === null || sessionId === '') {
-        sendTerminalMessage(socket, { type: 'error', message: 'session-not-found' })
+        sendTerminalMessage(socket, { type: 'error', fatal: true, message: 'session-not-found' })
         socket.close(1008, 'session required')
         return
       }
       if (termId === null || !/^term-\d+$/.test(termId)) {
-        sendTerminalMessage(socket, { type: 'error', message: 'term-id-required' })
+        sendTerminalMessage(socket, { type: 'error', fatal: true, message: 'term-id-required' })
         socket.close(1008, 'termId required')
         return
       }
@@ -814,7 +858,7 @@ export function apply(ctx, config) {
         return
       }
       void terminals.attach(sessionId, termId, socket).catch((error) => {
-        sendTerminalMessage(socket, { type: 'error', message: error instanceof Error ? error.message : String(error) })
+        sendTerminalMessage(socket, { type: 'error', fatal: true, message: error instanceof Error ? error.message : String(error) })
         socket.close(1008, 'terminal refused')
       })
     })

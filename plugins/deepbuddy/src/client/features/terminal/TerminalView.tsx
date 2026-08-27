@@ -21,6 +21,9 @@ interface TerminalMessage {
   message?: string
   exitCode?: number | null
   status?: 'running' | 'exited'
+  /** On 'error': the host refused/lost the RESOURCE (no PTY behind this tab).
+   *  Absent on in-connection protocol complaints, where the PTY is alive. */
+  fatal?: boolean
 }
 
 let terminalCounter = 1
@@ -98,8 +101,20 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
     // ThemePresenter flips `data-ds-dark-theme` on body AND writes theme
     // alias tokens via body.style — a token-only theme switch (dark → other
     // dark) never touches the attribute, so the kept-alive pane must watch
-    // both or it keeps the stale scheme until a remount.
-    const themeObserver = new MutationObserver(() => { terminal.options.theme = readTheme() })
+    // both or it keeps the stale scheme until a remount. Watching `style`
+    // also catches unrelated writes (trackDrag sets body cursor per
+    // gesture), and xterm's options setter repaints the whole screen on
+    // every assignment — so assign only when a color actually changed.
+    let appliedTheme = readTheme()
+    const themeObserver = new MutationObserver(() => {
+      const next = readTheme()
+      if (next.background === appliedTheme.background
+        && next.foreground === appliedTheme.foreground
+        && next.cursor === appliedTheme.cursor
+        && next.selectionBackground === appliedTheme.selectionBackground) return
+      appliedTheme = next
+      terminal.options.theme = next
+    })
     themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme', 'style'] })
 
     let disposed = false
@@ -145,9 +160,11 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
         return
       }
       let finished = false
+      let connectingTimeout: number | undefined
       const killAndClose = (): void => {
         if (finished) return
         finished = true
+        if (connectingTimeout !== undefined) window.clearTimeout(connectingTimeout)
         // A socket that died between the ×-click and this callback cannot
         // carry the kill — deliver it out of band instead of dropping it.
         if (socket.readyState === WebSocket.OPEN) send(socket, { type: 'kill' })
@@ -158,8 +175,11 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
       if (socket.readyState === WebSocket.CONNECTING) {
         socket.addEventListener('open', killAndClose, { once: true })
         // A socket that dies before ever opening still owes the tab its
-        // removal — without this the tab is stuck at 正在连接 forever.
+        // removal — without this the tab is stuck at 正在连接 forever. A
+        // black-holed connect fires NEITHER event for the OS timeout (~75s),
+        // so the same 5s bound the killer socket gets applies here too.
         socket.addEventListener('close', killAndClose, { once: true })
+        connectingTimeout = window.setTimeout(killAndClose, 5000)
       }
       else killAndClose()
     }
@@ -218,6 +238,14 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
           setState('closed')
         }
         else if (message.type === 'error') {
+          // Only a fatal error means the resource is gone. A protocol
+          // complaint (bad frame, unsupported message) leaves the PTY alive —
+          // treating it as terminated would hide a running shell when the
+          // user closes the tab without sending it a kill.
+          if (message.fatal !== true) {
+            dbwarn('terminal', 'host rejected a message — PTY still alive', { termId, message: message.message })
+            return
+          }
           dbwarn('terminal', 'host refused the terminal', { termId, message: message.message })
           hostTerminated = true
           setDetail(message.message ?? '终端连接失败')

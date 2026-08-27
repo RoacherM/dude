@@ -445,6 +445,12 @@ test('column widths are committed state: remembered across max round-trips and r
     assert.equal(layout.state.sidePx, 380, 'a committed sidebar width survives collapse/expand')
     assert.equal(layout.state.dock, false, 'a sidebar too wide for the split closes the dock instead of squeezing the conversation')
 
+    // Space the USER frees is theirs: collapsing the sidebar must not hand
+    // it to an auto-closed dock. Only a window resize reopens.
+    layout.toggleSidebar()
+    assert.equal(layout.state.dock, false, 'collapsing the sidebar does not resurrect the auto-closed dock')
+    layout.toggleSidebar()
+
     // The shell's own close is responsive, so growing the window undoes it;
     // a USER close sticks (responsive rule 3 cuts both ways).
     globalThis.window.innerWidth = 1980
@@ -456,6 +462,36 @@ test('column widths are committed state: remembered across max round-trips and r
     globalThis.window.innerWidth = 1980
     layout.onResize()
     assert.equal(layout.state.dock, false, 'a user-closed dock never reopens itself')
+
+    // The sidebar gets the same both-ways rule at its own breakpoint...
+    assert.equal(layout.state.sidebar, true)
+    globalThis.window.innerWidth = 800
+    layout.onResize()
+    assert.equal(layout.state.sidebar, false, 'below the breakpoint the shell collapses the sidebar')
+    globalThis.window.innerWidth = 1980
+    layout.onResize()
+    assert.equal(layout.state.sidebar, true, 'a breakpoint-collapsed sidebar comes back with the window')
+    // ...and a user collapse sticks through the same round-trip.
+    layout.toggleSidebar()
+    globalThis.window.innerWidth = 800
+    layout.onResize()
+    globalThis.window.innerWidth = 1980
+    layout.onResize()
+    assert.equal(layout.state.sidebar, false, 'a user-collapsed sidebar never reopens itself')
+    layout.toggleSidebar()
+
+    // 最后一个 Tab 关闭后右列自动收起 (DESIGN_INTENT) — but only for the
+    // pane the dock is SHOWING; a background pane emptying keeps the column.
+    layout.openDock('terminal')
+    layout.openTab('terminal', { id: 'term-1', label: 'T1' })
+    layout.openTab('explorer', { id: 'f', label: 'f' })
+    layout.closeTab('explorer', 'f')
+    assert.equal(layout.state.dock, true, 'an emptied background pane does not collapse the dock')
+    layout.closeTab('terminal', 'term-1')
+    assert.equal(layout.state.dock, false, 'the showing pane losing its last tab collapses the dock')
+    globalThis.window.innerWidth = 1980
+    layout.onResize()
+    assert.equal(layout.state.dock, false, 'that collapse is a user act — no auto-reopen')
 
     // A width that is not rendering is a dormant PREFERENCE (responsive
     // rule 4): shrinking the window while the dock is closed or full-frame
@@ -839,4 +875,70 @@ test('slots: DeepBuddy registers its brand into the official hero mark', async (
   // DeepBuddy no longer renders the composer chrome (the official apply does).
   assert.doesNotMatch(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
   assert.doesNotMatch(bundle, /ModelChip/)
+})
+
+test('presets: a pick during a busy apply is staged, drained by intent generation, and fenced by dispose', async () => {
+  const { PresetPlane } = await import(join(root, 'src/client/dsh/presets.ts'))
+  const selects = []
+  let resolveSelect = null
+  const dsh = {
+    sessions: {
+      list: {
+        subscribe() { return () => {} },
+        getSnapshot() {
+          return { current: 'A', byId: { A: { id: 'A', blank: true, agentPreset: 'base' } } }
+        },
+      },
+      noteAgentPreset() {},
+    },
+    workspaces: { startSession() {} },
+    onRosterMoved() { return () => {} },
+    presets: {
+      async list() { return { ok: true, value: { presets: [] } } },
+      select(sessionId, agentPreset) {
+        selects.push([sessionId, agentPreset])
+        return new Promise((resolve) => { resolveSelect = resolve })
+      },
+    },
+  }
+  const settle = () => new Promise(r => setTimeout(r, 0))
+
+  // A second pick while the first is in flight is STAGED, then drained.
+  const plane = new PresetPlane(dsh)
+  plane.selectPreset('x')
+  await settle()
+  assert.deepEqual(selects, [['A', 'x']])
+  plane.selectPreset('y')
+  assert.equal(plane.state.stagedPreset, 'y', 'busy does not drop the pick')
+  resolveSelect({ ok: true, value: 'x' })
+  await settle()
+  assert.deepEqual(selects, [['A', 'x'], ['A', 'y']], 'the drained stage runs after the flight lands')
+  resolveSelect({ ok: true, value: 'y' })
+  await settle()
+  assert.equal(plane.state.stagedPreset, null)
+  assert.equal(plane.state.presetBusy, false)
+
+  // Re-picking the SAME id during the flight is a new intent (generation,
+  // not string, decides consumption).
+  selects.length = 0
+  const again = new PresetPlane(dsh)
+  again.selectPreset('x')
+  await settle()
+  again.selectPreset('x')
+  resolveSelect({ ok: true, value: 'x' })
+  await settle()
+  assert.deepEqual(selects, [['A', 'x'], ['A', 'x']], 'a same-value restage is not consumed by the older flight')
+  resolveSelect({ ok: true, value: 'x' })
+  await settle()
+
+  // dispose() fences the in-flight completion: no drain, no new host call.
+  selects.length = 0
+  const dying = new PresetPlane(dsh)
+  dying.selectPreset('x')
+  await settle()
+  dying.selectPreset('y')
+  dying.dispose()
+  resolveSelect({ ok: true, value: 'x' })
+  await settle()
+  assert.deepEqual(selects, [['A', 'x']], 'a disposed plane never drains a stage into a new mutation')
 })
