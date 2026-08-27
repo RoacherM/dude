@@ -842,28 +842,45 @@
     .trace-line:last-child::before { background: var(--db-run); animation: pulse 1.6s ease-in-out infinite; }
 
     .dock-topbar { padding: 0 10px; gap: 6px; }
-    .segments { display: flex; gap: 4px; padding: 0; border-radius: 0; background: transparent; }
-    .segment {
-      height: 30px;
-      display: inline-flex;
+    /* 顶栏统一 tab 行：每个已打开的资源一个 tab（文件 / 终端 N / 页面），
+       「+」在行尾弹启动器菜单——两级导航（视图段控 → 资源 tab）折成一级。 */
+    .dock-tabs {
+      display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 0 10px;
-      border: 0;
-      font-family: inherit;
-      font-size: 12.5px;
-      border-radius: var(--db-r-control);
-      background: transparent;
-      color: var(--db-text-3);
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background var(--db-tint), color var(--db-tint);
+      gap: 2px;
+      min-width: 0;
+      flex: 0 1 auto;
+      overflow-x: auto;
+      scrollbar-width: none;
     }
-    .segment .icon { width: 13px; height: 13px; }
-    .segment.active { color: var(--db-text); background: var(--db-fill-3); }
-    .segment:hover { color: var(--db-text); background: var(--db-fill-3); }
+    .dock-tabs::-webkit-scrollbar { height: 0; }
+    .dock-tabs .resource-tab { margin: 0; }
+    .dock-tabs .resource-tab .icon { width: 13px; height: 13px; flex: 0 0 13px; color: var(--db-text-4); }
+    .dock-tabs .resource-tab.active .icon { color: var(--db-text-2); }
     .dock-view { flex: 1 1 0; min-height: 0; display: none; flex-direction: column; }
     .dock-view.active { display: flex; }
+    /* 空态即启动器：默认展开形态。居中一列胶囊行，点一项打开对应面板。 */
+    .dock-launcher { flex: 1 1 0; min-height: 0; display: none; align-items: center; justify-content: center; }
+    .dock-launcher.active { display: flex; }
+    .launcher-list { display: flex; flex-direction: column; gap: 10px; width: min(320px, calc(100% - 64px)); }
+    .launcher-row {
+      height: 46px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: var(--db-r-card);
+      background: var(--db-raised);
+      color: var(--db-text-2);
+      font-family: inherit;
+      font-size: 13.5px;
+      cursor: pointer;
+      transition: background var(--db-tint), color var(--db-tint);
+    }
+    .launcher-row:hover { background: var(--db-fill-3); color: var(--db-text); }
+    .launcher-row .icon { width: 16px; height: 16px; flex: 0 0 16px; color: var(--db-text-3); }
+    .launcher-row:hover .icon { color: var(--db-text); }
     .resource-tabs {
       height: 38px;
       flex: 0 0 38px;
@@ -1237,17 +1254,22 @@
     <aside id="dock" class="dock column">
       <header class="topbar dock-topbar">
         <div id="dockTraffic" class="traffic hidden"><i class="red"></i><i class="amber"></i><i class="green"></i></div>
-        <div class="segments">
-          <button class="segment active" data-dock-view="files"><svg class="icon"><use href="#i-panel"></use></svg>文件</button>
-          <button class="segment" data-dock-view="terminal"><svg class="icon"><use href="#i-terminal"></use></svg>终端</button>
-          <button class="segment" data-dock-view="browser"><svg class="icon"><use href="#i-globe"></use></svg>浏览器</button>
-        </div>
+        <div id="dockTabs" class="dock-tabs"></div>
         <span class="grow"></span>
+        <button id="dockAdd" class="icon-button" title="打开面板"><svg class="icon"><use href="#i-plus"></use></svg></button>
         <button id="toggleDockMax" class="icon-button" title="全屏显示"><svg class="icon"><use href="#i-max"></use></svg></button>
         <button id="closeDock" class="icon-button" title="关闭停靠栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
       </header>
 
-      <section id="filesView" class="dock-view active">
+      <section id="dockLauncher" class="dock-launcher">
+        <div class="launcher-list">
+          <button class="launcher-row" data-launch="terminal"><svg class="icon"><use href="#i-terminal"></use></svg><span>终端</span></button>
+          <button class="launcher-row" data-launch="browser"><svg class="icon"><use href="#i-globe"></use></svg><span>浏览器</span></button>
+          <button class="launcher-row" data-launch="files"><svg class="icon"><use href="#i-folder"></use></svg><span>文件</span></button>
+        </div>
+      </section>
+
+      <section id="filesView" class="dock-view">
         <div id="fileTabs" class="resource-tabs hidden"></div>
         <div id="filesBody" class="files-body">
           <div class="file-tree">
@@ -1276,12 +1298,10 @@
       </section>
 
       <section id="terminalView" class="dock-view">
-        <div id="terminalTabs" class="resource-tabs"></div>
         <div id="terminalPanes" class="terminal-panes"></div>
       </section>
 
       <section id="browserView" class="dock-view">
-        <div id="browserTabs" class="resource-tabs"></div>
         <div id="browserPanes" class="browser-panes"></div>
       </section>
     </aside>
@@ -1397,7 +1417,8 @@
       dockMax: false,
       mainMode: "hero",
       mainView: "chat",
-      dockView: "files",
+      dockTabs: [],
+      activeDock: null,
       sidebarWidth: 268,
       dockWidth: 0,
       permissions: [
@@ -1463,7 +1484,7 @@
       const rect = anchor.getBoundingClientRect();
       const mw = menu.offsetWidth;
       const mh = menu.offsetHeight;
-      let left = opts.align === "right" ? rect.right - mw : rect.left;
+      let left = opts.align === "right" ? rect.right - mw - (opts.insetX || 0) : rect.left + (opts.insetX || 0);
       let top = opts.placement === "above" ? rect.top - mh - 6 : rect.bottom + 6;
       if (opts.placement !== "above" && top + mh > window.innerHeight - 8) top = Math.max(8, rect.top - mh - 6);
       menu.style.left = Math.max(8, Math.min(left, window.innerWidth - mw - 8)) + "px";
@@ -2007,18 +2028,75 @@
       }), { width: 334 });
     });
 
-    // Inspector view switching and kept-alive file previews.
-    function selectDockView(view) {
-      state.dockView = view;
-      $$(".segment").forEach(button => button.classList.toggle("active", button.dataset.dockView === view));
-      $$(".dock-view").forEach(panel => panel.classList.toggle("active", panel.id === view + "View"));
-      if (view === "terminal" && !state.terminalTabs.length) addTerminal();
-      if (view === "browser" && !state.browserTabs.length) {
-        addBrowser("https://example.com/", "example.com");
-        addBrowser("", "新标签页");
-      }
+    // 统一 dock tab 系统：顶栏一级 tab 行 = 已打开的资源（文件单例 + 每个
+    // 终端 / 浏览器页），「+」与空态启动器共用同一份打开动作。文件的预览
+    // tab 仍是文件视图内部的第二行（树 + 正文的形态不变）。
+    const DOCK_ICONS = { files: "i-folder", terminal: "i-terminal", browser: "i-globe" };
+    function dockTabTitle(tab) {
+      if (tab.type === "files") return "文件";
+      if (tab.type === "terminal") return (state.terminalTabs.find(item => item.id === tab.key) || {}).title || "终端";
+      return (state.browserTabs.find(item => item.id === tab.key) || {}).title || "新标签页";
     }
-    $$(".segment").forEach(button => button.addEventListener("click", () => selectDockView(button.dataset.dockView)));
+    function renderDock() {
+      const tabs = $("#dockTabs");
+      tabs.innerHTML = state.dockTabs.map(tab =>
+        '<button class="resource-tab ' + (tab.key === state.activeDock ? "active" : "") + '" data-dock-tab="' + tab.key + '">' + svg(DOCK_ICONS[tab.type]) + '<span class="title">' + escapeHtml(dockTabTitle(tab)) + '</span><span class="tab-close" data-dock-close="' + tab.key + '">×</span></button>'
+      ).join("");
+      const active = state.dockTabs.find(tab => tab.key === state.activeDock) || null;
+      $("#dockLauncher").classList.toggle("active", !active);
+      $$(".dock-view").forEach(panel => panel.classList.toggle("active", Boolean(active) && panel.id === active.type + "View"));
+      if (active && active.type === "terminal") focusTerminal(active.key);
+      if (active && active.type === "browser") focusBrowser(active.key);
+      $$("[data-dock-tab]", tabs).forEach(tab => tab.addEventListener("click", event => {
+        if (event.target.closest("[data-dock-close]")) return;
+        state.activeDock = tab.dataset.dockTab;
+        renderDock();
+      }));
+      $$("[data-dock-close]", tabs).forEach(close => close.addEventListener("click", event => {
+        event.stopPropagation();
+        closeDockTab(close.dataset.dockClose);
+      }));
+    }
+    function openDockTab(type) {
+      if (type === "files") {
+        if (!state.dockTabs.some(tab => tab.type === "files")) state.dockTabs.push({ key: "files", type: "files" });
+        state.activeDock = "files";
+        renderDock();
+        return;
+      }
+      if (type === "terminal") addTerminal();
+      if (type === "browser") addBrowser("", "新标签页");
+    }
+    function closeDockTab(key) {
+      const index = state.dockTabs.findIndex(tab => tab.key === key);
+      if (index < 0) return;
+      const [tab] = state.dockTabs.splice(index, 1);
+      if (state.activeDock === key) state.activeDock = (state.dockTabs[index] || state.dockTabs[index - 1] || {}).key || null;
+      // 文件是单例视图：关它的 dock tab 只收起视图，树与预览 keep-alive。
+      if (tab.type === "terminal") {
+        const at = state.terminalTabs.findIndex(item => item.id === key);
+        if (at >= 0) state.terminalTabs.splice(at, 1);
+        renderTerminals();
+      }
+      if (tab.type === "browser") {
+        const at = state.browserTabs.findIndex(item => item.id === key);
+        if (at >= 0) state.browserTabs.splice(at, 1);
+        renderBrowsers();
+      }
+      renderDock();
+    }
+    const dockLaunchItems = [
+      { label: "终端", icon: "i-terminal", action: () => openDockTab("terminal") },
+      { label: "浏览器", icon: "i-globe", action: () => openDockTab("browser") },
+      { label: "文件", icon: "i-folder", action: () => openDockTab("files") }
+    ];
+    $("#dockAdd").addEventListener("click", event => {
+      event.stopPropagation();
+      // 锚在状态栏而不是 + 按钮：菜单右缘与停靠栏内容右缘（10px 内边距）
+      // 对齐、从状态栏下缘弹出，像从整条栏拉下来的，而不是浮在按钮附近。
+      openMenu($(".dock-topbar"), dockLaunchItems, { width: 200, align: "right", insetX: 10 });
+    });
+    $$(".launcher-row").forEach(row => row.addEventListener("click", () => openDockTab(row.dataset.launch)));
     const fileBodies = {
       "README.md": "# DeepBuddy\n\nDeepSeek Harness 的精选 Electron 客户端。\n\n- 三列两区\n- Files / Terminal / Browser\n- 资源 keep-alive",
       "AGENTS.md": "# DeepBuddy 开发约束\n\n主列永远存在；左右列可收起。\nShell 只负责布局、Selection 与 Inspector View 实例。",
@@ -2083,17 +2161,13 @@
       };
       state.terminalTabs.push(tab);
       state.activeTerminal = tab.id;
+      state.dockTabs.push({ key: tab.id, type: "terminal" });
+      state.activeDock = tab.id;
       renderTerminals();
-    }
-    function closeTerminal(id) {
-      const index = state.terminalTabs.findIndex(tab => tab.id === id);
-      state.terminalTabs.splice(index, 1);
-      if (state.activeTerminal === id) state.activeTerminal = (state.terminalTabs[index] || state.terminalTabs[index - 1] || {}).id || null;
-      renderTerminals();
+      renderDock();
     }
     function focusTerminal(id) {
       state.activeTerminal = id;
-      $$("[data-terminal-tab]").forEach(tab => tab.classList.toggle("active", tab.dataset.terminalTab === id));
       $$("[data-terminal-pane]").forEach(pane => pane.classList.toggle("active", pane.dataset.terminalPane === id));
       const input = $('[data-terminal-pane="' + id + '"] .terminal-input');
       if (input) input.focus();
@@ -2107,9 +2181,6 @@
       requestAnimationFrame(() => $('[data-terminal-pane="' + id + '"] .terminal-input')?.focus());
     }
     function renderTerminals() {
-      $("#terminalTabs").innerHTML = state.terminalTabs.map(tab =>
-        '<button class="resource-tab ' + (tab.id === state.activeTerminal ? "active" : "") + '" data-terminal-tab="' + tab.id + '"><span class="title">' + escapeHtml(tab.title) + '</span><span class="tab-close" data-close-terminal="' + tab.id + '">×</span></button>'
-      ).join("") + '<button id="addTerminal" class="tab-add" title="新建终端">+</button>';
       $("#terminalPanes").innerHTML = state.terminalTabs.map(tab =>
         '<div class="terminal-pane ' + (tab.id === state.activeTerminal ? "active" : "") + '" data-terminal-pane="' + tab.id + '">' +
           '<div class="terminal-meta"><span class="dot" style="background:' + (tab.status === "ready" ? "var(--db-run)" : "var(--db-await)") + '"></span><span class="truncate">' + escapeHtml(tab.cwd) + '</span>' +
@@ -2118,12 +2189,6 @@
             (tab.status === "ready" ? '<div class="terminal-command"><span class="prompt">~/Des/film-studio ❯&nbsp;</span><input class="terminal-input" autocomplete="off" spellcheck="false"></div>' : '') +
           '</div></div>'
       ).join("");
-      $("#addTerminal").addEventListener("click", addTerminal);
-      $$("[data-terminal-tab]").forEach(tab => tab.addEventListener("click", event => {
-        if (event.target.closest("[data-close-terminal]")) return;
-        focusTerminal(tab.dataset.terminalTab);
-      }));
-      $$("[data-close-terminal]").forEach(close => close.addEventListener("click", event => { event.stopPropagation(); closeTerminal(close.dataset.closeTerminal); }));
       $$("[data-restart-terminal]").forEach(button => button.addEventListener("click", () => restartTerminal(button.dataset.restartTerminal)));
       $$(".terminal-input").forEach(input => input.addEventListener("keydown", event => {
         if (event.key !== "Enter") return;
@@ -2177,17 +2242,13 @@
       const tab = { id: "browser-" + number, title: title || "新标签页", input: normalized, url: normalized, history: normalized ? [normalized] : [], historyIndex: normalized ? 0 : -1 };
       state.browserTabs.push(tab);
       state.activeBrowser = tab.id;
+      state.dockTabs.push({ key: tab.id, type: "browser" });
+      state.activeDock = tab.id;
       renderBrowsers();
-    }
-    function closeBrowser(id) {
-      const index = state.browserTabs.findIndex(tab => tab.id === id);
-      state.browserTabs.splice(index, 1);
-      if (state.activeBrowser === id) state.activeBrowser = (state.browserTabs[index] || state.browserTabs[index - 1] || {}).id || null;
-      renderBrowsers();
+      renderDock();
     }
     function focusBrowser(id) {
       state.activeBrowser = id;
-      $$("[data-browser-tab]").forEach(tab => tab.classList.toggle("active", tab.dataset.browserTab === id));
       $$("[data-browser-pane]").forEach(pane => pane.classList.toggle("active", pane.dataset.browserPane === id));
     }
     function browserPage(tab) {
@@ -2204,9 +2265,6 @@
         const page = $(".fake-page", pane);
         if (previous && page) previous.scrollTop = page.scrollTop;
       });
-      $("#browserTabs").innerHTML = state.browserTabs.map(tab =>
-        '<button class="resource-tab ' + (tab.id === state.activeBrowser ? "active" : "") + '" data-browser-tab="' + tab.id + '"><span class="title">' + escapeHtml(tab.title) + '</span><span class="tab-close" data-close-browser="' + tab.id + '">×</span></button>'
-      ).join("") + '<button id="addBrowser" class="tab-add" title="新建浏览器标签">+</button>';
       $("#browserPanes").innerHTML = state.browserTabs.map(tab => {
         const canBack = tab.historyIndex > 0;
         const canForward = tab.historyIndex >= 0 && tab.historyIndex < tab.history.length - 1;
@@ -2219,12 +2277,6 @@
             '<button class="icon-button browser-external" title="在系统浏览器打开" ' + (tab.url ? "" : "disabled") + '>' + svg("i-external", "small") + '</button>' +
           '</div><div class="fake-page">' + browserPage(tab) + '</div></div>';
       }).join("");
-      $("#addBrowser").addEventListener("click", () => addBrowser("", "新标签页"));
-      $$("[data-browser-tab]").forEach(tab => tab.addEventListener("click", event => {
-        if (event.target.closest("[data-close-browser]")) return;
-        focusBrowser(tab.dataset.browserTab);
-      }));
-      $$("[data-close-browser]").forEach(close => close.addEventListener("click", event => { event.stopPropagation(); closeBrowser(close.dataset.closeBrowser); }));
       $$("[data-browser-pane]").forEach(pane => {
         const tab = state.browserTabs.find(item => item.id === pane.dataset.browserPane);
         const address = $(".address", pane);
@@ -2261,12 +2313,15 @@
         const learn = $(".learn-more", pane);
         if (learn) learn.addEventListener("click", event => { event.preventDefault(); toast("这是内置离线假页面"); });
       });
+      // 导航会改页面标题，顶栏统一 tab 行要跟着换。
+      renderDock();
     }
 
     state.sessionHtml["Hello Greeting"] = $("#chatMessages").innerHTML;
     state.dockWidth = dockDefault();
     applyLayout();
     showHero();
+    renderDock();
     renderFileTabs();
     renderFilePreview();
   </script>
