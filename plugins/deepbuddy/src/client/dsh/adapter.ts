@@ -289,10 +289,12 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
     inject(key: string, cb: () => (() => void) | void): () => void
     register(options: { name: string; priority?: number }, comp: () => ReactNode): () => void
   }
-  slots.inject('conversation.hero.brand.mark', () => slots.register({
+  // On the effect like every other registration here — inject() returns a
+  // disposer, and dropping it leaves a ghost registration behind a reload.
+  ctx.effect(() => slots.inject('conversation.hero.brand.mark', () => slots.register({
     name: 'conversation.hero.brand.mark',
     priority: -1,
-  }, DeepBuddyBrandMark))
+  }, DeepBuddyBrandMark)), 'deepbuddy: brand mark')
 
 
   // Window listeners and the live subscriptions ride the fiber, not a React
@@ -309,6 +311,7 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
   // clears it. The official session service is the single record.
   let watchedSessionId: string | undefined
   let sessionOff: (() => void) | undefined
+  let bindingPoll: number | undefined
   const syncSessionStarted = (): void => {
     const list = ctx.sessions.list.getSnapshot()
     const cur = list.current
@@ -323,19 +326,38 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
       sessionOff?.()
       sessionOff = undefined
       watchedSessionId = cur
+      if (bindingPoll !== undefined) {
+        window.clearInterval(bindingPoll)
+        bindingPoll = undefined
+      }
       if (cur !== undefined && session !== undefined) {
         sessionOff = session.subscribe(syncSessionStarted)
       }
       else if (cur !== undefined && session === undefined) {
-        // Binding not hydrated yet: re-check on the next tick — the session
-        // hydration does not re-notify `list`, so poll once shortly after.
-        queueMicrotask(syncSessionStarted)
+        // Binding not hydrated yet, and hydration does not re-notify `list`.
+        // One microtask never covers real IO (a cold start restoring the
+        // current session hydrates over the wire) — poll briefly until the
+        // binding lands, else the dock gate stays shut on a running session.
+        let tries = 0
+        bindingPoll = window.setInterval(() => {
+          tries += 1
+          const ready = ctx.sessions.binding(cur)?.session !== undefined
+          if (ready || tries >= 50) {
+            window.clearInterval(bindingPoll)
+            bindingPoll = undefined
+            if (ready) syncSessionStarted()
+          }
+        }, 100)
       }
     }
   }
   const offList = ctx.sessions.list.subscribe(syncSessionStarted)
   syncSessionStarted()
-  ctx.effect(() => () => { offList(); sessionOff?.() }, 'deepbuddy: session-started watch')
+  ctx.effect(() => () => {
+    offList()
+    sessionOff?.()
+    if (bindingPoll !== undefined) window.clearInterval(bindingPoll)
+  }, 'deepbuddy: session-started watch')
 
   // The Remote plane rides sub-scopes, never the plugin's own `inject`: a
   // deployment without api-remotes must still get the frame, and gating the

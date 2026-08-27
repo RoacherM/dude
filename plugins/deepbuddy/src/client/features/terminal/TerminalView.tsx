@@ -69,26 +69,36 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
   useEffect(() => {
     if (mountRef.current === null) return
     const mount = mountRef.current
-    const styles = getComputedStyle(mount)
-    const terminal = new Terminal({
-      allowProposedApi: false,
-      convertEol: false,
-      cursorBlink: true,
-      fontFamily: styles.getPropertyValue('--db-mono').trim() || 'monospace',
-      fontSize: 12,
-      lineHeight: 1.8,
-      scrollback: 5000,
-      theme: {
-        // The screen is the embedded void, not the panel it sits on.
+    // The screen is the embedded void, not the panel it sits on. Read the
+    // tokens fresh per call: xterm bakes the theme into its canvas, so a
+    // mount-time snapshot would leave a dark terminal on a light UI after a
+    // theme switch — the observer below re-reads on every theme flip.
+    const readTheme = () => {
+      const styles = getComputedStyle(mount)
+      return {
         background: styles.getPropertyValue('--db-void').trim() || '#0e0e10',
         foreground: styles.getPropertyValue('--db-text-3').trim() || '#a6a6ad',
         cursor: styles.getPropertyValue('--db-text').trim() || '#f4f4f5',
         selectionBackground: styles.getPropertyValue('--db-fill-6').trim() || '#3a3a3e',
-      },
+      }
+    }
+    const terminal = new Terminal({
+      allowProposedApi: false,
+      convertEol: false,
+      cursorBlink: true,
+      fontFamily: getComputedStyle(mount).getPropertyValue('--db-mono').trim() || 'monospace',
+      fontSize: 12,
+      lineHeight: 1.8,
+      scrollback: 5000,
+      theme: readTheme(),
     })
     const fit = new FitAddon()
     terminal.loadAddon(fit)
     terminal.open(mount)
+    // ThemePresenter flips `data-ds-dark-theme` on body; the kept-alive pane
+    // must follow it or it keeps the stale scheme until a remount.
+    const themeObserver = new MutationObserver(() => { terminal.options.theme = readTheme() })
+    themeObserver.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
 
     let disposed = false
     let reconnectTimer: number | undefined
@@ -96,18 +106,41 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
     let manuallyClosed = false
 
     const closeResource = (): void => {
+      if (manuallyClosed) return
       manuallyClosed = true
+      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
       const socket = socketRef.current
       if (socket === null || socket.readyState === WebSocket.CLOSED) {
+        // No live socket (reconnect window, or already dead): the host keeps
+        // the PTY until an explicit kill, so a silent tab removal would leak
+        // it against the per-session limit. Best-effort kill over a fresh
+        // socket; if even that cannot connect, the PTY waits for session
+        // disposal as before.
+        try {
+          const killer = new WebSocket(terminalSocketUrl(sessionId, termId))
+          killer.addEventListener('open', () => {
+            killer.send(JSON.stringify({ type: 'kill' }))
+            killer.close()
+          })
+          killer.addEventListener('error', () => { killer.close() })
+        } catch { /* fully offline — nothing to kill against */ }
         onClosed(termId)
         return
       }
+      let finished = false
       const killAndClose = (): void => {
+        if (finished) return
+        finished = true
         send(socket, { type: 'kill' })
         socket.close()
         onClosed(termId)
       }
-      if (socket.readyState === WebSocket.CONNECTING) socket.addEventListener('open', killAndClose, { once: true })
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.addEventListener('open', killAndClose, { once: true })
+        // A socket that dies before ever opening still owes the tab its
+        // removal — without this the tab is stuck at 正在连接 forever.
+        socket.addEventListener('close', killAndClose, { once: true })
+      }
       else killAndClose()
     }
     onControl(termId, closeResource)
@@ -134,6 +167,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
     const resizeObserver = new ResizeObserver(scheduleFitAndResize)
     resizeObserver.observe(mount)
 
+    let reconnectAttempts = 0
     const connect = (): void => {
       if (disposed || manuallyClosed) return
       setState('connecting')
@@ -147,6 +181,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
         catch { return }
         if (message.type === 'snapshot') {
           dblog('terminal', 'attached', { termId, cwd: message.cwd, status: message.status })
+          reconnectAttempts = 0
           terminal.reset()
           if (message.data !== undefined) terminal.write(message.data)
           setDetail(message.cwd ?? '')
@@ -174,8 +209,14 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
           socketRef.current = null
         }
         if (!disposed && !manuallyClosed) {
-          dbwarn('terminal', 'socket dropped — reconnecting in 800ms', { termId })
-          reconnectTimer = window.setTimeout(connect, 800)
+          // Exponential backoff, 800ms → 15s cap: a host that stays down must
+          // not be hammered (and must not flood the always-on warn channel)
+          // at a fixed 800ms forever. A successful attach resets the clock.
+          const delay = Math.min(800 * 2 ** reconnectAttempts, 15_000)
+          reconnectAttempts += 1
+          if (reconnectAttempts <= 3) dbwarn('terminal', `socket dropped — reconnecting in ${delay}ms`, { termId })
+          else dblog('terminal', `socket dropped — reconnecting in ${delay}ms`, { termId, attempt: reconnectAttempts })
+          reconnectTimer = window.setTimeout(connect, delay)
         }
       })
     }
@@ -187,6 +228,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
       fitRef.current = () => {}
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
       if (resizeTimer !== undefined) window.clearTimeout(resizeTimer)
+      themeObserver.disconnect()
       resizeObserver.disconnect()
       input.dispose()
       socketRef.current?.close()

@@ -378,6 +378,10 @@ export class PresetPlane {
     // Fold the committed choice into the session store this renders from; the
     // host's own `agent-preset/selected` does the same for every other tab.
     this.dsh.sessions.noteAgentPreset(summary.id, r.value)
+    // A pick staged while this apply was busy bailed at the guard above; it
+    // is still staged, so run it now instead of waiting for a session-list
+    // change that may never come.
+    if (this.state.stagedPreset !== null) void this.applyStagedPreset()
   }
 
   /** Persist the preset that sessions created later start from. */
