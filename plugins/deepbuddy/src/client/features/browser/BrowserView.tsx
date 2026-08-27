@@ -37,10 +37,29 @@ interface BrowserResourceState {
 const browserResources = new Map<string, BrowserResourceState>()
 let browserCounter = 1
 
-/** The session fence's share: drop every kept page and restart the numbering. */
-export function fenceBrowserSession(): void {
+/** Kept pages per departed session, mirroring the shell's tab-ledger stash. */
+const browserStash = new Map<string, { resources: Map<string, BrowserResourceState>; counter: number }>()
+
+/**
+ * The session fence's share: stash the departing session's kept pages under
+ * its id and restore the arriving session's — the shell restores that
+ * session's browser tabs in the same fence, and a restored tab without its
+ * URL would come back as an empty shell.
+ */
+export function fenceBrowserSession(from?: string, to?: string, live?: ReadonlySet<string>): void {
+  if (from !== undefined) browserStash.set(from, { resources: new Map(browserResources), counter: browserCounter })
+  if (live !== undefined) {
+    for (const key of [...browserStash.keys()]) {
+      if (!live.has(key)) browserStash.delete(key)
+    }
+  }
   browserResources.clear()
   browserCounter = 1
+  const stashed = to === undefined ? undefined : browserStash.get(to)
+  if (stashed !== undefined) {
+    for (const [id, page] of stashed.resources) browserResources.set(id, page)
+    browserCounter = stashed.counter
+  }
 }
 
 /** Add the intended scheme without turning localhost into an HTTPS request. */

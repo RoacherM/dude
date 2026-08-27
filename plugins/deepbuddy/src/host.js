@@ -810,6 +810,24 @@ export function apply(ctx, config) {
       kind: 'prefix',
       path: MEDIA_ROUTE,
       handler(req, res) {
+        // Same fail-closed Origin rule as the terminal upgrade below: a
+        // foreign page must not read session files even when the server
+        // listens on 0.0.0.0. Same-origin media elements send no Origin;
+        // any request that does send one must match the host it reached.
+        const origin = req.headers.origin
+        const reqHost = req.headers.host
+        let originHost
+        if (origin !== undefined) {
+          try { originHost = new URL(origin).host } catch { originHost = '' }
+        }
+        if (origin !== undefined && reqHost !== undefined && originHost !== reqHost) {
+          res.statusCode = 403
+          res.end('forbidden')
+          return
+        }
+        // Belt for the no-Origin embed path: the browser itself refuses to
+        // hand these bytes to a cross-origin document.
+        res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
         const raw = new URL(req.url ?? '/', 'http://x').pathname
         const rest = raw.slice(MEDIA_ROUTE.length).replace(/^\//, '')
         const [sessionId, ...pathParts] = rest.split('/').map(part => decodeURIComponent(part))

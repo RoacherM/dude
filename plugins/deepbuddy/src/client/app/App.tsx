@@ -111,12 +111,16 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => {
     let fenced = dsh.sessions.list.getSnapshot().current
     return dsh.sessions.list.subscribe(() => {
-      const cur = dsh.sessions.list.getSnapshot().current
+      const snapshot = dsh.sessions.list.getSnapshot()
+      const cur = snapshot.current
       if (cur === fenced) return
-      dblog('fence', 'session changed — dropping tab ledgers and view state', { from: fenced, to: cur })
+      dblog('fence', 'session changed — swapping tab ledgers and view state', { from: fenced, to: cur })
+      const from = fenced as string | undefined
+      const to = cur as string | undefined
       fenced = cur
-      layout.fenceTabs()
-      for (const view of INSPECTOR_VIEW_TYPES) view.onSessionFence?.()
+      const live: ReadonlySet<string> = new Set(snapshot.ids as readonly string[])
+      layout.fenceTabs(from, to, live)
+      for (const view of INSPECTOR_VIEW_TYPES) view.onSessionFence?.(from, to, live)
     })
   }, 'deepbuddy: session fence')
 

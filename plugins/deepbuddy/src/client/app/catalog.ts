@@ -48,12 +48,17 @@ export interface InspectorViewTypeDefinition {
   icon?: IconName
   Component: ComponentType<InspectorViewProps>
   /**
-   * Drop the feature's module-level per-session resources. The assembly's
-   * session fence calls it on a current-session change, right after the shell
-   * ledgers are dropped; component-local state dies by remount instead (the
-   * inspector keys view bodies on the fence generation).
+   * Stash/restore the feature's module-level per-session resources. The
+   * assembly's session fence calls it on a current-session change, right
+   * after the shell ledgers are swapped; component-local state dies by
+   * remount instead (the inspector keys view bodies on the fence generation).
+   * The ledger swap restores the arriving session's tabs, so a feature that
+   * keeps module state per tab stashes it under `from` and restores `to`'s.
+   * @param from - the departing session id.
+   * @param to - the arriving session id.
+   * @param live - session ids that still exist; stale stashes are pruned.
    */
-  onSessionFence?: () => void
+  onSessionFence?: (from: string | undefined, to: string | undefined, live: ReadonlySet<string>) => void
 }
 
 /** Inspector view types, in segment order; the first is the dock's default. */

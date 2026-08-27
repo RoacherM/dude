@@ -28,7 +28,10 @@ interface TerminalMessage {
 
 let terminalCounter = 1
 
-/** The session fence's share: restart the tab numbering with the session. */
+/** The session fence's share: restart the tab numbering with the session.
+ *  A restored ledger (session round-trip) needs no stash here — each tab's
+ *  PTY lives on the host and reattaches by id, and `nextTerminalTab` numbers
+ *  past the greatest restored id, so the counter reset cannot collide. */
 export function fenceTerminalSession(): void {
   terminalCounter = 1
 }

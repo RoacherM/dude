@@ -75,6 +75,13 @@ export class FilesStore {
    * CURRENT watch may write state.
    */
   private generation = 0
+  /**
+   * Cancels the wire calls of the current generation. The wire retries
+   * `session-not-found` for up to 3s (hydration); once the fence moves, those
+   * retries serve a session nobody is looking at — abort ends them at once
+   * instead of letting `fresh()` discard their eventual result.
+   */
+  private aborter = new AbortController()
 
   private readonly listeners = new Set<() => void>()
   private version = 0
@@ -125,6 +132,7 @@ export class FilesStore {
     // (a post-dispose decode would otherwise still create a blob URL nothing
     // can ever revoke) and release the URLs the store owns.
     this.generation += 1
+    this.aborter.abort(new Error('files store disposed'))
     this.watchedId = undefined
     this.revokeMediaUrls()
   }
@@ -139,6 +147,8 @@ export class FilesStore {
   private watchSession(id: SessionId | undefined): void {
     this.watchedId = id
     this.generation += 1
+    this.aborter.abort(new Error('session fence'))
+    this.aborter = new AbortController()
     // Session switch: the file tree belongs to the old fence. The store owns
     // the media blob URLs, so the fence revokes them with the cache — a view
     // unmount deliberately does NOT (the cache would then point at dead URLs).
@@ -180,12 +190,13 @@ export class FilesStore {
     // watchedId is the synchronous session fence set by watchSession.
     const id = this.watchedId
     const gen = this.generation
+    const signal = this.aborter.signal
     const files = this.dsh.files
     if (id === undefined || files === null) return
     const key = path === '' ? 'root' : path
     this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: 'loading' } }))
     try {
-      const r = await files.listDirectory(id as string, path)
+      const r = await files.listDirectory(id as string, path, signal)
       if (!this.fresh(gen)) return
       if ('error' in r) {
         const detail = r.error.message === undefined ? r.error.kind : `${r.error.kind}: ${r.error.message}`
@@ -210,16 +221,23 @@ export class FilesStore {
   }
 
   /** Read one file's body; the caller opens the inspector tab that shows it.
-   *  A cached error is not a cache hit — clicking again retries. */
+   *  A cached success is stale-while-revalidate — the agent edits workspace
+   *  files behind the preview, so re-clicking the tree row IS the refresh
+   *  entry: the cached body stays on screen while the fresh read is in
+   *  flight. A cached error retries with the loading state; an in-flight
+   *  read ('loading') is not stacked. */
   openFile = (child: DirectoryChild): void => {
     const id = this.watchedId
     const gen = this.generation
+    const signal = this.aborter.signal
     const files = this.dsh.files
     if (id === undefined || files === null) return
     const cached = this.state.fileBodies[child.path]
-    if (cached !== undefined && !(typeof cached === 'object' && 'error' in cached)) return
-    this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: 'loading' } }))
-    void files.readFile(id as string, child.path)
+    if (cached === 'loading') return
+    if (cached === undefined || ('error' in cached)) {
+      this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: 'loading' } }))
+    }
+    void files.readFile(id as string, child.path, signal)
       .then((r) => {
         if (!this.fresh(gen)) return
         this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: r } }))
@@ -236,12 +254,13 @@ export class FilesStore {
   openBinaryFile = (path: string): void => {
     const id = this.watchedId
     const gen = this.generation
+    const signal = this.aborter.signal
     const files = this.dsh.files
     if (id === undefined || files === null) return
     const cached = this.state.mediaBodies[path]
     if (cached !== undefined && !(typeof cached === 'object' && cached.kind === 'error')) return
     this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: 'loading' } }))
-    void files.readBinary(id as string, path)
+    void files.readBinary(id as string, path, signal)
       .then((r) => {
         if (!this.fresh(gen)) return
         if ('error' in r) {

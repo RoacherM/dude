@@ -45,8 +45,8 @@ export interface ConnectionRpc {
 }
 
 export interface WorkspaceFilesWire {
-  readFile(sessionId: string, path: string): Promise<ReadFileResult>
-  readBinary(sessionId: string, path: string): Promise<ReadBinaryResult>
+  readFile(sessionId: string, path: string, signal?: AbortSignal): Promise<ReadFileResult>
+  readBinary(sessionId: string, path: string, signal?: AbortSignal): Promise<ReadBinaryResult>
   listDirectory(sessionId: string, path: string, signal?: AbortSignal): Promise<ListDirectoryResult>
 }
 
@@ -85,6 +85,10 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
 export function createFilesWire(rpc: ConnectionRpc): WorkspaceFilesWire {
   const call = async (method: string, request: unknown, signal?: AbortSignal): Promise<unknown> => {
     for (let attempt = 0; ; attempt++) {
+      // The hydration retry must not outlive its caller: a session fence
+      // aborts the signal, and up to 3s of blind retries against a session
+      // that no longer exists would otherwise keep running.
+      if (signal?.aborted === true) throw (signal.reason instanceof Error ? signal.reason : new Error('aborted'))
       const result = await rpc.call('/api', `deepbuddyFiles/${method}`, { args: { request } }, signal)
       if (!result.ok) {
         // `invocation-unavailable` here means the host half is not loaded —
@@ -96,11 +100,11 @@ export function createFilesWire(rpc: ConnectionRpc): WorkspaceFilesWire {
     }
   }
   return {
-    async readFile(sessionId, path) {
-      return await call('readFile', { sessionId, path }) as ReadFileResult
+    async readFile(sessionId, path, signal) {
+      return await call('readFile', { sessionId, path }, signal) as ReadFileResult
     },
-    async readBinary(sessionId, path) {
-      return await call('readBinary', { sessionId, path }) as ReadBinaryResult
+    async readBinary(sessionId, path, signal) {
+      return await call('readBinary', { sessionId, path }, signal) as ReadBinaryResult
     },
     async listDirectory(sessionId, path, signal) {
       return await call('listDirectory', { sessionId, path }, signal) as ListDirectoryResult

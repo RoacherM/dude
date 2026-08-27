@@ -44,6 +44,7 @@
  * Everything is scoped under `.dbdy` so the stock shell's `--dsw-*` theme and
  * these tokens never fight.
  */
+import { dbwarn } from '../log.ts'
 
 /** Column and content metrics shared by the CSS and the layout arithmetic. */
 export const METRICS = {
@@ -357,6 +358,38 @@ button, a, input, textarea, select,
 `
 
 /**
+ * The official build-hash class suffixes the CSS above restyles via
+ * `[class*="…"]`. The DOM presence of each is state-dependent (the hero only
+ * exists on a blank conversation, the session header only with one open), so
+ * the sentinel checks the official STYLESHEETS instead: those are static at
+ * startup, and a suffix absent from every rule means the official build
+ * renamed it and the matching restyle above is silently dead.
+ */
+export const OFFICIAL_CLASS_SUFFIXES = [
+  '_headline', '_headlineText', '_previewBadge',
+  '_sessionLogButton', '_header', '_titleRow', '_tabs',
+] as const
+
+/** Warn once per suffix that no longer appears in any official stylesheet. */
+function auditOfficialClasses(): void {
+  let text = ''
+  for (const sheet of Array.from(document.styleSheets)) {
+    // Skip our own sheet — its selectors quote the suffixes and would make
+    // the audit always pass. Cross-origin sheets refuse cssRules; skip those.
+    const owner = sheet.ownerNode
+    if (owner instanceof HTMLElement && owner.dataset['owner'] === 'dsh-plugin-deepbuddy') continue
+    let rules: CSSRuleList
+    try { rules = sheet.cssRules } catch { continue }
+    for (const rule of Array.from(rules)) text += rule.cssText
+  }
+  for (const suffix of OFFICIAL_CLASS_SUFFIXES) {
+    if (!text.includes(suffix)) {
+      dbwarn('tokens', `official class suffix "${suffix}" is gone from the stylesheets — its restyle rules are dead; the official build likely renamed it (locked against 0.1.1-rc.2)`)
+    }
+  }
+}
+
+/**
  * Install the stylesheet.
  * @param extra - additional CSS appended after the tokens (the font-face
  * block lives in ui/fonts.ts so this module stays loadable under plain Node).
@@ -367,5 +400,8 @@ export function installStyles(extra = ''): () => void {
   el.dataset['owner'] = 'dsh-plugin-deepbuddy'
   el.textContent = CSS + extra
   document.head.append(el)
-  return () => { el.remove() }
+  // The official CSS is on the page well before this plugin loads; 5s leaves
+  // slack for any late-linked sheet without ever warning during startup.
+  const audit = setTimeout(auditOfficialClasses, 5000)
+  return () => { clearTimeout(audit); el.remove() }
 }

@@ -18,7 +18,7 @@
  * every column subscribes to would re-render every panel to move one divider.
  */
 import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
-import { createRef, useCallback, useRef, useSyncExternalStore } from 'react'
+import { createRef, useSyncExternalStore } from 'react'
 import {
   GAP, SIDEBAR_BREAKPOINT, SIDEBAR_DEFAULT,
   canSplitDock, clampDock, clampSidebar, dockDefault,
@@ -480,12 +480,33 @@ export class LayoutStore {
   }
 
   /**
-   * The session fence: drop every view's ledger and bump the fence generation
-   * in one notification. Called by the assembly's session watch, never by a
-   * view — a view carries no per-session reset logic of its own.
+   * Ledgers stashed per departed session. The host keeps a session's PTYs
+   * until the session is disposed, so the tabs pointing at them must survive
+   * the fence too — dropping them outright would orphan every terminal but
+   * the auto-opened first one (nothing could ever reattach term-2+). Keyed by
+   * session id, pruned against the live list on every fence.
    */
-  fenceTabs = (): void => {
-    this.patch({ tabs: {}, fence: this.state.fence + 1 })
+  private tabStash = new Map<string, Readonly<Record<string, PaneTabs>>>()
+
+  /**
+   * The session fence: stash the departing session's ledgers, restore the
+   * arriving session's (its terminals reattach, its files re-read on mount)
+   * and bump the fence generation in one notification. Called by the
+   * assembly's session watch, never by a view — a view carries no per-session
+   * reset logic of its own.
+   * @param from - the departing session id; its ledgers are stashed.
+   * @param to - the arriving session id; its stash (if any) is restored.
+   * @param live - session ids that still exist; stale stashes are pruned.
+   */
+  fenceTabs = (from?: string, to?: string, live?: ReadonlySet<string>): void => {
+    if (from !== undefined) this.tabStash.set(from, this.state.tabs)
+    if (live !== undefined) {
+      for (const key of [...this.tabStash.keys()]) {
+        if (!live.has(key)) this.tabStash.delete(key)
+      }
+    }
+    const restored = to === undefined ? undefined : this.tabStash.get(to)
+    this.patch({ tabs: restored ?? {}, fence: this.state.fence + 1 })
   }
 
   // ── drag handles ──────────────────────────────────────────────────────────
@@ -601,8 +622,10 @@ export class LayoutStore {
  * the conversation frame or sidebar.
  */
 export function useLayoutSelection<T>(store: LayoutStore, select: (store: LayoutStore) => T): T {
-  const selectRef = useRef(select)
-  selectRef.current = select
-  const getSnapshot = useCallback(() => selectRef.current(store), [store])
-  return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot)
+  // Inline getSnapshot, no ref: writing a ref during render is a concurrent-
+  // render tear (a thrown-away render's selector leaks into the kept one).
+  // A fresh closure per render is safe — useSyncExternalStore re-reads on a
+  // getSnapshot change and bails out when the selected value is `Object.is`-
+  // equal, and every selector here returns a primitive or a stable state ref.
+  return useSyncExternalStore(store.subscribe, () => select(store), () => select(store))
 }

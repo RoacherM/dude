@@ -942,3 +942,135 @@ test('presets: a pick during a busy apply is staged, drained by intent generatio
   await settle()
   assert.deepEqual(selects, [['A', 'x']], 'a disposed plane never drains a stage into a new mutation')
 })
+
+test('the session fence stashes ledgers per session and restores them on return', async () => {
+  const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+  const layout = new LayoutStore()
+  layout.openTab('terminal', { id: 'term-1', label: '终端 1' })
+  layout.openTab('terminal', { id: 'term-2', label: '终端 2' })
+
+  // A→B: A's ledgers are stashed (its PTYs live on the host until session
+  // dispose — dropping the tabs would orphan them), B starts blank.
+  const live = new Set(['session-a', 'session-b'])
+  const fenceBefore = layout.state.fence
+  layout.fenceTabs('session-a', 'session-b', live)
+  assert.deepEqual(layout.state.tabs, {}, 'the arriving session starts blank')
+  assert.equal(layout.state.fence, fenceBefore + 1)
+
+  layout.openTab('browser', { id: 'bt-1', label: '页面' })
+
+  // B→A: A's terminals come back exactly — each tab reattaches to its PTY.
+  layout.fenceTabs('session-b', 'session-a', live)
+  assert.deepEqual(
+    layout.state.tabs['terminal'].items.map(tab => tab.id),
+    ['term-1', 'term-2'],
+    'returning to a session restores its full ledger, not just an auto-opened first tab',
+  )
+
+  // A disposed session's stash is pruned; arriving at it starts blank.
+  layout.fenceTabs('session-a', 'session-b', new Set(['session-a']))
+  assert.deepEqual(layout.state.tabs, {}, 'a stash for a session no longer alive is pruned, not restored')
+})
+
+test('files: a cached body revalidates on re-open without dropping the view to loading', async () => {
+  const bodies = ['第一版', '第二版']
+  let reads = 0
+  const dsh = {
+    sessions: {
+      list: {
+        subscribe() { return () => {} },
+        getSnapshot() { return { current: 'session-a' } },
+      },
+    },
+    files: {
+      async readFile() { return { kind: 'text', text: bodies[reads++], truncated: false, size: 8 } },
+    },
+  }
+  const { FilesStore } = await import(join(root, 'src/client/features/files/store.ts'))
+  const files = new FilesStore(dsh)
+  files.mount()
+  const child = { path: 'notes.md', name: 'notes.md', directory: false }
+
+  files.openFile(child)
+  assert.equal(files.state.fileBodies['notes.md'], 'loading', 'an uncached path shows the loading state')
+  files.openFile(child)
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(files.state.fileBodies['notes.md'].text, '第一版')
+  assert.equal(reads, 1, 'an in-flight read is not stacked')
+
+  // The agent edited the file; re-clicking the row is the refresh entry.
+  // The stale body stays on screen while the fresh read is in flight.
+  files.openFile(child)
+  assert.equal(files.state.fileBodies['notes.md'].text, '第一版', 'revalidation keeps the cached body visible')
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(files.state.fileBodies['notes.md'].text, '第二版', 'the fresh body replaces the stale one')
+  assert.equal(reads, 2)
+  files.dispose()
+})
+
+test('files wire: the hydration retry dies with its abort signal', async () => {
+  const { createFilesWire } = await import(join(root, 'src/client/dsh/files.ts'))
+  let calls = 0
+  const rpc = {
+    async call() {
+      calls += 1
+      return { ok: true, value: { error: { kind: 'session-not-found' } } }
+    },
+  }
+  const wire = createFilesWire(rpc)
+  const aborter = new AbortController()
+  const read = wire.readFile('session-a', 'a.txt', aborter.signal)
+  await new Promise(resolve => setImmediate(resolve))
+  aborter.abort(new Error('session fence'))
+  await assert.rejects(read, /session fence/, 'the pending retry rejects with the fence reason')
+  const settled = calls
+  await new Promise(resolve => setTimeout(resolve, 400))
+  assert.equal(calls, settled, 'no further retry fires after the abort')
+})
+
+test('the media route rejects a foreign Origin and marks its bytes same-origin only', async () => {
+  const mod = await import(join(root, 'lib/index.js'))
+  const routes = []
+  const ctx = {
+    effect(fn) { fn() },
+    provide() {},
+    get(key) {
+      if (key !== 'webServer') return undefined
+      return {
+        register(route) { routes.push(route); return () => {} },
+        registerUpgrade() { return () => {} },
+      }
+    },
+    on() { return () => {} },
+    typert: { register() { return () => {} } },
+  }
+  mod.apply(ctx, { previewMaxChars: 262_144, previewMaxBytes: 50_102_400 })
+  const media = routes.find(route => route.path === '/deepbuddy/media')
+
+  const respond = (headers) => {
+    const res = {
+      statusCode: 200,
+      headers: {},
+      ended: false,
+      setHeader(name, value) { this.headers[name] = value },
+      removeHeader(name) { delete this.headers[name] },
+      writeHead(code) { this.statusCode = code },
+      end() { this.ended = true },
+      destroy() { this.ended = true },
+    }
+    media.handler({ url: '/deepbuddy/media/s1/a.png', headers }, res)
+    return res
+  }
+
+  // Same fail-closed rule as the terminal upgrade: a present-but-foreign
+  // Origin is refused before any session file is touched.
+  const foreign = respond({ origin: 'http://evil.example', host: 'localhost:3080' })
+  assert.equal(foreign.statusCode, 403)
+  assert.equal(foreign.ended, true)
+
+  // No Origin (same-origin media element): passes the gate and carries the
+  // browser-enforced same-origin resource policy.
+  const local = respond({ host: 'localhost:3080' })
+  assert.equal(local.headers['Cross-Origin-Resource-Policy'], 'same-origin')
+  assert.notEqual(local.statusCode, 403)
+})

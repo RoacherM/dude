@@ -172,6 +172,13 @@ function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; 
 function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNode {
   const body = store.state.fileBodies[path]
   const kind = mediaKind(path)
+  const unrequested = kind === null && body === undefined
+  useEffect(() => {
+    // A restored tab (session round-trip re-hangs the stashed ledger) has an
+    // entry but no body — the tree click that normally reads it never
+    // happened this mount, so the body request rides the mount instead.
+    if (unrequested) store.openFile({ path, name: basename(path), directory: false })
+  }, [store, path, unrequested])
   if (kind !== null) {
     return <MediaPreview store={store} path={path} mime={kind} />
   }
