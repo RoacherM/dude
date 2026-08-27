@@ -39,6 +39,12 @@ export interface InspectorViewProps {
   onCloseTab(id: string): void
   /** Focus an existing instance. */
   onFocusTab(id: string): void
+  /**
+   * Register a close path that owns an underlying resource. Terminal uses this
+   * to preserve its PTY kill-before-ledger-removal protocol; ordinary views
+   * leave it unregistered.
+   */
+  onRegisterClose(fn: ((id: string) => void) | null): void
 }
 
 /** One inspector surface: Files, and later Terminal and File Preview. */
@@ -47,6 +53,8 @@ export interface InspectorViewTypeDefinition {
   title: string
   icon?: IconName
   Component: ComponentType<InspectorViewProps>
+  /** Create this view's next unified dock resource tab from its own open tabs. */
+  createTab(existing: readonly TabRef[]): TabRef
   /**
    * Stash/restore the feature's module-level per-session resources. The
    * assembly's session fence calls it on a current-session change, right
@@ -61,11 +69,11 @@ export interface InspectorViewTypeDefinition {
   onSessionFence?: (from: string | undefined, to: string | undefined, live: ReadonlySet<string>) => void
 }
 
-/** Inspector view types, in segment order; the first is the dock's default. */
+/** Inspector view types, in the dock launcher/menu order. */
 export const INSPECTOR_VIEW_TYPES = [
-  FilesViewDefinition,
   TerminalViewDefinition,
   BrowserViewDefinition,
+  FilesViewDefinition,
 ] as const
 
 /**

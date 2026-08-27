@@ -6,7 +6,6 @@ import type { TabRef } from '../../shell/layout-store.ts'
 import { IN_ELECTRON } from '../../shell/ColumnFrame.tsx'
 import { dbwarn } from '../../log.ts'
 import { KIT } from '../../ui/kit.tsx'
-import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
 import { ArrowLeft, ArrowRight, ExternalLink, Globe, Refresh } from '../../ui/icons.tsx'
 
 interface WebviewElement extends HTMLElement {
@@ -80,7 +79,7 @@ function openExternal(url: string): void {
   if (url !== '') window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-function nextBrowserTab(tabs: readonly TabRef[]): TabRef {
+export function nextBrowserTab(tabs: readonly TabRef[]): TabRef {
   const greatest = tabs.reduce((max, tab) => {
     const match = /^browser-(\d+)$/.exec(tab.id)
     return match === null ? max : Math.max(max, Number(match[1]))
@@ -332,31 +331,13 @@ const BrowserTabMount = memo(function BrowserTabMount({ tabId, active, onOpenTab
 })
 
 export function BrowserView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
-  const initialized = useRef(false)
-  const add = useCallback((): void => {
-    onOpenTab(nextBrowserTab(tabs))
-  }, [tabs, onOpenTab])
-
-  useEffect(() => {
-    if (!visible || initialized.current) return
-    initialized.current = true
-    if (tabs.length === 0) add()
-  }, [visible, tabs.length, add])
-
-  const close = useCallback((tabId: string): void => {
-    browserResources.delete(tabId)
-    onCloseTab(tabId)
-  }, [onCloseTab])
+  const { tabs, active, onOpenTab } = props
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <InspectorTabs tabs={tabs} active={active} onFocus={onFocusTab} onClose={close} onAdd={add} />
-      {tabs.length === 0
-        ? <div style={{ padding: 16 }}><KIT.EmptyState>点击 + 新建浏览器标签。</KIT.EmptyState></div>
-        : tabs.map(tab => (
-            <BrowserTabMount key={tab.id} tabId={tab.id} active={tab.id === active} onOpenTab={onOpenTab} />
-          ))}
+      {tabs.map(tab => (
+        <BrowserTabMount key={tab.id} tabId={tab.id} active={tab.id === active} onOpenTab={onOpenTab} />
+      ))}
     </div>
   )
 }

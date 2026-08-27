@@ -164,7 +164,7 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /SIDEBAR_SECTIONS = \[/)
   assert.doesNotMatch(bundle, /SessionListSectionDefinition/)
   assert.doesNotMatch(bundle, /OverviewViewDefinition|textOfParts|outlineOf\(/)
-  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*FilesViewDefinition,\s*\n\s*TerminalViewDefinition,\s*\n\s*BrowserViewDefinition\s*\n\]/)
+  assert.match(bundle, /INSPECTOR_VIEW_TYPES = \[\s*\n\s*TerminalViewDefinition,\s*\n\s*BrowserViewDefinition,\s*\n\s*FilesViewDefinition\s*\n\]/)
   // The definitions carry their ids — the catalog is the single composition
   // point the shell renders from. Settings is no longer a workbench app (it
   // is a dialog overlay, wave 4 §5), so it is deliberately absent here.
@@ -184,18 +184,23 @@ test('client bundle composes first-party surfaces from the static catalogs', asy
   assert.doesNotMatch(bundle, /\bsetDockWidth|\bsetSidebarWidth|\bsetColumnWidth/)
 })
 
-test('inspector views and resource tabs use display keep-alive instead of conditional mounts', async () => {
+test('the unified dock strip keeps only opened resource views alive', async () => {
   const shell = await readFile(join(root, 'src/client/shell/ThreeColumnFrame.tsx'), 'utf8')
   const terminal = await readFile(join(root, 'src/client/features/terminal/TerminalView.tsx'), 'utf8')
   const browser = await readFile(join(root, 'src/client/features/browser/BrowserView.tsx'), 'utf8')
 
-  // All registered view components are mapped into the tree together; only
-  // their display changes when the segmented control changes.
+  // Every dock tab is one resource. Its owning view mounts only while it owns
+  // one or more resources; a tab switch still changes display rather than
+  // tearing down the browser document or xterm attachment.
   assert.match(shell, /views\.map\(view =>/)
+  assert.match(shell, /const viewTabs = dockTabs\.filter\(tab => tab\.view === view\.id\)/)
+  assert.match(shell, /if \(viewTabs\.length === 0\) return null/)
   assert.match(shell, /data-inspector-view=\{view\.id\}/)
   assert.match(shell, /display: visible \? 'flex' : 'none'/)
   assert.match(shell, /InspectorViewMount = memo/)
-  assert.doesNotMatch(shell, /<active\.Component/)
+  assert.match(shell, /variant="dock"/)
+  assert.match(shell, /data-dock-launcher/)
+  assert.doesNotMatch(shell, /form="segment"/)
 
   // Resource tabs repeat that same keep-alive rule, so an inactive webview or
   // xterm attachment remains mounted rather than becoming a second lifecycle.
@@ -210,36 +215,100 @@ test('inspector views and resource tabs use display keep-alive instead of condit
   assert.match(browser, /BrowserTabMount = memo/)
   assert.match(browser, /\}, \[webview, tabId\]\)/)
   assert.match(browser, /const browserResources = new Map/)
+  assert.doesNotMatch(terminal, /InspectorTabs/)
+  assert.doesNotMatch(browser, /InspectorTabs/)
+  assert.doesNotMatch(terminal, /initialized/)
+  assert.doesNotMatch(browser, /initialized/)
 })
 
-test('layout tab updates suppress no-ops and clear a pane in one notification', async () => {
+test('catalog tab creators drive the shared + and launcher action', async () => {
+  const shell = await readFile(join(root, 'src/client/shell/ThreeColumnFrame.tsx'), 'utf8')
+  const terminalDefinition = await readFile(join(root, 'src/client/features/terminal/index.ts'), 'utf8')
+  const browserDefinition = await readFile(join(root, 'src/client/features/browser/index.ts'), 'utf8')
+  const filesDefinition = await readFile(join(root, 'src/client/features/files/index.ts'), 'utf8')
+  const terminal = await readFile(join(root, 'src/client/features/terminal/TerminalView.tsx'), 'utf8')
+
+  assert.match(terminalDefinition, /createTab: nextTerminalTab/)
+  assert.match(browserDefinition, /createTab: nextBrowserTab/)
+  assert.match(filesDefinition, /createTab: \(\) => \(\{ id: 'files', label: '文件' \}\)/)
+  assert.match(shell, /const openDockView = useCallback/)
+  assert.match(shell, /const tab = view\.createTab\(existing\)/)
+  assert.match(shell, /if \(existing\.some\(item => item\.id === tab\.id\)\) layout\.focusDockTab\(tab\.id\)/)
+  assert.match(shell, /<DockLauncher views=\{views\} onOpen=\{openDockView\}/)
+  assert.match(shell, /onClick=\{\(\) => \{ openDockView\(view\) \}\}/)
+
+  // Only Terminal registers the header close delegate. It keeps the existing
+  // control → killAndClose → finishClose path instead of removing a live PTY
+  // directly from the unified ledger.
+  assert.match(shell, /const closeDelegates = useRef\(new Map<string, \(id: string\) => void>\(\)\)/)
+  assert.match(shell, /const delegate = closeDelegates\.current\.get\(tab\.view\)/)
+  assert.match(terminal, /onRegisterClose\(close\)/)
+  assert.match(terminal, /else control\(\)/)
+  assert.match(terminal, /closeTabRef\.current\(termId\)/)
+})
+
+test('the unified dock ledger updates labels, focuses neighbours, and returns to the launcher', async () => {
   const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
   const layout = new LayoutStore()
   let notifications = 0
   const off = layout.subscribe(() => { notifications += 1 })
+  layout.state = { ...layout.state, dock: true }
 
-  layout.openTab('browser', { id: 'browser-1', label: '新标签页' })
+  layout.openDockTab('terminal', { id: 'term-1', label: '终端 1' })
   assert.equal(notifications, 1)
+  assert.equal(layout.state.dockActive, 'term-1')
 
-  // Title events and active-tab clicks are common hot-path duplicates. They
-  // must not repaint every layout subscriber when the ledger is unchanged.
-  layout.openTab('browser', { id: 'browser-1', label: '新标签页' })
-  layout.focusTab('browser', 'browser-1')
-  assert.equal(notifications, 1)
-
-  layout.openTab('browser', { id: 'browser-2', label: '新标签页' })
-  layout.focusTab('browser', 'browser-1')
+  layout.openDockTab('browser', { id: 'browser-1', label: '新标签页' })
+  layout.focusDockTab('term-1')
   assert.equal(notifications, 3)
 
-  // The session fence drops EVERY ledger atomically and bumps the fence
-  // generation (the inspector's remount key), rather than closing N tabs and
-  // publishing N intermediate states.
-  layout.openTab('terminal', { id: 'term-1', label: '终端 1' })
+  // Browser title events update the label but do not steal the terminal's
+  // focus, and duplicate title events stay off the layout hot path.
+  layout.openDockTab('browser', { id: 'browser-1', label: '新标签页' })
+  assert.equal(notifications, 3)
+  layout.openDockTab('browser', { id: 'browser-1', label: 'Example' })
   assert.equal(notifications, 4)
+  assert.equal(layout.state.dockActive, 'term-1')
+
+  layout.openDockTab('browser', { id: 'browser-2', label: '新标签页' })
+  layout.focusDockTab('browser-1')
+  layout.closeDockTab('browser-1')
+  assert.equal(layout.state.dockActive, 'browser-2', 'closing an active tab prefers its right neighbour')
+  layout.closeDockTab('browser-2')
+  assert.equal(layout.state.dockActive, 'term-1', 'with no right neighbour focus falls left')
+  layout.closeDockTab('term-1')
+  assert.deepEqual(layout.state.dockTabs, [])
+  assert.equal(layout.state.dockActive, null)
+  assert.equal(layout.state.dock, true, 'the last resource returns to the launcher without closing the dock')
+
+  // Files is a singleton dock resource. A repeated open is a no-op at the
+  // ledger level, while its preview ledger remains independent below it.
+  layout.openDockTab('explorer', { id: 'files', label: '文件' })
+  const afterFile = notifications
+  layout.openDockTab('explorer', { id: 'files', label: '文件' })
+  assert.equal(layout.state.dockTabs.filter(tab => tab.id === 'files').length, 1)
+  assert.equal(notifications, afterFile)
+  layout.openTab('explorer', { id: 'README.md', label: 'README.md' })
+  layout.closeTab('explorer', 'README.md')
+  assert.equal(layout.state.dock, true, 'closing a Files preview cannot close the dock')
+
+  off()
+})
+
+test('the session fence clears both dock and Files preview ledgers atomically', async () => {
+  const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+  const layout = new LayoutStore()
+  let notifications = 0
+  const off = layout.subscribe(() => { notifications += 1 })
+  layout.openDockTab('terminal', { id: 'term-1', label: '终端 1' })
+  layout.openTab('explorer', { id: 'README.md', label: 'README.md' })
+  assert.equal(notifications, 2)
   const fenceBefore = layout.state.fence
   layout.fenceTabs()
-  assert.equal(notifications, 5)
+  assert.equal(notifications, 3)
   assert.deepEqual(layout.state.tabs, {})
+  assert.deepEqual(layout.state.dockTabs, [])
+  assert.equal(layout.state.dockActive, null)
   assert.equal(layout.state.fence, fenceBefore + 1)
   off()
 })
@@ -406,7 +475,7 @@ test('column widths are committed state: remembered across max round-trips and r
     const layout = new LayoutStore()
 
     // First open ever: the 30%-of-window default, as state — no DOM involved.
-    layout.openDock('terminal')
+    layout.openDock()
     assert.equal(layout.state.dockPx, 594)
 
     // A dockMax round-trip keeps the committed width: React re-renders the
@@ -418,17 +487,15 @@ test('column widths are committed state: remembered across max round-trips and r
     assert.equal(layout.state.dockMax, false)
     assert.equal(layout.state.dockPx, 594)
 
-    // ⌘J must not be a dead key: reopening prefers the remembered pane, and a
-    // fresh store (no pane ever opened) falls back to the assembly's default.
+    // ⌘J opens the dock's launcher both on a reopen and on a fresh store; a
+    // resource is now chosen explicitly from the launcher or the + menu.
     layout.closeDock()
-    layout.dockFallback = 'explorer'
-    layout.toggleDock(layout.dockFallback)
+    layout.toggleDock()
     assert.equal(layout.state.dock, true)
-    assert.equal(layout.state.pane, 'terminal', 'reopen keeps the pane the user last had')
+    assert.equal(layout.state.dockActive, null, 'reopen keeps the zero-resource launcher')
     const fresh = new LayoutStore()
-    fresh.dockFallback = 'explorer'
-    fresh.toggleDock(fresh.dockFallback)
-    assert.equal(fresh.state.pane, 'explorer', 'a first-ever ⌘J opens the catalog default')
+    fresh.toggleDock()
+    assert.equal(fresh.state.dockActive, null, 'a first-ever ⌘J opens the launcher too')
 
     // The conversation reserve holds on EVERY budget path, not just window
     // resize: at 1200px a 380px sidebar leaves 780 − 460 < 416 for the dock,
@@ -480,25 +547,26 @@ test('column widths are committed state: remembered across max round-trips and r
     assert.equal(layout.state.sidebar, false, 'a user-collapsed sidebar never reopens itself')
     layout.toggleSidebar()
 
-    // 最后一个 Tab 关闭后右列自动收起 (DESIGN_INTENT) — but only for the
-    // pane the dock is SHOWING; a background pane emptying keeps the column.
-    layout.openDock('terminal')
-    layout.openTab('terminal', { id: 'term-1', label: 'T1' })
-    layout.openTab('explorer', { id: 'f', label: 'f' })
-    layout.closeTab('explorer', 'f')
-    assert.equal(layout.state.dock, true, 'an emptied background pane does not collapse the dock')
-    layout.closeTab('terminal', 'term-1')
-    assert.equal(layout.state.dock, false, 'the showing pane losing its last tab collapses the dock')
+    // The last unified resource tab returns to the launcher; Files preview
+    // tabs are unrelated and cannot collapse the whole dock.
+    layout.openDock()
+    layout.openDockTab('terminal', { id: 'term-1', label: 'T1' })
+    layout.openDockTab('explorer', { id: 'files', label: '文件' })
+    layout.closeDockTab('files')
+    assert.equal(layout.state.dock, true, 'closing a background resource keeps the dock open')
+    layout.closeDockTab('term-1')
+    assert.equal(layout.state.dock, true, 'the final resource returns to the launcher instead of collapsing')
+    assert.equal(layout.state.dockActive, null)
     globalThis.window.innerWidth = 1980
     layout.onResize()
-    assert.equal(layout.state.dock, false, 'that collapse is a user act — no auto-reopen')
+    assert.equal(layout.state.dock, true, 'the open launcher stays open across a resize')
 
     // A width that is not rendering is a dormant PREFERENCE (responsive
     // rule 4): shrinking the window while the dock is closed or full-frame
     // must not overwrite it. Only the moment it renders again re-clamps.
     const pref = new LayoutStore()
     globalThis.window.innerWidth = 1980
-    pref.openDock('terminal')
+    pref.openDock()
     pref.state = { ...pref.state, dockPx: 650 }
     pref.closeDock()
     globalThis.window.innerWidth = 800
@@ -946,8 +1014,9 @@ test('presets: a pick during a busy apply is staged, drained by intent generatio
 test('the session fence stashes ledgers per session and restores them on return', async () => {
   const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
   const layout = new LayoutStore()
-  layout.openTab('terminal', { id: 'term-1', label: '终端 1' })
-  layout.openTab('terminal', { id: 'term-2', label: '终端 2' })
+  layout.openDockTab('terminal', { id: 'term-1', label: '终端 1' })
+  layout.openDockTab('terminal', { id: 'term-2', label: '终端 2' })
+  layout.openTab('explorer', { id: 'README.md', label: 'README.md' })
 
   // A→B: A's ledgers are stashed (its PTYs live on the host until session
   // dispose — dropping the tabs would orphan them), B starts blank.
@@ -955,21 +1024,28 @@ test('the session fence stashes ledgers per session and restores them on return'
   const fenceBefore = layout.state.fence
   layout.fenceTabs('session-a', 'session-b', live)
   assert.deepEqual(layout.state.tabs, {}, 'the arriving session starts blank')
+  assert.deepEqual(layout.state.dockTabs, [], 'the arriving session has no unified dock resources')
+  assert.equal(layout.state.dockActive, null)
   assert.equal(layout.state.fence, fenceBefore + 1)
 
-  layout.openTab('browser', { id: 'bt-1', label: '页面' })
+  layout.openDockTab('browser', { id: 'browser-1', label: '页面' })
+  layout.openTab('explorer', { id: 'package.json', label: 'package.json' })
 
   // B→A: A's terminals come back exactly — each tab reattaches to its PTY.
   layout.fenceTabs('session-b', 'session-a', live)
   assert.deepEqual(
-    layout.state.tabs['terminal'].items.map(tab => tab.id),
+    layout.state.dockTabs.map(tab => tab.id),
     ['term-1', 'term-2'],
     'returning to a session restores its full ledger, not just an auto-opened first tab',
   )
+  assert.equal(layout.state.dockActive, 'term-2')
+  assert.deepEqual(layout.state.tabs.explorer.items.map(tab => tab.id), ['README.md'], 'Files preview state returns with its session')
 
   // A disposed session's stash is pruned; arriving at it starts blank.
   layout.fenceTabs('session-a', 'session-b', new Set(['session-a']))
   assert.deepEqual(layout.state.tabs, {}, 'a stash for a session no longer alive is pruned, not restored')
+  assert.deepEqual(layout.state.dockTabs, [])
+  assert.equal(layout.state.dockActive, null)
 })
 
 test('files: a cached body revalidates on re-open without dropping the view to loading', async () => {

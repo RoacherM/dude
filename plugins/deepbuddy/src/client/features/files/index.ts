@@ -10,6 +10,7 @@ export const FilesViewDefinition: InspectorViewTypeDefinition = {
   title: '文件',
   icon: 'explorer',
   Component: FilesView,
+  createTab: () => ({ id: 'files', label: '文件' }),
 }
 export { FilesStore } from './store.ts'
 

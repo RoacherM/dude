@@ -1,5 +1,5 @@
 /** Multi-instance xterm client for host-owned, session-scoped PTYs. */
-import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -9,7 +9,6 @@ import type { TabRef } from '../../shell/layout-store.ts'
 import { useAppDeps } from '../../app/context.tsx'
 import { dblog, dbwarn } from '../../log.ts'
 import { KIT } from '../../ui/kit.tsx'
-import { InspectorTabs } from '../../ui/InspectorTabs.tsx'
 import { Refresh } from '../../ui/icons.tsx'
 
 type ConnectionState = 'connecting' | 'ready' | 'exited' | 'closed' | 'error'
@@ -46,7 +45,7 @@ function send(socket: WebSocket | null, message: object): void {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message))
 }
 
-function nextTerminalTab(tabs: readonly TabRef[]): TabRef {
+export function nextTerminalTab(tabs: readonly TabRef[]): TabRef {
   const greatest = tabs.reduce((max, tab) => {
     const match = /^term-(\d+)$/.exec(tab.id)
     return match === null ? max : Math.max(max, Number(match[1]))
@@ -333,14 +332,11 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
 
 /** One kept-alive xterm pane per tab; only an explicit tab close kills it. */
 export function TerminalView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
+  const { tabs, active, visible, onCloseTab, onRegisterClose } = props
   const { dsh } = useAppDeps()
   const currentSession = useCallback(() => dsh.sessions.list.getSnapshot().current as string | undefined, [dsh])
   const sessionId = useSyncExternalStore(dsh.sessions.list.subscribe, currentSession, currentSession)
   const controls = useRef(new Map<string, () => void>())
-  // Once per mount: the session fence remounts this view, so a new session
-  // gets its own first-tab auto-open without any session tracking here.
-  const initialized = useRef(false)
   const onControl = useCallback((termId: string, close: (() => void) | null): void => {
     if (close === null) controls.current.delete(termId)
     else controls.current.set(termId, close)
@@ -352,46 +348,40 @@ export function TerminalView(props: InspectorViewProps): ReactNode {
     closeTabRef.current(termId)
   }, [])
 
-  const add = useCallback((): void => {
-    if (sessionId === undefined) return
-    onOpenTab(nextTerminalTab(tabs))
-  }, [sessionId, tabs, onOpenTab])
-
-  useEffect(() => {
-    if (!visible || sessionId === undefined || initialized.current) return
-    initialized.current = true
-    if (tabs.length === 0) add()
-  }, [visible, sessionId, tabs.length, add])
-
-  const close = (termId: string): void => {
+  const close = useCallback((termId: string): void => {
     const control = controls.current.get(termId)
     if (control === undefined) finishClose(termId)
     else control()
-  }
+  }, [finishClose])
+
+  // The shell owns the unified dock strip, but a terminal tab cannot let that
+  // strip remove its ledger entry directly: the registered close path sends
+  // the existing kill protocol first and only then finishes the ledger close.
+  useLayoutEffect(() => {
+    onRegisterClose(close)
+    return () => { onRegisterClose(null) }
+  }, [close, onRegisterClose])
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <style>{xtermCss}</style>
-      <InspectorTabs tabs={tabs} active={active} onFocus={onFocusTab} onClose={close} onAdd={add} />
       {sessionId === undefined
         ? <div style={{ padding: 16 }}><KIT.EmptyState>还没有会话——发起一个任务后即可打开终端。</KIT.EmptyState></div>
-        : tabs.length === 0
-          ? <div style={{ padding: 16 }}><KIT.EmptyState>点击 + 新建终端。</KIT.EmptyState></div>
-          : tabs.map(tab => (
-              <div
-                key={tab.id}
-                data-terminal-tab={tab.id}
-                style={{ display: tab.id === active ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
-              >
-                <TerminalPane
-                  sessionId={sessionId}
-                  termId={tab.id}
-                  visible={visible && tab.id === active}
-                  onControl={onControl}
-                  onClosed={finishClose}
-                />
-              </div>
-            ))}
+        : tabs.map(tab => (
+            <div
+              key={tab.id}
+              data-terminal-tab={tab.id}
+              style={{ display: tab.id === active ? 'flex' : 'none', flex: '1 1 auto', minHeight: 0, flexDirection: 'column' }}
+            >
+              <TerminalPane
+                sessionId={sessionId}
+                termId={tab.id}
+                visible={visible && tab.id === active}
+                onControl={onControl}
+                onClosed={finishClose}
+              />
+            </div>
+          ))}
     </div>
   )
 }

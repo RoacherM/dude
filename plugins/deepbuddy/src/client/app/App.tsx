@@ -55,11 +55,10 @@ function DeepBuddyDockToggle(): ReactNode {
   const dock = useLayoutSelection(layout, current => current.state.dock)
   const sessionStarted = useLayoutSelection(layout, current => current.state.sessionStarted)
   if (dock && sessionStarted) return null
-  const firstView = INSPECTOR_VIEW_TYPES[0]
   return (
     <KIT.IconButton
       title="打开停靠栏"
-      onClick={() => { layout.toggleDock(firstView?.id) }}
+      onClick={layout.toggleDock}
     >
       <PanelRight size={15} />
     </KIT.IconButton>
@@ -81,9 +80,6 @@ export function apply(ctx: ClientContext): void {
   // that must share state.
   const dsh = createDsh(ctx, connection)
   const layout = new LayoutStore()
-  // ⌘J's first press must open the same pane the header button would — the
-  // store is catalog-agnostic, so the assembly names the default here.
-  layout.dockFallback = INSPECTOR_VIEW_TYPES[0]?.id ?? null
   const presets = new PresetPlane(dsh)
   const files = new FilesStore(dsh)
   const deps: AppDeps = { dsh, layout, presets, files }

@@ -116,7 +116,7 @@ gap 预算只进入「主列保留 460px」的扣减项：右列上限 = min(窗
 |---|---|
 | Sidebar | 系统红绿灯、DeepBuddy 身份、左列开关 |
 | Workbench | 当前页面或 Session 标题、运行状态 |
-| Inspector | 打开的 View Tabs、右列开关 |
+| Inspector | 已打开资源的统一 Tabs、启动器「+」、右列开关 |
 
 业务 Feature 不提交任意 Header 组件。标题和状态通过普通 Props 或内部 Hook 交给 Column 渲染。
 
@@ -217,14 +217,14 @@ Inspector 中区分 View 类型与 View 实例，但这是 Shell 内部数据结
 
 规则：
 
-- 一个实例时直接显示标题。
-- 多个实例时显示 Tabs。
-- 切换 Tab 默认不销毁实例。
-- 关闭 Tab 后焦点优先给右邻，否则给左邻。
-- 最后一个 Tab 关闭后，右列自动收起。
+- 状态栏是一行统一资源 Tab：Files 是单例，Terminal 和 Browser 的每个实例各占一个 Tab；
+  每项带视图图标、标题和关闭键。
+- 「+」与空态启动器共享同一打开动作；Terminal 和 Browser 每次新建实例，已打开的
+  Files 只聚焦其单例。
+- Files 视图内部的「树 + 预览 Tab」仍是第二层局部结构，不与状态栏资源 Tab 混用。
+- 切换 Tab 默认不销毁实例；关闭后焦点优先给右邻，否则给左邻。
+- 最后一个 Tab 关闭后回到启动器空态，停靠栏保持展开。
 - 收起右列只隐藏 View，不自动销毁 Terminal 等资源。
-
-Files 可以打开文件预览实例；Terminal 可以打开多个终端实例。
 
 ---
 

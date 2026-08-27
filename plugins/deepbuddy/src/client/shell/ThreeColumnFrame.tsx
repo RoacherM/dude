@@ -18,20 +18,21 @@
  * re-declares it in the disabled ui-layout row's place
  * (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
-import { memo, useCallback } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
+import type { CSSProperties, MutableRefObject, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
 import type { SidebarOwnerProps } from '@deepseek-ai/dsh-client-ui-layout/client'
-import { INSPECTOR_VIEW_TYPES, pickEntry } from '../app/catalog.ts'
+import { INSPECTOR_VIEW_TYPES } from '../app/catalog.ts'
 import type { InspectorViewTypeDefinition } from '../app/catalog.ts'
 import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutSelection } from './layout-store.ts'
-import type { LayoutStore, PaneTabs } from './layout-store.ts'
+import type { DockTab, LayoutStore, PaneTabs } from './layout-store.ts'
 import { ColumnFrame, Handle, NO_DRAG, PANEL, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
-import { Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
+import { Glyph, Maximize, Minimize, PanelLeft, PanelRight, Plus } from '../ui/icons.tsx'
+import { InspectorTabs } from '../ui/InspectorTabs.tsx'
 import { METRICS } from '../ui/tokens.ts'
 import { ChatNav } from '../features/conversation/index.ts'
 
@@ -153,20 +154,44 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
 // ── the inspector column ────────────────────────────────────────────────────
 
 const EMPTY_TABS: readonly { id: string; label: string }[] = []
+const FILES_VIEW_ID = 'explorer'
+type CloseDelegates = MutableRefObject<Map<string, (id: string) => void>>
 
 /**
- * One memoized keep-alive view. Stable callbacks and tab-slice identity mean
- * a Browser title update cannot re-render Files or every Terminal pane.
+ * One memoized keep-alive view. Files is the one explicit exception to the
+ * unified resource ledger: its internal tree/preview row keeps the existing
+ * per-view ledger, while all other views project their dock resources here.
  */
-const InspectorViewMount = memo(function InspectorViewMount({ view, tabs, visible, layout }: {
+const InspectorViewMount = memo(function InspectorViewMount({ view, dockTabs, previewTabs, dockActive, visible, layout, closeDelegates }: {
   view: InspectorViewTypeDefinition
-  tabs: PaneTabs | undefined
+  dockTabs: readonly DockTab[]
+  previewTabs: PaneTabs | undefined
+  dockActive: string | null
   visible: boolean
   layout: LayoutStore
+  closeDelegates: CloseDelegates
 }): ReactNode {
-  const onOpenTab = useCallback((tab: { id: string; label: string }) => { layout.openTab(view.id, tab) }, [layout, view.id])
-  const onCloseTab = useCallback((id: string) => { layout.closeTab(view.id, id) }, [layout, view.id])
-  const onFocusTab = useCallback((id: string) => { layout.focusTab(view.id, id) }, [layout, view.id])
+  const previews = view.id === FILES_VIEW_ID
+  const tabs = previews ? previewTabs?.items ?? EMPTY_TABS : dockTabs
+  const active = previews
+    ? previewTabs?.active ?? null
+    : dockTabs.some(tab => tab.id === dockActive) ? dockActive : null
+  const onOpenTab = useCallback((tab: { id: string; label: string }) => {
+    if (previews) layout.openTab(view.id, tab)
+    else layout.openDockTab(view.id, tab)
+  }, [layout, previews, view.id])
+  const onCloseTab = useCallback((id: string) => {
+    if (previews) layout.closeTab(view.id, id)
+    else layout.closeDockTab(id)
+  }, [layout, previews, view.id])
+  const onFocusTab = useCallback((id: string) => {
+    if (previews) layout.focusTab(view.id, id)
+    else layout.focusDockTab(id)
+  }, [layout, previews, view.id])
+  const onRegisterClose = useCallback((close: ((id: string) => void) | null): void => {
+    if (close === null) closeDelegates.current.delete(view.id)
+    else closeDelegates.current.set(view.id, close)
+  }, [closeDelegates, view.id])
   const Component = view.Component
   return (
     <div
@@ -175,32 +200,91 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, tabs, visibl
     >
       <Component
         viewId={view.id}
-        tabs={tabs?.items ?? EMPTY_TABS}
-        active={tabs?.active ?? null}
+        tabs={tabs}
+        active={active}
         visible={visible}
         onOpenTab={onOpenTab}
         onCloseTab={onCloseTab}
         onFocusTab={onFocusTab}
+        onRegisterClose={onRegisterClose}
       />
     </div>
   )
 })
 
+/** The zero-resource dock state is a direct launcher, not a dead empty card. */
+function DockLauncher({ views, onOpen }: {
+  views: readonly InspectorViewTypeDefinition[]
+  onOpen(view: InspectorViewTypeDefinition): void
+}): ReactNode {
+  return (
+    <div data-dock-launcher style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 'min(320px, calc(100% - 64px))' }}>
+        {views.map(view => (
+          <button
+            key={view.id}
+            type="button"
+            className="dbdy-dock-launcher-row"
+            onClick={() => { onOpen(view) }}
+            style={{
+              height: 46,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 13,
+              padding: '0 16px',
+              border: 0,
+              borderRadius: 'var(--db-r-card)',
+              background: 'var(--db-raised)',
+              color: 'var(--db-text-2)',
+              fontFamily: 'inherit',
+              fontSize: 13.5,
+              cursor: 'pointer',
+              transition: 'background var(--db-tint), color var(--db-tint)',
+            }}
+          >
+            {view.icon === undefined ? undefined : (
+              <span className="dbdy-dock-launcher-icon" style={{ display: 'flex', color: 'var(--db-text-3)' }}>
+                <Glyph name={view.icon} size={16} />
+              </span>
+            )}
+            <span>{view.title}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /**
- * The inspector (dock) column: a segmented control over every registered view
- * type and every view's mounted body. A segment change only changes display;
- * browser documents and terminal attachments therefore stay alive.
+ * The inspector (dock) column: one unified resource strip over every mounted
+ * view. The launcher and the + menu share one open action; tab bodies remain
+ * mounted while another resource is focused or the whole dock is hidden.
  */
 function InspectorColumn(): ReactNode {
   const { layout } = useAppDeps()
   const dock = useLayoutSelection(layout, current => current.state.dock)
   const dockMax = useLayoutSelection(layout, current => current.state.dockMax)
   const dockPx = useLayoutSelection(layout, current => current.state.dockPx)
-  const pane = useLayoutSelection(layout, current => current.state.pane)
+  const dockTabs = useLayoutSelection(layout, current => current.state.dockTabs)
+  const dockActive = useLayoutSelection(layout, current => current.state.dockActive)
   const tabsByView = useLayoutSelection(layout, current => current.state.tabs)
   const fence = useLayoutSelection(layout, current => current.state.fence)
   const views = INSPECTOR_VIEW_TYPES
-  const active = pickEntry(views, pane)
+  const closeDelegates = useRef(new Map<string, (id: string) => void>())
+  const [launcherOpen, setLauncherOpen] = useState(false)
+  const activeDockTab = dockActive === null ? undefined : dockTabs.find(tab => tab.id === dockActive)
+  const openDockView = useCallback((view: InspectorViewTypeDefinition): void => {
+    const existing = dockTabs.filter(tab => tab.view === view.id)
+    const tab = view.createTab(existing)
+    if (existing.some(item => item.id === tab.id)) layout.focusDockTab(tab.id)
+    else layout.openDockTab(view.id, tab)
+    setLauncherOpen(false)
+  }, [dockTabs, layout])
+  const closeDockTab = useCallback((tab: DockTab): void => {
+    const delegate = closeDelegates.current.get(tab.view)
+    if (delegate === undefined) layout.closeDockTab(tab.id)
+    else delegate(tab.id)
+  }, [layout])
   return (
     <ColumnFrame
       rootRef={layout.dockRef}
@@ -233,67 +317,103 @@ function InspectorColumn(): ReactNode {
               <span style={{ width: 2 }} />
             </>
           )}
-          {/* A segmented control with one segment is a label wearing a choice's
-              clothes. Below two view types the dock states which one it is. */}
-          {views.length > 1
-            ? (
-                <div style={NO_DRAG}>
-                  <KIT.Tabs
-                    form="segment"
-                    value={active?.id ?? ''}
-                    tabs={views.map(v => ({
-                      id: v.id,
-                      label: v.title,
-                      icon: v.icon === undefined ? undefined : <Glyph name={v.icon} size={14} />,
-                    }))}
-                    onChange={(id) => { layout.openDock(id) }}
-                  />
-                </div>
-              )
-            : active !== undefined && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7, paddingLeft: 4, fontSize: 13, color: 'var(--db-text-2)' }}>
-                {active.icon === undefined ? undefined : <Glyph name={active.icon} size={14} />}
-                {active.title}
-              </span>
-          )}
-          <span style={{ marginLeft: 'auto' }} />
-          <div style={{ ...NO_DRAG, display: 'flex', gap: 2 }}>
-            <KIT.IconButton title={dockMax ? '退出全屏' : '全屏显示'} onClick={layout.toggleDockMax}>
-              {dockMax ? <Minimize size={14} /> : <Maximize size={14} />}
-            </KIT.IconButton>
-            {!dockMax && (
-              <KIT.IconButton title="关闭停靠栏" onClick={layout.closeDock}>
-                <PanelRight size={15} />
-              </KIT.IconButton>
+          <InspectorTabs
+            tabs={dockTabs}
+            active={dockActive}
+            onFocus={layout.focusDockTab}
+            onClose={(id) => {
+              const tab = dockTabs.find(item => item.id === id)
+              if (tab !== undefined) closeDockTab(tab)
+            }}
+            variant="dock"
+            style={NO_DRAG}
+            iconFor={(tab) => {
+              const dockTab = dockTabs.find(item => item.id === tab.id)
+              const icon = views.find(view => view.id === dockTab?.view)?.icon
+              return icon === undefined ? undefined : <Glyph name={icon} size={13} />
+            }}
+          />
+          <span style={{ flex: '1 1 auto', minWidth: 0 }} />
+          <KIT.Popover
+            open={launcherOpen}
+            onClose={() => { setLauncherOpen(false) }}
+            align="right"
+            style={{ width: 200, top: 'calc(100% + 12px)', borderRadius: 'var(--db-r-popover)' }}
+            anchor={(
+              <div style={{ ...NO_DRAG, display: 'flex', gap: 2 }}>
+                <KIT.IconButton title="打开面板" active={launcherOpen} onClick={() => { setLauncherOpen(open => !open) }}>
+                  <Plus size={14} />
+                </KIT.IconButton>
+                <KIT.IconButton title={dockMax ? '退出全屏' : '全屏显示'} onClick={() => { setLauncherOpen(false); layout.toggleDockMax() }}>
+                  {dockMax ? <Minimize size={14} /> : <Maximize size={14} />}
+                </KIT.IconButton>
+                {!dockMax && (
+                  <KIT.IconButton title="关闭停靠栏" onClick={() => { setLauncherOpen(false); layout.closeDock() }}>
+                    <PanelRight size={15} />
+                  </KIT.IconButton>
+                )}
+              </div>
             )}
-          </div>
+          >
+            <div role="menu" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {views.map(view => (
+                <button
+                  key={view.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { openDockView(view) }}
+                  className="dbdy-hv-1"
+                  style={{
+                    height: 34,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 9,
+                    padding: '0 10px',
+                    border: 0,
+                    borderRadius: 'var(--db-r-control)',
+                    background: 'transparent',
+                    color: 'var(--db-text-2)',
+                    fontFamily: 'inherit',
+                    fontSize: 12.5,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  {view.icon === undefined ? undefined : <Glyph name={view.icon} size={14} />}
+                  <span>{view.title}</span>
+                </button>
+              ))}
+            </div>
+          </KIT.Popover>
         </>
       )}
     >
       <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {active === undefined
-          ? (
-              <div style={{ padding: 20 }}>
-                <KIT.EmptyState>没有装配任何停靠面板。</KIT.EmptyState>
-              </div>
-            )
+        {dockActive === null
+          ? <DockLauncher views={views} onOpen={openDockView} />
           // The fence generation in the key is the keep-alive rule's one
           // exception: view bodies survive tab switches and dock closes, but
           // a session change remounts them, so no per-session reset logic
           // exists inside any view.
           // `dock` is part of visibility: the keep-alive column stays mounted
-          // behind display:none, and a view told it is visible there would
-          // act on it — auto-opening a first terminal (spawning a PTY the
-          // user cannot see) or preloading the file tree.
-          : views.map(view => (
-              <InspectorViewMount
-                key={`${view.id}:${fence}`}
-                view={view}
-                tabs={tabsByView[view.id]}
-                visible={dock && view.id === active.id}
-                layout={layout}
-              />
-            ))}
+          // behind display:none, so its feature receives `visible` only when
+          // its resource is the unified dock selection.
+          : views.map(view => {
+              const viewTabs = dockTabs.filter(tab => tab.view === view.id)
+              if (viewTabs.length === 0) return null
+              return (
+                <InspectorViewMount
+                  key={`${view.id}:${fence}`}
+                  view={view}
+                  dockTabs={viewTabs}
+                  previewTabs={tabsByView[view.id]}
+                  dockActive={dockActive}
+                  visible={dock && activeDockTab?.view === view.id}
+                  layout={layout}
+                  closeDelegates={closeDelegates}
+                />
+              )
+            })}
       </div>
     </ColumnFrame>
   )

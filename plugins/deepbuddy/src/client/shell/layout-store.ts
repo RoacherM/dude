@@ -2,8 +2,8 @@
  * The layout store: exactly the facts that decide where things are.
  *
  * Which workbench app the main column shows, whether the sidebar and the
- * inspector (dock) columns are open, which inspector view type is active, the
- * dock's tab ledger, and the top-bar title. Nothing about sessions, files,
+ * inspector (dock) columns are open, the dock's unified resource ledger, and
+ * the top-bar title. Nothing about sessions, files,
  * models or presets lives here — those belong to the features, and the Shell
  * never branches on them (deepbuddy-design-current/DEVELOPMENT_RULES.md §4).
  * The workbench app and view-type ids are strings; the catalogs
@@ -24,6 +24,16 @@ import {
   canSplitDock, clampDock, clampSidebar, dockDefault,
 } from './geometry.ts'
 import { dblog } from '../log.ts'
+/** One strip tab of the dock's unified resource ledger: an opened file
+ *  singleton, terminal instance or browser page. Terminal and browser tabs
+ *  live here (the strip is their only tab row); a file's preview tabs stay
+ *  in its own per-view ledger below. */
+export interface DockTab {
+  id: string
+  /** The inspector view type this tab belongs to. */
+  view: string
+  label: string
+}
 
 /** One tab of a dock pane, as the shell's strip knows it. */
 export interface TabRef {
@@ -59,8 +69,14 @@ export interface LayoutState {
    * restoring loses no scroll position or view state.
    */
   dockMax: boolean
-  /** Active inspector view-type key; null while the dock is closed. */
-  pane: string | null
+  /**
+   * The unified dock tab ledger: every opened resource, in order. A file is
+   * a singleton (one tab, keep-alive), a terminal instance and a browser
+   * page each get one. `dockActive` is the focused tab id; null shows the
+   * dock's launcher empty state.
+   */
+  dockTabs: readonly DockTab[]
+  dockActive: string | null
   /**
    * Whether a non-blank (started) session is the conversation's subject.
    * Contributed by the conversation view (the only workbench app) so the shell
@@ -82,8 +98,8 @@ export interface LayoutState {
    */
   dockPx: number
   /**
-   * Tab state per inspector view type. Each view draws the shared strip from
-   * this fact and renders whatever its active tab means.
+   * Per-view preview-tab ledgers. Only Files' internal preview tabs use this
+   * now; terminal and browser tabs live in the unified {@link dockTabs}.
    */
   tabs: Readonly<Record<string, PaneTabs>>
   /**
@@ -105,7 +121,8 @@ export class LayoutStore {
     sidebar: true,
     dock: false,
     dockMax: false,
-    pane: null,
+    dockTabs: [],
+    dockActive: null,
     sessionStarted: false,
     sidePx: SIDEBAR_DEFAULT,
     dockPx: 0,
@@ -142,13 +159,6 @@ export class LayoutStore {
 
   /** uSES projection subscribers from the independent slot trees. */
   private readonly listeners = new Set<() => void>()
-
-  /**
-   * The pane ⌘J opens when none was ever opened this run. The assembly sets
-   * it from the catalog (the store stays catalog-agnostic), so the shortcut's
-   * first press is not a dead key while the header button works.
-   */
-  dockFallback: string | null = null
 
   /**
    * True while the split dock is closed by reflow's own space check rather
@@ -227,7 +237,7 @@ export class LayoutStore {
     // Popover first, then Dialog) — the shell never swallows it.
     if (e.key === 'j') {
       e.preventDefault()
-      this.toggleDock(this.dockFallback ?? undefined)
+      this.toggleDock()
     }
   }
 
@@ -351,22 +361,17 @@ export class LayoutStore {
   }
 
   /**
-   * Open the dock on `pane` — always. A window too narrow for the split gets
-   * the dock as a full-frame overlay instead of a toggle that does nothing:
-   * the intent is satisfied, the conversation column is never squeezed under
-   * its reserve, and there is no dead switch on screen (DESIGN_INTENT §2
-   * rule 5).
+   * Open the dock — always. The content the dock shows is decided entirely
+   * by {@link dockTabs} (the launcher when `dockActive` is null); this verb
+   * only opens the column and picks the shape it opens in. A window too
+   * narrow for the split gets the dock as a full-frame overlay instead of a
+   * toggle that does nothing: the intent is satisfied, the conversation
+   * column is never squeezed under its reserve, and there is no dead switch
+   * on screen (DESIGN_INTENT §2 rule 5).
    */
-  openDock = (pane: string): void => {
+  openDock = (): void => {
     this.dockAutoClosed = false
-    if (this.state.dock && this.state.pane === pane) return
-    // An open dock switching view types is a pane change, not an opening: the
-    // shape it is already in (split or maximized) is the user's, and picking
-    // Terminal must not drop the dock out of full frame.
-    if (this.state.dock) {
-      this.patch({ pane })
-      return
-    }
+    if (this.state.dock) return
     const vw = window.innerWidth
     const side = this.sideBudget()
     const overlay = !canSplitDock(vw, side)
@@ -378,7 +383,7 @@ export class LayoutStore {
     const dockPx = this.state.dockPx > 0
       ? (overlay ? this.state.dockPx : clampDock(this.state.dockPx, vw, side))
       : dockDefault(vw, side)
-    this.patch({ dock: true, pane, dockMax: overlay, dockPx })
+    this.patch({ dock: true, dockMax: overlay, dockPx })
   }
 
   closeDock = (): void => {
@@ -407,22 +412,18 @@ export class LayoutStore {
     else this.patch({ dockMax: true })
   }
 
-  /** The main bar's own dock button; `fallback` is the first registered view. */
-  toggleDock = (fallback?: string): void => {
+  /** The main bar's own dock button. */
+  toggleDock = (): void => {
     if (this.state.dock) {
       this.closeDock()
       return
     }
-    const pane = this.state.pane ?? fallback
-    if (pane !== undefined) this.openDock(pane)
+    this.openDock()
   }
 
-
-  /**
-   * Contribute whether the conversation's subject is a started (non-blank)
-   * session. The dock only renders for a started session, so the conversation
-   * view is the sole owner of this fact; the shell just reads it.
-   */
+  /** Contribute whether the conversation's subject is a started (non-blank)
+   *  session. The dock only renders for a started session, so the conversation
+   *  view is the sole owner of this fact; the shell just reads it. */
   setSessionStarted = (started: boolean): void => {
     if (this.state.sessionStarted === started) return
     this.patch({ sessionStarted: started })
@@ -438,7 +439,7 @@ export class LayoutStore {
     this.patch({ tabs: { ...this.state.tabs, [pane]: next } })
   }
 
-  /** Open and focus a new tab, or update an existing tab's presentation. */
+  /** Open and focus a new preview tab, or update an existing tab's label. */
   openTab = (pane: string, tab: TabRef): void => {
     const cur = this.tabsOf(pane)
     const at = cur.items.findIndex(item => item.id === tab.id)
@@ -449,7 +450,7 @@ export class LayoutStore {
     })
   }
 
-  /** Close one tab; focus falls to its neighbour. */
+  /** Close one preview tab; focus falls to its neighbour. */
   closeTab = (pane: string, id: string): void => {
     const cur = this.tabsOf(pane)
     const at = cur.items.findIndex(t => t.id === id)
@@ -458,20 +459,10 @@ export class LayoutStore {
     // Focus falls to the neighbour that took the closed tab's place, then
     // to the one before it — the browser-tab rule users already have.
     const next = cur.active === id ? (items[at] ?? items[at - 1] ?? null) : cur.items.find(t => t.id === cur.active) ?? null
-    const tabs = { ...this.state.tabs, [pane]: { items, active: next === null ? null : next.id } }
-    // The last tab of the SHOWING pane leaving collapses the dock with it
-    // (DESIGN_INTENT: 最后一个 Tab 关闭后右列自动收起) — one patch, and a
-    // user act, so no auto-reopen. A background pane emptying must not
-    // collapse the column another pane is using.
-    if (items.length === 0 && this.state.dock && this.state.pane === pane) {
-      this.dockAutoClosed = false
-      this.patch({ tabs, dock: false, dockMax: false })
-      return
-    }
-    this.patch({ tabs })
+    this.writeTabs(pane, { items, active: next === null ? null : next.id })
   }
 
-  /** Focus an existing tab. */
+  /** Focus an existing preview tab. */
   focusTab = (pane: string, id: string): void => {
     const cur = this.tabsOf(pane)
     if (cur.active === id) return
@@ -479,34 +470,87 @@ export class LayoutStore {
     this.writeTabs(pane, { ...cur, active: id })
   }
 
-  /**
-   * Ledgers stashed per departed session. The host keeps a session's PTYs
-   * until the session is disposed, so the tabs pointing at them must survive
-   * the fence too — dropping them outright would orphan every terminal but
-   * the auto-opened first one (nothing could ever reattach term-2+). Keyed by
-   * session id, pruned against the live list on every fence.
-   */
-  private tabStash = new Map<string, Readonly<Record<string, PaneTabs>>>()
+  // ── the unified dock ledger ───────────────────────────────────────────────
 
   /**
-   * The session fence: stash the departing session's ledgers, restore the
-   * arriving session's (its terminals reattach, its files re-read on mount)
-   * and bump the fence generation in one notification. Called by the
-   * assembly's session watch, never by a view — a view carries no per-session
-   * reset logic of its own.
+   * Open and focus a dock tab, or update an existing one's label. A new
+   * resource is appended and focused; an existing one (a title event, the
+   * files singleton) only updates its label — it does not steal focus. A
+   * label that did not change is a no-op, so browser navigation hot-paths
+   * cannot repaint every subscriber.
+   */
+  openDockTab = (view: string, tab: TabRef): void => {
+    const at = this.state.dockTabs.findIndex(t => t.id === tab.id)
+    if (at >= 0) {
+      if (this.state.dockTabs[at]?.label === tab.label) return
+      this.patch({ dockTabs: this.state.dockTabs.map(t => t.id === tab.id ? { ...t, label: tab.label } : t) })
+      return
+    }
+    this.patch({ dockTabs: [...this.state.dockTabs, { id: tab.id, view, label: tab.label }], dockActive: tab.id })
+  }
+
+  /** Focus an existing dock tab; no-op when already active or absent. */
+  focusDockTab = (id: string): void => {
+    if (this.state.dockActive === id) return
+    if (!this.state.dockTabs.some(t => t.id === id)) return
+    this.patch({ dockActive: id })
+  }
+
+  /**
+   * Close one dock tab. Focus falls to the neighbour that took the closed
+   * tab's place, then to the one before it. Deleting the last tab clears
+   * `dockActive` so the dock shows its launcher empty state — the dock stays
+   * open (the last-tab auto-collapse rule is retired).
+   */
+  closeDockTab = (id: string): void => {
+    const at = this.state.dockTabs.findIndex(t => t.id === id)
+    if (at < 0) return
+    const items = this.state.dockTabs.filter(t => t.id !== id)
+    const next = this.state.dockActive === id
+      ? (items[at] ?? items[at - 1] ?? null)
+      : this.state.dockTabs.find(t => t.id === this.state.dockActive) ?? null
+    this.patch({ dockTabs: items, dockActive: next === null ? null : next.id })
+  }
+
+  /**
+   * The dock ledger stashed per departed session. The host keeps a session's
+   * PTYs until the session is disposed, so the tabs pointing at them must
+   * survive the fence too — dropping them outright would orphan every
+   * terminal but the first one (nothing could ever reattach term-2+). Keyed
+   * by session id, pruned against the live list on every fence.
+   */
+  private tabStash = new Map<string, {
+    tabs: Readonly<Record<string, PaneTabs>>
+    dockTabs: readonly DockTab[]
+    dockActive: string | null
+  }>()
+
+  /**
+   * The session fence: stash the departing session's ledgers (per-view and
+   * unified dock), restore the arriving session's (its terminals reattach,
+   * its files re-read on mount) and bump the fence generation in one
+   * notification. Called by the assembly's session watch, never by a view —
+   * a view carries no per-session reset logic of its own.
    * @param from - the departing session id; its ledgers are stashed.
    * @param to - the arriving session id; its stash (if any) is restored.
    * @param live - session ids that still exist; stale stashes are pruned.
    */
   fenceTabs = (from?: string, to?: string, live?: ReadonlySet<string>): void => {
-    if (from !== undefined) this.tabStash.set(from, this.state.tabs)
+    if (from !== undefined) {
+      this.tabStash.set(from, { tabs: this.state.tabs, dockTabs: this.state.dockTabs, dockActive: this.state.dockActive })
+    }
     if (live !== undefined) {
       for (const key of [...this.tabStash.keys()]) {
         if (!live.has(key)) this.tabStash.delete(key)
       }
     }
     const restored = to === undefined ? undefined : this.tabStash.get(to)
-    this.patch({ tabs: restored ?? {}, fence: this.state.fence + 1 })
+    this.patch({
+      tabs: restored?.tabs ?? {},
+      dockTabs: restored?.dockTabs ?? [],
+      dockActive: restored?.dockActive ?? null,
+      fence: this.state.fence + 1,
+    })
   }
 
   // ── drag handles ──────────────────────────────────────────────────────────

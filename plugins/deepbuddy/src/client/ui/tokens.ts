@@ -220,6 +220,18 @@ body:not([data-ds-dark-theme]) .dbdy {
 .dbdy-hv-text:hover { color: var(--db-text) !important; }
 .dbdy-hv-primary:hover { filter: brightness(1.08); }
 
+/* The dock uses the same tab visual at two densities. The compact status-bar
+   strip needs its own hover selector because its resting floor is transparent
+   and its active floor is --db-fill-3, matching the accepted prototype. */
+.dbdy-dock-tab:hover { background: var(--db-fill-3) !important; color: var(--db-text) !important; }
+.dbdy-dock-tabs::-webkit-scrollbar { height: 0; }
+
+/* The dock's zero-tab state is an actionable launcher, not a passive empty
+   card. Its 46px capsule geometry stays inline with the shell; this selector
+   supplies the token-driven hover state that inline styles cannot express. */
+.dbdy-dock-launcher-row:hover { background: var(--db-fill-3) !important; color: var(--db-text) !important; }
+.dbdy-dock-launcher-row:hover .dbdy-dock-launcher-icon { color: var(--db-text) !important; }
+
 /* Rows that reveal their actions on hover: the resting metadata fades out and
    the action bar takes the same slot, so nothing reflows (STUDY §8.7). The
    fading element must also stop taking pointer events, or it keeps eating the
