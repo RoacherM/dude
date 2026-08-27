@@ -245,10 +245,23 @@ async function streamMedia(ctx, req, res, sessionId, path) {
   const mime = mediaMime(filePath)
   res.setHeader('Content-Type', mime)
   res.setHeader('Accept-Ranges', 'bytes')
+  // `pipe` does NOT forward stream errors, and an unhandled 'error' on the
+  // ReadStream is an uncaughtException that kills the whole host process. A
+  // file that stats fine can still fail to open/read (EACCES, deleted between
+  // stat and open, dead symlink, unplugged volume) — answer 500/abort the one
+  // response instead.
+  const streamFile = (options) => {
+    const stream = options === undefined ? createReadStream(filePath) : createReadStream(filePath, options)
+    stream.on('error', () => {
+      if (!res.headersSent) res.statusCode = 500
+      res.destroy()
+    })
+    stream.pipe(res)
+  }
   if (size === null) {
     // Unknown size: no Range math, stream the whole file.
     res.statusCode = 200
-    createReadStream(filePath).pipe(res)
+    streamFile()
     return
   }
   res.setHeader('Content-Length', String(size))
@@ -256,7 +269,7 @@ async function streamMedia(ctx, req, res, sessionId, path) {
   const match = range === undefined ? null : /^bytes=(\d*)-(\d*)$/.exec(range)
   if (match === null) {
     res.statusCode = 200
-    createReadStream(filePath).pipe(res)
+    streamFile()
     return
   }
   const start = match[1] === '' ? 0 : Number(match[1])
@@ -270,7 +283,7 @@ async function streamMedia(ctx, req, res, sessionId, path) {
   res.statusCode = 206
   res.setHeader('Content-Range', `bytes ${start}-${end}/${size}`)
   res.setHeader('Content-Length', String(end - start + 1))
-  createReadStream(filePath, { start, end }).pipe(res)
+  streamFile({ start, end })
 }
 
 /**
@@ -752,7 +765,12 @@ export function apply(ctx, config) {
           return
         }
         const path = pathParts.join('/')
-        void streamMedia(ctx, req, res, sessionId, path)
+        // A rejected promise here would be an unhandled rejection — Node ≥15
+        // exits the process for those. Fail the one response instead.
+        streamMedia(ctx, req, res, sessionId, path).catch(() => {
+          if (!res.headersSent) res.statusCode = 500
+          res.destroy()
+        })
       },
     }), 'deepbuddy: media route')
 
@@ -787,7 +805,14 @@ export function apply(ctx, config) {
           // non-browser contract clients proceed.
           const origin = req.headers.origin
           const host = req.headers.host
-          if (origin !== undefined && host !== undefined && new URL(origin).host !== host) {
+          // `Origin: null` (sandboxed iframe, data:/file: pages) is not a
+          // parseable URL — treat it as foreign explicitly instead of relying
+          // on the upgrade registry catching the TypeError.
+          let originHost
+          if (origin !== undefined) {
+            try { originHost = new URL(origin).host } catch { originHost = '' }
+          }
+          if (origin !== undefined && host !== undefined && originHost !== host) {
             socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n')
             socket.destroy()
             return

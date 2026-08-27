@@ -152,6 +152,10 @@ function spawnDsh(port) {
 
   const child = spawn(process.execPath, [binPath, '--profile', APP_PROFILE, '--port', String(port), '--no-open'], {
     cwd: runtimeDir,
+    // Own process group, so quit's `process.kill(-child.pid)` actually names
+    // it — without this the child shares Electron's group and the negative-pid
+    // kill is ESRCH (dsh-spawned PTY shells would outlive the app).
+    detached: true,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
