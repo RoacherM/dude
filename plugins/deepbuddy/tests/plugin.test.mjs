@@ -395,6 +395,43 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
   }
 })
 
+test('repinDock restores the width pin React\'s style diff cleared', async () => {
+  const previousWindow = globalThis.window
+  globalThis.window = { innerWidth: 1980, addEventListener() {}, removeEventListener() {} }
+  try {
+    const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+    const layout = new LayoutStore()
+    layout.sideRef.current = { style: { width: '268px' } }
+    const dockStyle = { width: '', flex: '' }
+    layout.dockRef.current = { style: dockStyle, getBoundingClientRect() { return { width: 0 } } }
+
+    // Opening writes no width itself; the inspector's mount effect pins it.
+    layout.openDock('terminal')
+    assert.equal(dockStyle.width, '')
+    layout.repinDock()
+    assert.equal(dockStyle.width, '594px', 'first pin is the 30%-of-window default')
+
+    // A dockMax round-trip clears the inline pin (React removes the width key
+    // and rewrites flex-basis auto). Re-pinning restores the REMEMBERED px —
+    // clamped for the current window — instead of letting flex-basis auto
+    // track the content width.
+    dockStyle.width = ''
+    dockStyle.flex = '0 0 auto'
+    layout.repinDock()
+    assert.equal(dockStyle.width, '594px', 'the clobbered pin comes back as the remembered px')
+    assert.equal(dockStyle.flex, '0 0 594px')
+
+    // While maximized the width is auto by design — repin must not fight it.
+    layout.toggleDockMax()
+    dockStyle.width = 'auto'
+    layout.repinDock()
+    assert.equal(dockStyle.width, 'auto')
+  }
+  finally {
+    globalThis.window = previousWindow
+  }
+})
+
 test('drag structure uses Pointer Events without a shield and fills the column seam', async () => {
   const layout = await readFile(join(root, 'src/client/shell/layout-store.ts'), 'utf8')
   const column = await readFile(join(root, 'src/client/shell/ColumnFrame.tsx'), 'utf8')

@@ -18,7 +18,7 @@
  * re-declares it in the disabled ui-layout row's place
  * (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useLayoutEffect } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
@@ -180,6 +180,11 @@ function InspectorColumn(): ReactNode {
   const fence = useLayoutSelection(layout, current => current.state.fence)
   const views = INSPECTOR_VIEW_TYPES
   const active = pickEntry(views, pane)
+  // Mount and every dockMax flip are the commits where React's style diff
+  // rewrites the island's style keys — and clears the store's hand-written
+  // width pin with them. Re-pin before paint so the island never renders (or
+  // creeps) at its content width.
+  useLayoutEffect(() => { layout.repinDock() }, [layout, dockMax])
   return (
     <ColumnFrame
       rootRef={layout.dockRef}

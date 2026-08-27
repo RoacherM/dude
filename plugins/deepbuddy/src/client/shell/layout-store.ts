@@ -141,6 +141,18 @@ export class LayoutStore {
   /** A hand-closed dock stays closed when the window grows back. */
   private userClosedDock = false
 
+  /**
+   * The dock's last pinned width. The pin itself is an inline style on the
+   * element (see the header note on widths), which React's style diff CLEARS
+   * whenever the dockMax branch swaps the island's style keys — so the store
+   * remembers the number and {@link repinDock} restores it after any commit
+   * that could have clobbered it. Without this the island falls back to
+   * `flex-basis: auto` and tracks its content width: the dock then creeps
+   * wider with every file-tree or terminal change until it pushes its own
+   * controls off screen.
+   */
+  private dockPx: number | null = null
+
   // ── store plumbing ────────────────────────────────────────────────────────
 
   private patch(next: Partial<LayoutState>): void {
@@ -227,11 +239,28 @@ export class LayoutStore {
   }
 
   private writeDockWidth(el: HTMLElement, w: number): void {
+    this.dockPx = w
     const width = `${w}px`
     const flex = `0 0 ${width}`
     if (el.style.width === width && el.style.flex === flex) return
     el.style.flex = flex
     el.style.width = width
+  }
+
+  /**
+   * Restore the inline width pin after a commit that may have cleared it.
+   * The inspector calls this from a layout effect on mount and on every
+   * dockMax change — the two moments React rewrites the island's style keys.
+   * A no-op while the dock covers the frame (width is `auto` by design) or
+   * while the pin is intact.
+   */
+  repinDock = (): void => {
+    const el = this.dockRef.current
+    if (el === null || !this.state.dock || this.state.dockMax) return
+    if (el.style.width !== '') return
+    const vw = window.innerWidth
+    const side = this.sideWidth()
+    this.writeDockWidth(el, clampDock(this.dockPx ?? dockDefault(vw, side), vw, side))
   }
 
   /**
@@ -320,15 +349,10 @@ export class LayoutStore {
     }
     const overlay = !canSplitDock(window.innerWidth, this.sideWidth())
     if (overlay) dblog('layout', 'dock opened as overlay — split does not fit', { vw: window.innerWidth, side: this.sideWidth() })
+    // The opening width lands via repinDock: the inspector's layout effect
+    // runs on the mount this patch causes, which — unlike a rAF racing the
+    // commit — cannot fire before the element exists.
     this.patch({ dock: true, pane, dockMax: overlay })
-    // The element mounts on this same synchronous commit, so its opening width
-    // is set on the next frame rather than read back as zero here.
-    requestAnimationFrame(() => {
-      const el = this.dockRef.current
-      if (el !== null && el.style.width === '') {
-        this.writeDockWidth(el, dockDefault(window.innerWidth, this.sideWidth()))
-      }
-    })
   }
 
   closeDock = (): void => {
