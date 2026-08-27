@@ -135,9 +135,13 @@ function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; 
     return <div style={{ padding: 16, fontSize: 12.5, color: 'var(--db-text-4)' }}>读取媒体…</div>
   }
   if (media.kind === 'error') {
+    // The store treats a cached error as retryable, but the fetch-on-mount
+    // effect above never re-fires for a settled entry and the tree row skips
+    // media reads entirely — without this button the retry is unreachable.
     return (
-      <div style={{ padding: 16, fontSize: 12.5, color: 'var(--db-await)' }}>
-        {`无法预览：${media.message}`}
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--db-await)' }}>{`无法预览：${media.message}`}</span>
+        <KIT.Button onClick={() => { store.openBinaryFile(path) }}>重试</KIT.Button>
       </div>
     )
   }

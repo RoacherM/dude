@@ -347,7 +347,9 @@ export class PresetPlane {
    * @param agentPreset - the preset id the user picked.
    */
   selectPreset = (agentPreset: string): void => {
-    if (this.state.presetBusy) return
+    // Busy is not a reason to DROP the pick — staging it is exactly what the
+    // stage exists for. The apply below bails at its own busy guard, and the
+    // in-flight mutation's completion drains the stage.
     this.setState({ stagedPreset: agentPreset, presetError: null })
     void this.applyStagedPreset()
   }
@@ -370,17 +372,25 @@ export class PresetPlane {
     }
     this.setState({ presetBusy: true, presetError: null })
     const r = await this.dsh.presets.select(summary.id as PresetSessionId, staged)
+    // Consume only the stage THIS apply carried: a pick staged during the
+    // await is a newer intent, and clearing it here would drop it.
+    const consumed = this.state.stagedPreset === staged ? { stagedPreset: null } : {}
     if (!r.ok) {
-      this.setState({ presetBusy: false, stagedPreset: null, presetError: r.error })
+      this.setState({ presetBusy: false, presetError: r.error, ...consumed })
+      this.drainStage()
       return
     }
-    this.setState({ presetBusy: false, stagedPreset: null })
+    this.setState({ presetBusy: false, ...consumed })
     // Fold the committed choice into the session store this renders from; the
     // host's own `agent-preset/selected` does the same for every other tab.
     this.dsh.sessions.noteAgentPreset(summary.id, r.value)
-    // A pick staged while this apply was busy bailed at the guard above; it
-    // is still staged, so run it now instead of waiting for a session-list
-    // change that may never come.
+    this.drainStage()
+  }
+
+  /** Run a stage a busy window left behind, if one is pending. Every path
+   *  that clears `presetBusy` calls this — the stage never waits for a
+   *  session-list change that may not come. */
+  private drainStage = (): void => {
     if (this.state.stagedPreset !== null) void this.applyStagedPreset()
   }
 
@@ -392,9 +402,11 @@ export class PresetPlane {
       const r = await this.dsh.presets.setDefault(agentPreset)
       if (!r.ok) {
         this.setState({ presetBusy: false, presetError: r.error })
+        this.drainStage()
         return
       }
       this.setState({ presetBusy: false })
+      this.drainStage()
       await this.loadRoster()
     })()
   }
@@ -418,6 +430,9 @@ export class PresetPlane {
     }
     catch (e) {
       this.setState({ presetBusy: false, presetError: e instanceof Error ? e.message : String(e) })
+    }
+    finally {
+      this.drainStage()
     }
   }
 

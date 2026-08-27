@@ -68,6 +68,13 @@ export class FilesStore {
 
   private offList: (() => void) | undefined
   private watchedId: SessionId | undefined
+  /**
+   * Monotonic fence generation. Comparing session IDs alone lets an A→B→A
+   * round-trip revalidate a stale A response (the ABA race); every
+   * watchSession — and dispose — bumps this so only responses from the
+   * CURRENT watch may write state.
+   */
+  private generation = 0
 
   private readonly listeners = new Set<() => void>()
   private version = 0
@@ -114,6 +121,12 @@ export class FilesStore {
 
   dispose(): void {
     this.offList?.()
+    // No session fence runs after this: invalidate every in-flight response
+    // (a post-dispose decode would otherwise still create a blob URL nothing
+    // can ever revoke) and release the URLs the store owns.
+    this.generation += 1
+    this.watchedId = undefined
+    this.revokeMediaUrls()
   }
 
   private onSessions = (): void => {
@@ -125,25 +138,32 @@ export class FilesStore {
 
   private watchSession(id: SessionId | undefined): void {
     this.watchedId = id
+    this.generation += 1
     // Session switch: the file tree belongs to the old fence. The store owns
     // the media blob URLs, so the fence revokes them with the cache — a view
     // unmount deliberately does NOT (the cache would then point at dead URLs).
+    this.revokeMediaUrls()
+    this.setState({ sessionId: id, fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {}, mediaBodies: {} })
+  }
+
+  private revokeMediaUrls(): void {
     for (const body of Object.values(this.state.mediaBodies)) {
       if (typeof body === 'object' && body.kind === 'url' && body.url.startsWith('blob:')) {
         URL.revokeObjectURL(body.url)
       }
     }
-    this.setState({ sessionId: id, fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {}, mediaBodies: {} })
   }
 
   /**
-   * Whether an async response started under `id` may still write state.
-   * Every await in this store crosses a possible session switch; a stale
-   * response must be dropped, not merged into the next session's tree —
-   * the same fence rule the browser/terminal side got in 597822a.
+   * Whether an async response started under generation `gen` may still write
+   * state. Every await in this store crosses a possible session switch; a
+   * stale response must be dropped, not merged into the next session's tree —
+   * the same fence rule the browser/terminal side got in 597822a. The
+   * generation (not the session id) is what is compared, so an A→B→A
+   * round-trip cannot revalidate a response from the first A watch.
    */
-  private fresh(id: SessionId): boolean {
-    return this.watchedId === id
+  private fresh(gen: number): boolean {
+    return this.generation === gen
   }
 
   /** Load the root only when the Files view is actually visible. */
@@ -159,13 +179,14 @@ export class FilesStore {
   loadDir = async (path: string): Promise<void> => {
     // watchedId is the synchronous session fence set by watchSession.
     const id = this.watchedId
+    const gen = this.generation
     const files = this.dsh.files
     if (id === undefined || files === null) return
     const key = path === '' ? 'root' : path
     this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: 'loading' } }))
     try {
       const r = await files.listDirectory(id as string, path)
-      if (!this.fresh(id)) return
+      if (!this.fresh(gen)) return
       if ('error' in r) {
         const detail = r.error.message === undefined ? r.error.kind : `${r.error.kind}: ${r.error.message}`
         this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: { error: detail } } }))
@@ -177,7 +198,7 @@ export class FilesStore {
       }))
     }
     catch (e) {
-      if (!this.fresh(id)) return
+      if (!this.fresh(gen)) return
       this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: { error: e instanceof Error ? e.message : String(e) } } }))
     }
   }
@@ -192,6 +213,7 @@ export class FilesStore {
    *  A cached error is not a cache hit — clicking again retries. */
   openFile = (child: DirectoryChild): void => {
     const id = this.watchedId
+    const gen = this.generation
     const files = this.dsh.files
     if (id === undefined || files === null) return
     const cached = this.state.fileBodies[child.path]
@@ -199,11 +221,11 @@ export class FilesStore {
     this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: 'loading' } }))
     void files.readFile(id as string, child.path)
       .then((r) => {
-        if (!this.fresh(id)) return
+        if (!this.fresh(gen)) return
         this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: r } }))
       })
       .catch((e: unknown) => {
-        if (!this.fresh(id)) return
+        if (!this.fresh(gen)) return
         const err: ReadFileResult = { error: { kind: 'wire', message: e instanceof Error ? e.message : String(e) } }
         this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: err } }))
       })
@@ -213,6 +235,7 @@ export class FilesStore {
    *  A cached error is not a cache hit — clicking again retries. */
   openBinaryFile = (path: string): void => {
     const id = this.watchedId
+    const gen = this.generation
     const files = this.dsh.files
     if (id === undefined || files === null) return
     const cached = this.state.mediaBodies[path]
@@ -220,7 +243,7 @@ export class FilesStore {
     this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: 'loading' } }))
     void files.readBinary(id as string, path)
       .then((r) => {
-        if (!this.fresh(id)) return
+        if (!this.fresh(gen)) return
         if ('error' in r) {
           this.setState(x => ({
             mediaBodies: {
@@ -251,7 +274,7 @@ export class FilesStore {
         // backing buffer is a plain ArrayBuffer — safe to hand to Blob.
         const blob = new Blob([bytes.buffer as ArrayBuffer])
         const url = URL.createObjectURL(blob)
-        if (!this.fresh(id)) {
+        if (!this.fresh(gen)) {
           // Stale decode: nothing will ever render or revoke it via state.
           URL.revokeObjectURL(url)
           return
@@ -262,7 +285,7 @@ export class FilesStore {
       // renderable error, not an unhandled rejection that leaves the preview
       // on "读取媒体…" forever with the cache guard blocking every retry.
       .catch((e: unknown) => {
-        if (!this.fresh(id)) return
+        if (!this.fresh(gen)) return
         this.setState(x => ({
           mediaBodies: {
             ...x.mediaBodies,

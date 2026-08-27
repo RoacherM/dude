@@ -25,6 +25,7 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { LayoutStore } from '../shell/layout-store.ts'
 import brandMarkUrl from '../assets/brand-mark.png'
+import { dbwarn } from '../log.ts'
 import { createFilesWire } from './files.ts'
 import type { WorkspaceFilesWire } from './files.ts'
 import { createPluginsWire, createPresetsWire } from './presets.ts'
@@ -346,6 +347,9 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
             window.clearInterval(bindingPoll)
             bindingPoll = undefined
             if (ready) syncSessionStarted()
+            // A give-up is a real field condition (dock gate stays shut with
+            // no error anywhere) — it must be loud enough to diagnose.
+            else dbwarn('adapter', 'binding never hydrated within 5s — sessionStarted stays false', { session: cur })
           }
         }, 100)
       }
