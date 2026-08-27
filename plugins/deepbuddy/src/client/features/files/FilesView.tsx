@@ -119,9 +119,11 @@ function mediaKind(path: string): 'image' | 'video' | null {
 }
 
 /**
- * The image/video preview body. Owns one blob URL: it requests the bytes on
- * mount and revokes the URL on unmount, so a preview never leaks. The byte
- * size guard lives in the host (returns `binary-too-large` past the cap).
+ * The image/video preview body. Requests the bytes on mount; the blob URL (if
+ * the base64 fallback produced one) is store-owned and revoked by the session
+ * fence, NOT here — the cache outlives this mount by design, so revoking on
+ * unmount would leave the cached entry pointing at a dead URL. The byte size
+ * guard lives in the host (returns `binary-too-large` past the cap).
  */
 function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; mime: 'image' | 'video' }): ReactNode {
   const media = store.state.mediaBodies[path]
@@ -129,14 +131,6 @@ function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; 
   useEffect(() => {
     if (!requested) store.openBinaryFile(path)
   }, [store, path, requested])
-  useEffect(() => {
-    // Revoke this path's blob URL when the preview unmounts (or path changes).
-    const current = store.state.mediaBodies[path]
-    const url = current !== undefined && current !== 'loading' && current.kind === 'url' ? current.url : null
-    return () => {
-      if (url !== null) URL.revokeObjectURL(url)
-    }
-  }, [store, path])
   if (media === undefined || media === 'loading') {
     return <div style={{ padding: 16, fontSize: 12.5, color: 'var(--db-text-4)' }}>读取媒体…</div>
   }
@@ -238,7 +232,10 @@ export function FilesView(props: InspectorViewProps): ReactNode {
   }, [files, visible, sessionId, rootState])
 
   const onOpen = (child: DirectoryChild): void => {
-    files.openFile(child)
+    // Media paths render from the binary/media plane only (MediaPreview
+    // fetches on mount) — reading the text body too would pull every image
+    // over the wire twice.
+    if (mediaKind(child.path) === null) files.openFile(child)
     onOpenTab({ id: child.path, label: child.name })
     onFocusTab(child.path)
   }

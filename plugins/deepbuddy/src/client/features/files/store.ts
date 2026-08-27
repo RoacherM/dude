@@ -32,9 +32,12 @@ export interface FilesState {
   /** Opened file bodies, keyed by path. */
   fileBodies: Record<string, ReadFileResult | 'loading'>
   /**
-   * Decoded image/video previews, keyed by path. A blob URL the view owns and
-   * revokes on unmount (see {@link FileBody}); kept out of {@link fileBodies}
-   * because a media preview is rendering state, not a text-body result.
+   * Decoded image/video previews, keyed by path. Blob URLs are STORE-owned:
+   * they live exactly as long as this cache and are revoked by the session
+   * fence in `watchSession` — a view unmount must not revoke them, or the
+   * cached entry would point at a dead URL on the next open. Kept out of
+   * {@link fileBodies} because a media preview is rendering state, not a
+   * text-body result.
    */
   mediaBodies: Record<string, MediaBody>
 }
@@ -122,8 +125,25 @@ export class FilesStore {
 
   private watchSession(id: SessionId | undefined): void {
     this.watchedId = id
-    // Session switch: the file tree belongs to the old fence.
+    // Session switch: the file tree belongs to the old fence. The store owns
+    // the media blob URLs, so the fence revokes them with the cache — a view
+    // unmount deliberately does NOT (the cache would then point at dead URLs).
+    for (const body of Object.values(this.state.mediaBodies)) {
+      if (typeof body === 'object' && body.kind === 'url' && body.url.startsWith('blob:')) {
+        URL.revokeObjectURL(body.url)
+      }
+    }
     this.setState({ sessionId: id, fsRoot: null, fsChildren: {}, fsExpanded: {}, fileBodies: {}, mediaBodies: {} })
+  }
+
+  /**
+   * Whether an async response started under `id` may still write state.
+   * Every await in this store crosses a possible session switch; a stale
+   * response must be dropped, not merged into the next session's tree —
+   * the same fence rule the browser/terminal side got in 597822a.
+   */
+  private fresh(id: SessionId): boolean {
+    return this.watchedId === id
   }
 
   /** Load the root only when the Files view is actually visible. */
@@ -145,6 +165,7 @@ export class FilesStore {
     this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: 'loading' } }))
     try {
       const r = await files.listDirectory(id as string, path)
+      if (!this.fresh(id)) return
       if ('error' in r) {
         const detail = r.error.message === undefined ? r.error.kind : `${r.error.kind}: ${r.error.message}`
         this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: { error: detail } } }))
@@ -156,6 +177,7 @@ export class FilesStore {
       }))
     }
     catch (e) {
+      if (!this.fresh(id)) return
       this.setState(x => ({ fsChildren: { ...x.fsChildren, [key]: { error: e instanceof Error ? e.message : String(e) } } }))
     }
   }
@@ -166,28 +188,39 @@ export class FilesStore {
     if (expanding && this.state.fsChildren[path] === undefined) void this.loadDir(path)
   }
 
-  /** Read one file's body; the caller opens the inspector tab that shows it. */
+  /** Read one file's body; the caller opens the inspector tab that shows it.
+   *  A cached error is not a cache hit — clicking again retries. */
   openFile = (child: DirectoryChild): void => {
     const id = this.watchedId
     const files = this.dsh.files
-    if (id === undefined || files === null || this.state.fileBodies[child.path] !== undefined) return
+    if (id === undefined || files === null) return
+    const cached = this.state.fileBodies[child.path]
+    if (cached !== undefined && !(typeof cached === 'object' && 'error' in cached)) return
     this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: 'loading' } }))
     void files.readFile(id as string, child.path)
-      .then((r) => { this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: r } })) })
+      .then((r) => {
+        if (!this.fresh(id)) return
+        this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: r } }))
+      })
       .catch((e: unknown) => {
+        if (!this.fresh(id)) return
         const err: ReadFileResult = { error: { kind: 'wire', message: e instanceof Error ? e.message : String(e) } }
         this.setState(x => ({ fileBodies: { ...x.fileBodies, [child.path]: err } }))
       })
   }
 
-  /** Read one image/video file's bytes and decode a blob URL for the preview. */
+  /** Read one image/video file's bytes and decode a blob URL for the preview.
+   *  A cached error is not a cache hit — clicking again retries. */
   openBinaryFile = (path: string): void => {
     const id = this.watchedId
     const files = this.dsh.files
-    if (id === undefined || files === null || this.state.mediaBodies[path] !== undefined) return
+    if (id === undefined || files === null) return
+    const cached = this.state.mediaBodies[path]
+    if (cached !== undefined && !(typeof cached === 'object' && cached.kind === 'error')) return
     this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: 'loading' } }))
     void files.readBinary(id as string, path)
       .then((r) => {
+        if (!this.fresh(id)) return
         if ('error' in r) {
           this.setState(x => ({
             mediaBodies: {
@@ -218,7 +251,24 @@ export class FilesStore {
         // backing buffer is a plain ArrayBuffer — safe to hand to Blob.
         const blob = new Blob([bytes.buffer as ArrayBuffer])
         const url = URL.createObjectURL(blob)
+        if (!this.fresh(id)) {
+          // Stale decode: nothing will ever render or revoke it via state.
+          URL.revokeObjectURL(url)
+          return
+        }
         this.setState(x => ({ mediaBodies: { ...x.mediaBodies, [path]: { kind: 'url', url, size: r.size } } }))
+      })
+      // A transport rejection (host half missing, IPC drop) must land as a
+      // renderable error, not an unhandled rejection that leaves the preview
+      // on "读取媒体…" forever with the cache guard blocking every retry.
+      .catch((e: unknown) => {
+        if (!this.fresh(id)) return
+        this.setState(x => ({
+          mediaBodies: {
+            ...x.mediaBodies,
+            [path]: { kind: 'error', message: e instanceof Error ? e.message : String(e) },
+          },
+        }))
       })
   }
 }
