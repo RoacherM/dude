@@ -82,6 +82,25 @@ function EmbedRefusal({ url }: { url: string }): ReactNode {
 }
 
 /**
+ * Load-failure card OVER the live guest, not instead of it. Replacing the
+ * webview would destroy its history and leave the back button pointing at
+ * null — the guest stays mounted, the card floats, retry just reloads.
+ */
+function LoadFailure({ url, code, onRetry }: { url: string; code: number | undefined; onRetry: () => void }): ReactNode {
+  return (
+    <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 20, background: 'var(--db-void)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <KIT.EmptyState>{`页面加载失败${code === undefined ? '' : `（${code}）`}`}</KIT.EmptyState>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <KIT.Button size={34} onClick={onRetry}><Refresh size={13} />重试</KIT.Button>
+          <KIT.Button size={34} onClick={() => { openExternal(url) }}><ExternalLink size={13} />在系统浏览器打开</KIT.Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
  * The page area: the same embedded void the terminal and the file preview sit
  * in, so a loaded page, an empty address bar and a refused embed all occupy
  * one block instead of three differently-shaped regions.
@@ -102,7 +121,13 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
   const initial = browserResources.get(tabId) ?? { input: '', url: '' }
   const [input, setInputState] = useState(initial.input)
   const [url, setUrlState] = useState(initial.url)
+  // The webview's `src` is DELIBERATELY a separate state that only explicit
+  // user navigation writes. Feeding the synced current URL back into `src`
+  // makes every guest-initiated navigation reload once more — and turns SPA
+  // in-page routing (pushState) into a full page load that wipes the page.
+  const [src, setSrc] = useState(initial.url)
   const [failed, setFailed] = useState(false)
+  const [failCode, setFailCode] = useState<number | undefined>(undefined)
   const [webview, setWebview] = useState<WebviewElement | null>(null)
   const [history, setHistory] = useState({ back: false, forward: false })
   const [reload, setReload] = useState(0)
@@ -127,6 +152,7 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
     setFailed(false)
     setInputState(next)
     setUrlState(next)
+    setSrc(next)
     persist(next, next)
     if (!IN_ELECTRON) onLabelRef.current(hostnameOf(next))
   }
@@ -153,9 +179,10 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
       const failure = event as WebviewNavigationEvent
       if (failure.isMainFrame === false || failure.errorCode === -3) return
       if (failure.validatedURL !== undefined && failure.validatedURL !== '' && failure.validatedURL !== currentNavigation.current) return
-      // The UI collapses every failure into one refusal card; the error code
-      // (Chromium net error) only survives here.
-      dbwarn('browser', 'page load failed', { tabId, errorCode: failure.errorCode, url: failure.validatedURL ?? currentNavigation.current })
+      // Log origin only — a failed URL can carry OAuth codes and signed query
+      // strings, and dbwarn is always on and lands in field reports.
+      dbwarn('browser', 'page load failed', { tabId, errorCode: failure.errorCode, host: hostnameOf(failure.validatedURL ?? currentNavigation.current) })
+      setFailCode(failure.errorCode)
       setFailed(true)
     }
     const title = (event: Event): void => {
@@ -219,15 +246,22 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
                 </div>
               </div>
             )
-          : failed
-            ? <EmbedRefusal url={url} />
-            : IN_ELECTRON
-              // allowpopups lets window.open/_blank requests REACH the main
-              // process, where the desktop shell's setWindowOpenHandler denies
-              // the popup and navigates this same webview instead. Without it
-              // Electron drops the request before any handler runs — result
-              // links on search pages click dead.
-              ? <webview ref={webviewRef} src={url} allowpopups="true" style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }} />
+          : IN_ELECTRON
+            ? (
+                <div style={{ position: 'relative', flex: '1 1 auto', minHeight: 0, display: 'flex' }}>
+                  {/* allowpopups lets window.open/_blank requests REACH the
+                      main process, where the desktop shell's
+                      setWindowOpenHandler denies the popup and navigates this
+                      same webview instead. Without it Electron drops the
+                      request before any handler runs — result links on search
+                      pages click dead. The partition keeps guest cookies and
+                      storage out of the app's own default session. */}
+                  <webview ref={webviewRef} src={src} partition="persist:dbdy-guest" allowpopups="true" style={{ flex: '1 1 auto', width: '100%', minHeight: 0, border: 0, background: 'white' }} />
+                  {failed && <LoadFailure url={url} code={failCode} onRetry={() => { setFailed(false); webview?.reload() }} />}
+                </div>
+              )
+            : failed
+              ? <EmbedRefusal url={url} />
               : (
                   <iframe
                     key={`${url}:${reload}`}
