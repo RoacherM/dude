@@ -214,10 +214,13 @@ function InspectorColumn(): ReactNode {
         : dockMax
           // Maximized: an overlay over the whole frame. The columns underneath
           // stay mounted and laid out, so restoring loses no scroll or state —
-          // and the header regains the lights cluster it now covers. `inset: 0`
-          // against the root's padding box IS the island grid: the root's own
-          // gap padding already keeps the full-frame panel a floating island.
-          ? { position: 'absolute', inset: 0, zIndex: 8, width: 'auto' }
+          // and the header regains the lights cluster it now covers. The
+          // containing block is the root's PADDING box — its edge is the
+          // window edge, not the island grid — so the island gap must be
+          // re-added here or the panel paves over the window ground
+          // (DESIGN_INTENT: everything floats on the ground, measured 0px vs
+          // the grid's 10px when this was inset: 0).
+          ? { position: 'absolute', inset: 'var(--db-gap)', zIndex: 8, width: 'auto' }
           // The committed width is rendered state — a drag writes the element
           // directly for the gesture and commits on release, so no style-branch
           // swap can strand the island at content width.
@@ -341,9 +344,10 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
           } as CSSProperties}
         >
           {EDGE_STRIPS.map((strip, i) => <div key={i} aria-hidden style={strip} />)}
-          {/* Deliberately NOT a positioned box: the full-frame dock's
-              `inset: 0` lands on the root's padding box — the island grid —
-              rather than a second gap in from it. */}
+          {/* Deliberately NOT a positioned box: the full-frame dock must
+              resolve against the root (whose padding-box edge is the window
+              edge, with the island gap re-added via inset), not against this
+              wrapper's content area. */}
           <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>
           {sidebar && (
             <>
