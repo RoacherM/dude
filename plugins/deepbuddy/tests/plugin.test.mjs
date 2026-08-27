@@ -856,16 +856,26 @@ test('presets: every inventory phase has a label', async () => {
   assert.equal(p.pluginPhaseLabel({ fiberPhase: null, enabled: false }), '已禁用')
 })
 
-test('geometry: the sidebar clamp follows the handoff', async () => {
+test('geometry: the sidebar clamp follows the handoff and the shared ceiling', async () => {
   // The client sources are TS; shell/geometry.ts is valid JS after type
   // stripping, which node >= 22.6 performs natively, so the arithmetic is
   // exercised directly instead of through the bundle.
   const g = await import(join(root, 'src/client/shell/geometry.ts'))
   // 268 is the handoff's one sidebar width; the drag range brackets it.
+  // With the dock closed (spend 0) a wide window leaves the taste range
+  // 232–380 fully open.
   assert.equal(g.SIDEBAR_DEFAULT, 268)
-  assert.equal(g.clampSidebar(100), 232)
-  assert.equal(g.clampSidebar(268), 268)
-  assert.equal(g.clampSidebar(9999), 380)
+  assert.equal(g.clampSidebar(100, 1440, 0), 232)
+  assert.equal(g.clampSidebar(268, 1440, 0), 268)
+  assert.equal(g.clampSidebar(9999, 1440, 0), 380)
+  // The clamp is the dock clamp's mirror: with the dock parked at its widest
+  // (1710px window, dock 855 + its 10px seam) the shared ceiling is
+  // 1710 - 20 - 865 - 10 - 460 = 355, so the drag stops where the
+  // conversation column would start paying — no debt for release to settle.
+  assert.equal(g.clampSidebar(9999, 1710, 865), 355)
+  // A ceiling below the 232px floor collapses the range onto the floor,
+  // the same floor-wins rule the dock has.
+  assert.equal(g.clampSidebar(9999, 1100, 426), 232)
 })
 
 test('geometry: the dock opens at 30% of the window and never passes half of it', async () => {

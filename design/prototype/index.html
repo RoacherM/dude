@@ -1720,17 +1720,22 @@
     // 浮岛几何：比例按窗口宽算，预算项吃掉窗口内边距（2×GAP）与列间缝（各 GAP）。
     const GAP = 10;
     function sideContribution() { return state.sidebar ? state.sidebarWidth + GAP : 0; }
-    function clampSidebar(width) { return Math.min(Math.max(width, 232), 380); }
-    // dock 可用预算 = 窗口宽 − 窗口内边距 − 侧栏及其缝 − dock 自己的缝
-    function dockBudget() { return window.innerWidth - 2 * GAP - sideContribution() - GAP; }
+    function dockContribution() { return state.dock && !state.dockMax && state.mainMode === "conversation" ? state.dockWidth + GAP : 0; }
+    // 唯一的拖拽不变量：某侧列的天花板 = 窗口 − 内边距 − 另一列及其缝 − 自己的缝 − 主列 460 保底。
+    // 两个 clamp 都从这里取上限、只加各自的口径区间——拖 A 永远不欠 B 在放手时来还的债。
+    function dragCeiling(other) { return window.innerWidth - 2 * GAP - other - GAP - 460; }
+    function clampSidebar(width) {
+      const max = Math.max(232, Math.min(380, dragCeiling(dockContribution())));
+      return Math.min(Math.max(width, 232), max);
+    }
     function clampDock(width) {
       const min = Math.max(window.innerWidth * .30, 416);
       // 上限：窗口的 1/2（用户原则：右栏不超过一半），且主列必须保住 460
-      const max = Math.max(min, Math.min(window.innerWidth / 2, dockBudget() - 460));
+      const max = Math.max(min, Math.min(window.innerWidth / 2, dragCeiling(sideContribution())));
       return Math.min(Math.max(width, min), max);
     }
     // 与实现层 geometry.dockFits 同语义：分栏形态必须保得住主列 460 + 停靠栏 416
-    function dockFits() { return dockBudget() - 460 >= 416; }
+    function dockFits() { return dragCeiling(sideContribution()) >= 416; }
     // 分栏只在断点之上且装得下时用；否则停靠栏以全屏浮层（dock-max）打开，不挤压主列
     function canSplitDock() { return window.innerWidth >= 1100 && dockFits(); }
     function dockDefault() { return clampDock(Math.round(window.innerWidth * .30)); }

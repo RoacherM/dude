@@ -47,23 +47,35 @@ export const DOCK_BREAKPOINT = 1100
 export const SIDEBAR_BREAKPOINT = 860
 
 /**
- * Clamp a sidebar drag candidate.
- * @param w - candidate width in px.
- * @returns width within [232, 380].
+ * The ONE shared drag invariant: the widest a side column may grow while the
+ * conversation column keeps its 460px. Window, minus its own padding, minus
+ * the OTHER column with its seam, minus this column's own seam, minus the
+ * reserve. Both clamps below take their upper bound from here and add only
+ * their own taste range — which is what keeps a drag on one handle from ever
+ * writing a debt some other column must repay on release.
+ * @param vw - window inner width.
+ * @param other - the other side column's rendered width including its seam
+ * (0 when collapsed or overlaying).
+ * @returns the ceiling for this column's drag.
  */
-export function clampSidebar(w: number): number {
-  return Math.min(Math.max(w, SIDEBAR_MIN), SIDEBAR_MAX)
+function dragCeiling(vw: number, other: number): number {
+  return vw - 2 * GAP - other - GAP - CHAT_RESERVE
 }
 
 /**
- * What the dock has to spend: the window minus its own padding, minus the
- * sidebar with its seam, minus the dock's own seam.
+ * Clamp a sidebar drag candidate — the mirror of {@link clampDock}: its own
+ * 232–380 taste range, capped by the shared ceiling so the drag stops where
+ * the conversation column would start paying. Where the ceiling and the 232px
+ * floor disagree — a narrow window — the floor wins, same as the dock's rule.
+ * @param w - candidate width in px.
  * @param vw - window inner width.
- * @param side - rendered sidebar width including its seam (0 when collapsed).
- * @returns the horizontal budget the dock and the conversation column share.
+ * @param dock - rendered dock width including its seam (0 when closed or
+ * full-frame).
+ * @returns the width to apply.
  */
-function dockBudget(vw: number, side: number): number {
-  return vw - 2 * GAP - side - GAP
+export function clampSidebar(w: number, vw: number, dock: number): number {
+  const max = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, dragCeiling(vw, dock)))
+  return Math.min(Math.max(w, SIDEBAR_MIN), max)
 }
 
 /**
@@ -90,7 +102,7 @@ export function dockDefault(vw: number, side: number): number {
  */
 export function clampDock(w: number, vw: number, side: number): number {
   const min = Math.max(vw * DOCK_MIN_RATIO, DOCK_MIN)
-  const max = Math.max(min, Math.min(vw * DOCK_MAX_RATIO, dockBudget(vw, side) - CHAT_RESERVE))
+  const max = Math.max(min, Math.min(vw * DOCK_MAX_RATIO, dragCeiling(vw, side)))
   return Math.min(Math.max(w, min), max)
 }
 
@@ -105,7 +117,7 @@ export function clampDock(w: number, vw: number, side: number): number {
  * @returns whether the split shape holds both minimums.
  */
 export function dockFits(vw: number, side: number): boolean {
-  return dockBudget(vw, side) - CHAT_RESERVE >= DOCK_MIN
+  return dragCeiling(vw, side) >= DOCK_MIN
 }
 
 /**

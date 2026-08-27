@@ -264,6 +264,12 @@ export class LayoutStore {
     return sidebar ? sidePx + GAP : 0
   }
 
+  /** The dock's spend including its seam; 0 while closed or full-frame —
+   *  the mirror of {@link sideBudget}, feeding the sidebar's drag clamp. */
+  private dockSpend(): number {
+    return this.state.dock && !this.state.dockMax ? this.state.dockPx + GAP : 0
+  }
+
   /**
    * Re-establish the geometry invariants after ANY budget change — window
    * resize, sidebar toggle, or a width drag committing. `extra` is the change
@@ -673,7 +679,7 @@ export class LayoutStore {
     const startW = el.getBoundingClientRect().width
     let last = startW
     this.trackDrag(e.currentTarget, e.pointerId, (ev) => {
-      last = clampSidebar(startW + (ev.clientX - startX))
+      last = clampSidebar(startW + (ev.clientX - startX), window.innerWidth, this.dockSpend())
       el.style.width = `${last}px`
     }, () => { this.reflow({ sidePx: last }) })
   }
