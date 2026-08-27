@@ -473,20 +473,32 @@ export class LayoutStore {
   // ── the unified dock ledger ───────────────────────────────────────────────
 
   /**
-   * Open and focus a dock tab, or update an existing one's label. A new
-   * resource is appended and focused; an existing one (a title event, the
-   * files singleton) only updates its label — it does not steal focus. A
-   * label that did not change is a no-op, so browser navigation hot-paths
-   * cannot repaint every subscriber.
+   * Open and focus a dock tab. A new resource is appended and focused; an
+   * existing id is just focused (idempotent open — the files singleton path).
+   * Label changes go through {@link labelDockTab}: keeping renames out of the
+   * open verb means a late title event for a closed tab can never resurrect
+   * it as a ghost entry.
    */
   openDockTab = (view: string, tab: TabRef): void => {
-    const at = this.state.dockTabs.findIndex(t => t.id === tab.id)
-    if (at >= 0) {
-      if (this.state.dockTabs[at]?.label === tab.label) return
-      this.patch({ dockTabs: this.state.dockTabs.map(t => t.id === tab.id ? { ...t, label: tab.label } : t) })
+    if (this.state.dockTabs.some(t => t.id === tab.id)) {
+      this.focusDockTab(tab.id)
       return
     }
     this.patch({ dockTabs: [...this.state.dockTabs, { id: tab.id, view, label: tab.label }], dockActive: tab.id })
+  }
+
+  /**
+   * Rename an existing dock tab without touching focus. A missing id is a
+   * no-op — title events race tab closes (webview listeners detach in the
+   * passive effect phase, after the ledger removal has already committed).
+   * An unchanged label is a no-op too, so navigation hot-paths cannot
+   * repaint every subscriber.
+   */
+  labelDockTab = (id: string, label: string): void => {
+    const at = this.state.dockTabs.findIndex(t => t.id === id)
+    if (at < 0) return
+    if (this.state.dockTabs[at]?.label === label) return
+    this.patch({ dockTabs: this.state.dockTabs.map(t => t.id === id ? { ...t, label } : t) })
   }
 
   /** Focus an existing dock tab; no-op when already active or absent. */

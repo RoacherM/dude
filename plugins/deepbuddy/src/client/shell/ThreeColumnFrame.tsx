@@ -18,7 +18,7 @@
  * re-declares it in the disabled ui-layout row's place
  * (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
-import { memo, useCallback, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, MutableRefObject, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
@@ -154,6 +154,7 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
 // ── the inspector column ────────────────────────────────────────────────────
 
 const EMPTY_TABS: readonly { id: string; label: string }[] = []
+const EMPTY_DOCK_TABS: readonly DockTab[] = []
 const FILES_VIEW_ID = 'explorer'
 type CloseDelegates = MutableRefObject<Map<string, (id: string) => void>>
 
@@ -180,6 +181,10 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, dockTabs, pr
     if (previews) layout.openTab(view.id, tab)
     else layout.openDockTab(view.id, tab)
   }, [layout, previews, view.id])
+  const onLabelTab = useCallback((id: string, label: string) => {
+    if (previews) layout.openTab(view.id, { id, label })
+    else layout.labelDockTab(id, label)
+  }, [layout, previews, view.id])
   const onCloseTab = useCallback((id: string) => {
     if (previews) layout.closeTab(view.id, id)
     else layout.closeDockTab(id)
@@ -204,6 +209,7 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, dockTabs, pr
         active={active}
         visible={visible}
         onOpenTab={onOpenTab}
+        onLabelTab={onLabelTab}
         onCloseTab={onCloseTab}
         onFocusTab={onFocusTab}
         onRegisterClose={onRegisterClose}
@@ -272,12 +278,30 @@ function InspectorColumn(): ReactNode {
   const views = INSPECTOR_VIEW_TYPES
   const closeDelegates = useRef(new Map<string, (id: string) => void>())
   const [launcherOpen, setLauncherOpen] = useState(false)
+  // ⌘J and the header toggle close the dock without passing through any of
+  // the in-column controls, so an open + menu would otherwise survive the
+  // close hidden and greet the next open already expanded.
+  useEffect(() => {
+    if (!dock) setLauncherOpen(false)
+  }, [dock])
+  // Stable per-view slices: without the memo every InspectorColumn render
+  // (a + click, a dockPx commit) would hand each view a fresh array and
+  // defeat InspectorViewMount's memo bail-out.
+  const dockTabsByView = useMemo(() => {
+    const grouped = new Map<string, DockTab[]>()
+    for (const tab of dockTabs) {
+      const slice = grouped.get(tab.view)
+      if (slice === undefined) grouped.set(tab.view, [tab])
+      else slice.push(tab)
+    }
+    return grouped
+  }, [dockTabs])
   const activeDockTab = dockActive === null ? undefined : dockTabs.find(tab => tab.id === dockActive)
   const openDockView = useCallback((view: InspectorViewTypeDefinition): void => {
     const existing = dockTabs.filter(tab => tab.view === view.id)
-    const tab = view.createTab(existing)
-    if (existing.some(item => item.id === tab.id)) layout.focusDockTab(tab.id)
-    else layout.openDockTab(view.id, tab)
+    // openDockTab is an idempotent open: the files singleton's fixed id is
+    // focused, a fresh terminal/browser id is appended and focused.
+    layout.openDockTab(view.id, view.createTab(existing))
     setLauncherOpen(false)
   }, [dockTabs, layout])
   const closeDockTab = useCallback((tab: DockTab): void => {
@@ -399,7 +423,7 @@ function InspectorColumn(): ReactNode {
           // behind display:none, so its feature receives `visible` only when
           // its resource is the unified dock selection.
           : views.map(view => {
-              const viewTabs = dockTabs.filter(tab => tab.view === view.id)
+              const viewTabs = dockTabsByView.get(view.id) ?? EMPTY_DOCK_TABS
               if (viewTabs.length === 0) return null
               return (
                 <InspectorViewMount

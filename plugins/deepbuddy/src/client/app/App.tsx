@@ -115,8 +115,12 @@ export function apply(ctx: ClientContext): void {
       const to = cur as string | undefined
       fenced = cur
       const live: ReadonlySet<string> = new Set(snapshot.ids as readonly string[])
-      layout.fenceTabs(from, to, live)
+      // Feature stashes FIRST, ledger swap second: the restored tabs mount
+      // panes that read module state (browserResources) at mount time, so the
+      // module swap must be complete before any render the ledger patch may
+      // schedule — this ordering holds even without React's render batching.
       for (const view of INSPECTOR_VIEW_TYPES) view.onSessionFence?.(from, to, live)
+      layout.fenceTabs(from, to, live)
     })
   }, 'deepbuddy: session fence')
 

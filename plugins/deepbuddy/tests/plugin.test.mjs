@@ -193,7 +193,7 @@ test('the unified dock strip keeps only opened resource views alive', async () =
   // one or more resources; a tab switch still changes display rather than
   // tearing down the browser document or xterm attachment.
   assert.match(shell, /views\.map\(view =>/)
-  assert.match(shell, /const viewTabs = dockTabs\.filter\(tab => tab\.view === view\.id\)/)
+  assert.match(shell, /const viewTabs = dockTabsByView\.get\(view\.id\) \?\? EMPTY_DOCK_TABS/)
   assert.match(shell, /if \(viewTabs\.length === 0\) return null/)
   assert.match(shell, /data-inspector-view=\{view\.id\}/)
   assert.match(shell, /display: visible \? 'flex' : 'none'/)
@@ -232,14 +232,14 @@ test('catalog tab creators drive the shared + and launcher action', async () => 
   assert.match(browserDefinition, /createTab: nextBrowserTab/)
   assert.match(filesDefinition, /createTab: \(\) => \(\{ id: 'files', label: '文件' \}\)/)
   assert.match(shell, /const openDockView = useCallback/)
-  assert.match(shell, /const tab = view\.createTab\(existing\)/)
-  assert.match(shell, /if \(existing\.some\(item => item\.id === tab\.id\)\) layout\.focusDockTab\(tab\.id\)/)
+  assert.match(shell, /layout\.openDockTab\(view\.id, view\.createTab\(existing\)\)/)
   assert.match(shell, /<DockLauncher views=\{views\} onOpen=\{openDockView\}/)
   assert.match(shell, /onClick=\{\(\) => \{ openDockView\(view\) \}\}/)
 
-  // Only Terminal registers the header close delegate. It keeps the existing
-  // control → killAndClose → finishClose path instead of removing a live PTY
-  // directly from the unified ledger.
+  // Terminal and Browser register the header close delegate: Terminal keeps
+  // the control → killAndClose → finishClose path instead of removing a live
+  // PTY directly from the unified ledger; Browser drops its kept-page entry
+  // so closed tabs do not accumulate in the module map until the fence.
   assert.match(shell, /const closeDelegates = useRef\(new Map<string, \(id: string\) => void>\(\)\)/)
   assert.match(shell, /const delegate = closeDelegates\.current\.get\(tab\.view\)/)
   assert.match(terminal, /onRegisterClose\(close\)/)
@@ -262,13 +262,21 @@ test('the unified dock ledger updates labels, focuses neighbours, and returns to
   layout.focusDockTab('term-1')
   assert.equal(notifications, 3)
 
-  // Browser title events update the label but do not steal the terminal's
-  // focus, and duplicate title events stay off the layout hot path.
-  layout.openDockTab('browser', { id: 'browser-1', label: '新标签页' })
+  // Browser title events are RENAMES on a separate verb: they update the
+  // label without stealing the terminal's focus, duplicates stay off the
+  // layout hot path, and a late event for a closed id cannot resurrect a
+  // ghost tab. Re-opening an existing id is an idempotent focus.
+  layout.labelDockTab('browser-1', '新标签页')
   assert.equal(notifications, 3)
-  layout.openDockTab('browser', { id: 'browser-1', label: 'Example' })
+  layout.labelDockTab('browser-1', 'Example')
   assert.equal(notifications, 4)
   assert.equal(layout.state.dockActive, 'term-1')
+  layout.labelDockTab('browser-9', 'Ghost')
+  assert.equal(notifications, 4, 'a title event for a closed tab is a no-op, not a resurrection')
+  assert.equal(layout.state.dockTabs.length, 2)
+  layout.openDockTab('browser', { id: 'browser-1', label: 'Example' })
+  assert.equal(layout.state.dockActive, 'browser-1', 're-opening an existing id focuses it')
+  layout.focusDockTab('term-1')
 
   layout.openDockTab('browser', { id: 'browser-2', label: '新标签页' })
   layout.focusDockTab('browser-1')
@@ -1149,4 +1157,45 @@ test('the media route rejects a foreign Origin and marks its bytes same-origin o
   const local = respond({ host: 'localhost:3080' })
   assert.equal(local.headers['Cross-Origin-Resource-Policy'], 'same-origin')
   assert.notEqual(local.statusCode, 403)
+})
+
+test('browser view owns a close delegate that drops its kept page', async () => {
+  const browser = await readFile(join(root, 'src/client/features/browser/BrowserView.tsx'), 'utf8')
+  // The unified strip owns the ×; the browser's registered close path must
+  // delete the module-map entry BEFORE the ledger removal, or every closed
+  // tab's {input, url} leaks until the session fence (and into every stash).
+  assert.match(browser, /browserResources\.delete\(tabId\)\s*\n\s*onCloseTab\(tabId\)/)
+  assert.match(browser, /onRegisterClose\(close\)/)
+  // Title events ride the rename verb, never the open verb — a late event
+  // for a closed tab must not resurrect it.
+  assert.match(browser, /onLabelTab\(tabId, label\)/)
+  assert.doesNotMatch(browser, /onOpenTab\(\{ id: tabId/)
+})
+
+test('dock ledger invariant: dockActive is a member, or null exactly when empty', async () => {
+  const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+  const layout = new LayoutStore()
+  const check = (step) => {
+    const { dockTabs, dockActive } = layout.state
+    if (dockTabs.length === 0) assert.equal(dockActive, null, `${step}: empty ledger must show the launcher`)
+    else assert.ok(dockTabs.some(tab => tab.id === dockActive), `${step}: dockActive must be a ledger member`)
+  }
+  // The launcher-vs-views render branch keys off dockActive === null, so the
+  // invariant must survive every verb — including fence restores.
+  const steps = [
+    () => { layout.openDockTab('terminal', { id: 'term-1', label: '终端 1' }) },
+    () => { layout.openDockTab('browser', { id: 'browser-1', label: '新标签页' }) },
+    () => { layout.labelDockTab('browser-1', 'Example') },
+    () => { layout.labelDockTab('gone', 'Ghost') },
+    () => { layout.focusDockTab('term-1') },
+    () => { layout.focusDockTab('missing') },
+    () => { layout.fenceTabs('session-a', 'session-b', new Set(['session-a', 'session-b'])) },
+    () => { layout.openDockTab('explorer', { id: 'files', label: '文件' }) },
+    () => { layout.fenceTabs('session-b', 'session-a', new Set(['session-a', 'session-b'])) },
+    () => { layout.closeDockTab('browser-1') },
+    () => { layout.closeDockTab('term-1') },
+    () => { layout.closeDockTab('term-1') },
+  ]
+  steps.forEach((step, index) => { step(); check(`step ${index}`) })
+  assert.deepEqual(layout.state.dockTabs, [])
 })

@@ -1,5 +1,5 @@
 /** Kept-alive multi-tab browser: desktop webviews with an iframe fallback. */
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 import type { InspectorViewProps } from '../../app/catalog.ts'
 import type { TabRef } from '../../shell/layout-store.ts'
@@ -314,12 +314,15 @@ const BrowserPane = memo(function BrowserPane({ tabId, onLabel }: { tabId: strin
 })
 
 /** Only the two tabs whose visibility changes re-render on a tab switch. */
-const BrowserTabMount = memo(function BrowserTabMount({ tabId, active, onOpenTab }: {
+const BrowserTabMount = memo(function BrowserTabMount({ tabId, active, onLabelTab }: {
   tabId: string
   active: boolean
-  onOpenTab: InspectorViewProps['onOpenTab']
+  onLabelTab: InspectorViewProps['onLabelTab']
 }): ReactNode {
-  const onLabel = useCallback((label: string) => { onOpenTab({ id: tabId, label }) }, [onOpenTab, tabId])
+  // Title events are renames, never opens: routing them through the rename
+  // verb means one that arrives after this tab closed (webview listeners
+  // detach in the passive phase) cannot resurrect a ghost ledger entry.
+  const onLabel = useCallback((label: string) => { onLabelTab(tabId, label) }, [onLabelTab, tabId])
   return (
     <div
       data-browser-tab={tabId}
@@ -331,12 +334,24 @@ const BrowserTabMount = memo(function BrowserTabMount({ tabId, active, onOpenTab
 })
 
 export function BrowserView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, onOpenTab } = props
+  const { tabs, active, onLabelTab, onCloseTab, onRegisterClose } = props
+
+  // The unified strip owns the ×, so the kept-page cleanup rides the close
+  // delegate: without it every closed tab's {input, url} would sit in the
+  // module map until the session fence (and get copied into every stash).
+  const close = useCallback((tabId: string): void => {
+    browserResources.delete(tabId)
+    onCloseTab(tabId)
+  }, [onCloseTab])
+  useLayoutEffect(() => {
+    onRegisterClose(close)
+    return () => { onRegisterClose(null) }
+  }, [close, onRegisterClose])
 
   return (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       {tabs.map(tab => (
-        <BrowserTabMount key={tab.id} tabId={tab.id} active={tab.id === active} onOpenTab={onOpenTab} />
+        <BrowserTabMount key={tab.id} tabId={tab.id} active={tab.id === active} onLabelTab={onLabelTab} />
       ))}
     </div>
   )

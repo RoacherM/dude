@@ -86,7 +86,13 @@ export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd, variant =
           >
             {tab.label}
           </span>
-          <span onClick={(event) => { event.stopPropagation() }}>
+          {/* Stop BOTH activation channels at the boundary: the tab container's
+              keydown handler calls preventDefault, which would cancel the close
+              button's Enter/Space default activation and turn × into focus. */}
+          <span
+            onClick={(event) => { event.stopPropagation() }}
+            onKeyDown={(event) => { event.stopPropagation() }}
+          >
             <KIT.IconButton
               title="关闭标签"
               size={26}
