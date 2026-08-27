@@ -568,9 +568,16 @@ export class DeepbuddyTerminalManager {
   }
 
   async attach(sessionId, termId, socket) {
+    // The message listener must exist BEFORE the (async) resource lookup, or
+    // anything the client sends right after open — a kill, an early resize —
+    // arrives with no listener and is silently dropped. Buffer until the
+    // resource is ready, then replay.
+    const early = []
+    let onMessage = (raw) => { early.push(raw) }
+    socket.on('message', (raw) => { onMessage(raw) })
     const resource = await this.resourceFor(sessionId, termId)
     resource.attach(socket)
-    socket.on('message', (raw) => {
+    onMessage = (raw) => {
       let message
       try { message = JSON.parse(String(raw)) }
       catch {
@@ -591,7 +598,8 @@ export class DeepbuddyTerminalManager {
       else {
         sendTerminalMessage(socket, { type: 'error', message: 'unsupported terminal message' })
       }
-    })
+    }
+    for (const raw of early) onMessage(raw)
     socket.once('close', () => { resource.detach(socket) })
   }
 
@@ -789,6 +797,15 @@ export function apply(ctx, config) {
       if (termId === null || !/^term-\d+$/.test(termId)) {
         sendTerminalMessage(socket, { type: 'error', message: 'term-id-required' })
         socket.close(1008, 'termId required')
+        return
+      }
+      // A kill-intent connection closes an existing PTY and nothing else.
+      // Routing it through attach() would SPAWN a shell just to kill it (and
+      // race the kill message against listener installation); this path
+      // touches only the registry.
+      if (url.searchParams.get('intent') === 'kill') {
+        terminals.close(sessionId, termId, 'user closed terminal')
+        socket.close(1000, 'kill delivered')
         return
       }
       void terminals.attach(sessionId, termId, socket).catch((error) => {

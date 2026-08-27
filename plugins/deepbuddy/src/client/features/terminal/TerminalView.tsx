@@ -103,27 +103,42 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
     let disposed = false
     let reconnectTimer: number | undefined
     let resizeTimer: number | undefined
-    let manuallyClosed = false
+    // Two separate facts, not one flag: `hostTerminated` means the host ended
+    // the resource (closed/error message) so no kill is owed — but the TAB
+    // still closes on request. `closeRequested` is only the ×-click's own
+    // idempotency; conflating them made error-state tabs unclosable once.
+    let hostTerminated = false
+    let closeRequested = false
 
     const closeResource = (): void => {
-      if (manuallyClosed) return
-      manuallyClosed = true
+      if (closeRequested) return
+      closeRequested = true
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer)
+      if (hostTerminated) {
+        // The host already killed (closed) or never made (error) the PTY —
+        // nothing to kill, just take the tab out of the ledger.
+        onClosed(termId)
+        return
+      }
+      hostTerminated = true
+      // Kill over a fresh kill-intent connection: the host route kills on
+      // sight without spawning, so no message ordering matters; the timeout
+      // bounds a CONNECTING socket against a black-holed port. If even this
+      // cannot connect, the PTY waits for session disposal as before.
+      const bestEffortKill = (): void => {
+        try {
+          const killer = new WebSocket(`${terminalSocketUrl(sessionId, termId)}&intent=kill`)
+          const killerTimeout = window.setTimeout(() => { killer.close() }, 5000)
+          killer.addEventListener('close', () => { window.clearTimeout(killerTimeout) })
+          killer.addEventListener('error', () => { killer.close() })
+        } catch { /* fully offline — nothing to kill against */ }
+      }
       const socket = socketRef.current
       if (socket === null || socket.readyState === WebSocket.CLOSED) {
         // No live socket (reconnect window, or already dead): the host keeps
         // the PTY until an explicit kill, so a silent tab removal would leak
-        // it against the per-session limit. Best-effort kill over a fresh
-        // socket; if even that cannot connect, the PTY waits for session
-        // disposal as before.
-        try {
-          const killer = new WebSocket(terminalSocketUrl(sessionId, termId))
-          killer.addEventListener('open', () => {
-            killer.send(JSON.stringify({ type: 'kill' }))
-            killer.close()
-          })
-          killer.addEventListener('error', () => { killer.close() })
-        } catch { /* fully offline — nothing to kill against */ }
+        // it against the per-session limit.
+        bestEffortKill()
         onClosed(termId)
         return
       }
@@ -131,7 +146,10 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
       const killAndClose = (): void => {
         if (finished) return
         finished = true
-        send(socket, { type: 'kill' })
+        // A socket that died between the ×-click and this callback cannot
+        // carry the kill — deliver it out of band instead of dropping it.
+        if (socket.readyState === WebSocket.OPEN) send(socket, { type: 'kill' })
+        else bestEffortKill()
         socket.close()
         onClosed(termId)
       }
@@ -169,7 +187,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
 
     let reconnectAttempts = 0
     const connect = (): void => {
-      if (disposed || manuallyClosed) return
+      if (disposed || hostTerminated || closeRequested) return
       setState('connecting')
       setDetail('')
       const socket = new WebSocket(terminalSocketUrl(sessionId, termId))
@@ -194,12 +212,12 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
           setState('exited')
         }
         else if (message.type === 'closed') {
-          manuallyClosed = true
+          hostTerminated = true
           setState('closed')
         }
         else if (message.type === 'error') {
           dbwarn('terminal', 'host refused the terminal', { termId, message: message.message })
-          manuallyClosed = true
+          hostTerminated = true
           setDetail(message.message ?? '终端连接失败')
           setState('error')
         }
@@ -208,7 +226,7 @@ const TerminalPane = memo(function TerminalPane({ sessionId, termId, visible, on
         if (socketRef.current === socket) {
           socketRef.current = null
         }
-        if (!disposed && !manuallyClosed) {
+        if (!disposed && !hostTerminated && !closeRequested) {
           // Exponential backoff, 800ms → 15s cap: a host that stays down must
           // not be hammered (and must not flood the always-on warn channel)
           // at a fixed 800ms forever. A successful attach resets the clock.
