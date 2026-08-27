@@ -108,13 +108,21 @@ function TreeLevel({ store, onOpen, active, dirKey, depth }: {
   )
 }
 
-const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg)$/i
-const VIDEO_EXT = /\.(mp4|webm|mov)$/i
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif)$/i
+const VIDEO_EXT = /\.(mp4|webm|mov|m4v|mkv)$/i
+const AUDIO_EXT = /\.(mp3|wav|m4a|aac|ogg|oga|flac)$/i
+const PDF_EXT = /\.pdf$/i
 
-/** Which media renderer a file path needs, if any. */
-function mediaKind(path: string): 'image' | 'video' | null {
+type MediaMime = 'image' | 'video' | 'audio' | 'pdf'
+
+/** Which media renderer a file path needs, if any — everything Chromium can
+ *  paint natively. Formats with no native renderer (office docs, archives)
+ *  stay on the text path's binary empty state. */
+function mediaKind(path: string): MediaMime | null {
   if (IMAGE_EXT.test(path)) return 'image'
   if (VIDEO_EXT.test(path)) return 'video'
+  if (AUDIO_EXT.test(path)) return 'audio'
+  if (PDF_EXT.test(path)) return 'pdf'
   return null
 }
 
@@ -125,7 +133,7 @@ function mediaKind(path: string): 'image' | 'video' | null {
  * unmount would leave the cached entry pointing at a dead URL. The byte size
  * guard lives in the host (returns `binary-too-large` past the cap).
  */
-function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; mime: 'image' | 'video' }): ReactNode {
+function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; mime: MediaMime }): ReactNode {
   const media = store.state.mediaBodies[path]
   const requested = media !== undefined
   useEffect(() => {
@@ -154,17 +162,27 @@ function MediaPreview({ store, path, mime }: { store: FilesStore; path: string; 
       </div>
     )
   }
+  // PDF fills the pane (the built-in viewer scrolls itself); the rest center.
+  if (mime === 'pdf') {
+    return (
+      <embed
+        src={media.url}
+        type="application/pdf"
+        style={{ width: '100%', height: '100%', border: 0 }}
+      />
+    )
+  }
   return (
-    <div style={{ padding: 16, height: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflow: 'auto' }}>
-      {mime === 'image'
-        ? (
-            <img
-              src={media.url}
-              alt={basename(path)}
-              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--db-r-card)' }}
-            />
-          )
-        : <video src={media.url} controls style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 'var(--db-r-card)' }} />}
+    <div style={{ padding: 16, height: '100%', display: 'flex', alignItems: mime === 'audio' ? 'center' : 'flex-start', justifyContent: 'center', overflow: 'auto' }}>
+      {mime === 'image' && (
+        <img
+          src={media.url}
+          alt={basename(path)}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 'var(--db-r-card)' }}
+        />
+      )}
+      {mime === 'video' && <video src={media.url} controls style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 'var(--db-r-card)' }} />}
+      {mime === 'audio' && <audio src={media.url} controls style={{ width: '100%', maxWidth: 420 }} />}
     </div>
   )
 }

@@ -1238,6 +1238,25 @@ test('tab reorder: moveDockTab/moveTab permute the ledger without touching focus
   assert.equal(layout.state.tabs.explorer.active, '/a.md')
 })
 
+test('files preview: every natively renderable media family has a renderer and a mime', async () => {
+  const view = await readFile(join(root, 'src/client/features/files/FilesView.tsx'), 'utf8')
+  // The four families the preview pane paints natively; office docs and
+  // archives intentionally stay on the binary empty state.
+  assert.match(view, /AUDIO_EXT = \/\\\.\(mp3\|wav\|m4a\|aac\|ogg\|oga\|flac\)\$\/i/)
+  assert.match(view, /PDF_EXT/)
+  assert.match(view, /<audio src=\{media\.url\} controls/)
+  assert.match(view, /type="application\/pdf"/)
+  // The host media route must answer a real Content-Type for each family, or
+  // the <embed>/<audio> element refuses the stream.
+  const host = await readFile(join(root, 'src/host.js'), 'utf8')
+  for (const mime of ['audio/mpeg', 'audio/flac', 'application/pdf', 'video/x-matroska', 'image/avif']) {
+    assert.ok(host.includes(`'${mime}'`), `host mediaMime maps ${mime}`)
+  }
+  // The PTY carries a UTF-8 locale when the GUI-launched process has none —
+  // without it ls prints '?' for every non-ASCII filename.
+  assert.match(host, /LANG: 'en_US\.UTF-8'/)
+})
+
 test('tab reorder: both strips wire drag onto the shared tab row', async () => {
   const tabsSrc = await readFile(join(root, 'src/client/ui/InspectorTabs.tsx'), 'utf8')
   // Dragging exists only when a reorder verb is provided, and the live

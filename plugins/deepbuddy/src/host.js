@@ -204,15 +204,28 @@ async function resolveWorkspaceFile(ctx, sessionId, path, signal) {
 function mediaMime(filePath) {
   const ext = filePath.split('.').pop()?.toLowerCase()
   switch (ext) {
-    case 'mp4': return 'video/mp4'
+    case 'mp4':
+    case 'm4v': return 'video/mp4'
     case 'webm': return 'video/webm'
     case 'mov': return 'video/quicktime'
+    case 'mkv': return 'video/x-matroska'
     case 'png': return 'image/png'
     case 'jpg':
     case 'jpeg': return 'image/jpeg'
     case 'gif': return 'image/gif'
     case 'webp': return 'image/webp'
     case 'svg': return 'image/svg+xml'
+    case 'bmp': return 'image/bmp'
+    case 'ico': return 'image/x-icon'
+    case 'avif': return 'image/avif'
+    case 'mp3': return 'audio/mpeg'
+    case 'wav': return 'audio/wav'
+    case 'm4a': return 'audio/mp4'
+    case 'aac': return 'audio/aac'
+    case 'ogg':
+    case 'oga': return 'audio/ogg'
+    case 'flac': return 'audio/flac'
+    case 'pdf': return 'application/pdf'
     default: return 'application/octet-stream'
   }
 }
@@ -466,7 +479,17 @@ class TerminalResource {
       cols: 80,
       rows: 24,
       cwd,
-      env: { ...process.env, TERM: 'xterm-256color', COLORTERM: 'truecolor' },
+      env: {
+        ...process.env,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+        // A GUI-launched Electron inherits no locale, and under the C locale
+        // ls and friends sanitize non-ASCII filenames to '?'. Any UTF-8
+        // locale fixes the charset; only set it when the user has none.
+        ...(process.env.LANG === undefined && process.env.LC_ALL === undefined
+          ? { LANG: 'en_US.UTF-8' }
+          : {}),
+      },
     })
     this.dataSubscription = this.pty.onData((data) => {
       this.scrollback = appendScrollback(this.scrollback, data)
