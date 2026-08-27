@@ -193,6 +193,10 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, dockTabs, pr
     if (previews) layout.focusTab(view.id, id)
     else layout.focusDockTab(id)
   }, [layout, previews, view.id])
+  const onReorderTab = useCallback((id: string, to: number) => {
+    if (previews) layout.moveTab(view.id, id, to)
+    else layout.moveDockTab(id, to)
+  }, [layout, previews, view.id])
   const onRegisterClose = useCallback((close: ((id: string) => void) | null): void => {
     if (close === null) closeDelegates.current.delete(view.id)
     else closeDelegates.current.set(view.id, close)
@@ -212,6 +216,7 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, dockTabs, pr
         onLabelTab={onLabelTab}
         onCloseTab={onCloseTab}
         onFocusTab={onFocusTab}
+        onReorderTab={onReorderTab}
         onRegisterClose={onRegisterClose}
       />
     </div>
@@ -349,6 +354,7 @@ function InspectorColumn(): ReactNode {
               const tab = dockTabs.find(item => item.id === id)
               if (tab !== undefined) closeDockTab(tab)
             }}
+            onReorder={layout.moveDockTab}
             variant="dock"
             style={NO_DRAG}
             iconFor={(tab) => {

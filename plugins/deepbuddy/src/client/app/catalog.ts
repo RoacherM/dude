@@ -37,6 +37,8 @@ export interface InspectorViewProps {
   onOpenTab(tab: TabRef): void
   /** Rename an existing instance without touching focus; missing id no-ops. */
   onLabelTab(id: string, label: string): void
+  /** Move an instance to a new index without touching focus. */
+  onReorderTab(id: string, to: number): void
   /** Close an instance; focus falls to its neighbour. */
   onCloseTab(id: string): void
   /** Focus an existing instance. */

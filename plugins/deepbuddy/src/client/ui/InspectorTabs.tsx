@@ -1,5 +1,6 @@
 /** Shared tab row for the dock strip and file-preview views. State stays in layout-store. */
-import type { CSSProperties, ReactNode } from 'react'
+import { useState } from 'react'
+import type { CSSProperties, DragEvent, ReactNode } from 'react'
 import type { TabRef } from '../shell/layout-store.ts'
 import { KIT } from './kit.tsx'
 import { Close, Plus } from './icons.tsx'
@@ -10,6 +11,8 @@ export interface InspectorTabsProps {
   onFocus(id: string): void
   onClose(id: string): void
   onAdd?: () => void
+  /** Move a tab to a new index — enables drag-to-reorder when provided. */
+  onReorder?: (id: string, to: number) => void
   /** The dock chrome is a compact 28px strip; preview tabs retain their 38px row. */
   variant?: 'resource' | 'dock'
   /** A catalog-resolved glyph for a compact dock resource tab. */
@@ -18,8 +21,28 @@ export interface InspectorTabsProps {
 }
 
 /** One tab visual shared by the dock resource strip and Files' preview ledger. */
-export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd, variant = 'resource', iconFor, style }: InspectorTabsProps): ReactNode {
+export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd, onReorder, variant = 'resource', iconFor, style }: InspectorTabsProps): ReactNode {
   const dock = variant === 'dock'
+  // The tab id under drag, or null. Reordering is LIVE (Sortable-style): the
+  // ledger permutes as the pointer crosses a neighbour's midpoint, so the row
+  // itself is the drop preview and drop/dragend only clear the drag state.
+  const [dragId, setDragId] = useState<string | null>(null)
+  const dragOverTab = (event: DragEvent, overId: string): void => {
+    if (onReorder === undefined || dragId === null) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    if (dragId === overId) return
+    const from = tabs.findIndex(tab => tab.id === dragId)
+    const over = tabs.findIndex(tab => tab.id === overId)
+    if (from < 0 || over < 0) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const before = event.clientX < rect.left + rect.width / 2
+    // Where the dragged tab lands once lifted out: crossing the hovered tab's
+    // midpoint claims its slot, which the removal shift collapses back to the
+    // hovered index itself on a left-to-right move.
+    const to = before ? (from < over ? over - 1 : over) : (from < over ? over : over + 1)
+    if (to !== from) onReorder(dragId, to)
+  }
   return (
     <div
       data-inspector-tabs
@@ -42,6 +65,16 @@ export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd, variant =
       {tabs.map(tab => (
         <div
           key={tab.id}
+          draggable={onReorder !== undefined}
+          onDragStart={(event) => {
+            if (onReorder === undefined) return
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData('text/plain', tab.id)
+            setDragId(tab.id)
+          }}
+          onDragOver={(event) => { dragOverTab(event, tab.id) }}
+          onDrop={(event) => { event.preventDefault(); setDragId(null) }}
+          onDragEnd={() => { setDragId(null) }}
           onClick={() => { onFocus(tab.id) }}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -67,6 +100,7 @@ export function InspectorTabs({ tabs, active, onFocus, onClose, onAdd, variant =
             background: tab.id === active ? dock ? 'var(--db-fill-3)' : 'var(--db-fill-4)' : 'transparent',
             cursor: 'pointer',
             transition: 'background var(--db-tint)',
+            opacity: tab.id === dragId ? 0.45 : undefined,
           }}
         >
           {iconFor !== undefined && (

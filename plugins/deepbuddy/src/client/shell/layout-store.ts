@@ -114,6 +114,22 @@ export interface LayoutState {
 
 const NO_TABS: PaneTabs = { items: [], active: null }
 
+/**
+ * Reorder a tab list: lift `id` out and reinsert it at `to` (clamped).
+ * @returns the new array, or null when the move is a no-op (missing id or
+ * unchanged position) so callers can skip the patch entirely.
+ */
+function moveById<T extends { id: string }>(items: readonly T[], id: string, to: number): T[] | null {
+  const at = items.findIndex(item => item.id === id)
+  if (at < 0) return null
+  const clamped = Math.max(0, Math.min(Math.trunc(to), items.length - 1))
+  if (clamped === at) return null
+  const next = [...items]
+  const [tab] = next.splice(at, 1)
+  next.splice(clamped, 0, tab as T)
+  return next
+}
+
 /** The layout store: one per plugin fiber. */
 export class LayoutStore {
   state: LayoutState = {
@@ -462,6 +478,14 @@ export class LayoutStore {
     this.writeTabs(pane, { items, active: next === null ? null : next.id })
   }
 
+  /** Move one preview tab to a new index without touching focus. */
+  moveTab = (pane: string, id: string, to: number): void => {
+    const cur = this.tabsOf(pane)
+    const items = moveById(cur.items, id, to)
+    if (items === null) return
+    this.writeTabs(pane, { ...cur, items })
+  }
+
   /** Focus an existing preview tab. */
   focusTab = (pane: string, id: string): void => {
     const cur = this.tabsOf(pane)
@@ -499,6 +523,17 @@ export class LayoutStore {
     if (at < 0) return
     if (this.state.dockTabs[at]?.label === label) return
     this.patch({ dockTabs: this.state.dockTabs.map(t => t.id === id ? { ...t, label } : t) })
+  }
+
+  /**
+   * Move one dock tab to a new index. Focus is untouched — reordering is a
+   * pure ledger permutation, so `dockActive` and every view's keep-alive
+   * body survive the drag unchanged.
+   */
+  moveDockTab = (id: string, to: number): void => {
+    const items = moveById(this.state.dockTabs, id, to)
+    if (items === null) return
+    this.patch({ dockTabs: items })
   }
 
   /** Focus an existing dock tab; no-op when already active or absent. */

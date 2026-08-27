@@ -910,6 +910,7 @@
       cursor: pointer;
     }
     .resource-tab.active { background: var(--db-fill-3); color: var(--db-text); }
+    .resource-tab.dragging { opacity: .45; }
     .resource-tab:hover { background: var(--db-fill-3); color: var(--db-text); }
     .resource-tab .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; font-size: 12.5px; }
     .tab-close { width: 16px; height: 16px; flex: 0 0 16px; border: 0; border-radius: 5px; background: transparent; color: var(--db-text-4); cursor: pointer; }
@@ -2040,7 +2041,7 @@
     function renderDock() {
       const tabs = $("#dockTabs");
       tabs.innerHTML = state.dockTabs.map(tab =>
-        '<button class="resource-tab ' + (tab.key === state.activeDock ? "active" : "") + '" data-dock-tab="' + tab.key + '">' + svg(DOCK_ICONS[tab.type]) + '<span class="title">' + escapeHtml(dockTabTitle(tab)) + '</span><span class="tab-close" data-dock-close="' + tab.key + '">×</span></button>'
+        '<button draggable="true" class="resource-tab ' + (tab.key === state.activeDock ? "active" : "") + '" data-dock-tab="' + tab.key + '">' + svg(DOCK_ICONS[tab.type]) + '<span class="title">' + escapeHtml(dockTabTitle(tab)) + '</span><span class="tab-close" data-dock-close="' + tab.key + '">×</span></button>'
       ).join("");
       const active = state.dockTabs.find(tab => tab.key === state.activeDock) || null;
       $("#dockLauncher").classList.toggle("active", !active);
@@ -2127,6 +2128,45 @@
         renderFilePreview();
       }));
     }
+    // 拖拽排序：Sortable 式实时移动——dragover 越过邻居中线即 insertBefore，
+    // drop/dragend 时按 DOM 顺序提交回 state（监听挂容器上，innerHTML 重绘不丢）。
+    function sortableTabs(container, attr, commit) {
+      let dragging = null;
+      container.addEventListener("dragstart", event => {
+        const tab = event.target.closest("[" + attr + "]");
+        if (!tab) return;
+        dragging = tab;
+        tab.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", tab.getAttribute(attr));
+      });
+      container.addEventListener("dragover", event => {
+        if (!dragging) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        const over = event.target.closest("[" + attr + "]");
+        if (!over || over === dragging) return;
+        const rect = over.getBoundingClientRect();
+        const before = event.clientX < rect.left + rect.width / 2;
+        container.insertBefore(dragging, before ? over : over.nextSibling);
+      });
+      const finish = () => {
+        if (!dragging) return;
+        dragging.classList.remove("dragging");
+        dragging = null;
+        commit(Array.from(container.querySelectorAll("[" + attr + "]")).map(el => el.getAttribute(attr)));
+      };
+      container.addEventListener("drop", event => { event.preventDefault(); finish(); });
+      container.addEventListener("dragend", finish);
+    }
+    sortableTabs($("#dockTabs"), "data-dock-tab", order => {
+      state.dockTabs.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+      renderDock();
+    });
+    sortableTabs($("#fileTabs"), "data-file-tab", order => {
+      state.fileTabs.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      renderFileTabs();
+    });
     function renderFilePreview() {
       const split = Boolean(state.activeFile);
       $("#filesBody").classList.toggle("split", split);

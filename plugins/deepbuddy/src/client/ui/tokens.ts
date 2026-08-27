@@ -252,7 +252,10 @@ body:not([data-ds-dark-theme]) .dbdy {
   position: relative;
   flex: 0 0 var(--db-gap);
   width: var(--db-gap);
-  z-index: 10;
+  /* Above the static islands beside it, but BELOW the dockMax full-frame
+     overlay (zIndex 8): a handle floating over the overlay paints its hover
+     line through the panel and steals its pointer events. */
+  z-index: 1;
   cursor: col-resize;
   touch-action: none;
   background: transparent;

@@ -231,7 +231,7 @@ function FileBody({ store, path }: { store: FilesStore; path: string }): ReactNo
  * view — no per-session logic lives here.
  */
 export function FilesView(props: InspectorViewProps): ReactNode {
-  const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab } = props
+  const { tabs, active, visible, onOpenTab, onCloseTab, onFocusTab, onReorderTab } = props
   const { files } = useAppDeps()
   useStore(files)
   const s = files.state
@@ -253,7 +253,7 @@ export function FilesView(props: InspectorViewProps): ReactNode {
 
   const frame = (body: ReactNode): ReactNode => (
     <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      {tabs.length > 0 && <InspectorTabs tabs={tabs} active={active} onFocus={onFocusTab} onClose={onCloseTab} />}
+      {tabs.length > 0 && <InspectorTabs tabs={tabs} active={active} onFocus={onFocusTab} onClose={onCloseTab} onReorder={onReorderTab} />}
       {body}
     </div>
   )

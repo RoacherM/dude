@@ -1199,3 +1199,44 @@ test('dock ledger invariant: dockActive is a member, or null exactly when empty'
   steps.forEach((step, index) => { step(); check(`step ${index}`) })
   assert.deepEqual(layout.state.dockTabs, [])
 })
+
+test('tab reorder: moveDockTab/moveTab permute the ledger without touching focus', async () => {
+  const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
+  const layout = new LayoutStore()
+  layout.openDockTab('terminal', { id: 'term-1', label: '终端 1' })
+  layout.openDockTab('browser', { id: 'browser-1', label: '新标签页' })
+  layout.openDockTab('explorer', { id: 'files', label: '文件' })
+  layout.focusDockTab('term-1')
+  // Drag the first tab to the end; focus must NOT follow the permutation.
+  layout.moveDockTab('term-1', 2)
+  assert.deepEqual(layout.state.dockTabs.map(tab => tab.id), ['browser-1', 'files', 'term-1'])
+  assert.equal(layout.state.dockActive, 'term-1')
+  // Out-of-range indices clamp; missing ids and no-op moves change nothing.
+  layout.moveDockTab('browser-1', 99)
+  assert.deepEqual(layout.state.dockTabs.map(tab => tab.id), ['files', 'term-1', 'browser-1'])
+  const before = layout.state.dockTabs
+  layout.moveDockTab('gone', 0)
+  layout.moveDockTab('files', 0)
+  assert.equal(layout.state.dockTabs, before, 'no-op moves must not patch (no subscriber repaint)')
+  // The files preview ledger reorders through the same helper.
+  layout.openTab('explorer', { id: '/a.md', label: 'a.md' })
+  layout.openTab('explorer', { id: '/b.md', label: 'b.md' })
+  layout.openTab('explorer', { id: '/c.md', label: 'c.md' })
+  layout.focusTab('explorer', '/a.md')
+  layout.moveTab('explorer', '/c.md', 0)
+  assert.deepEqual(layout.state.tabs.explorer.items.map(tab => tab.id), ['/c.md', '/a.md', '/b.md'])
+  assert.equal(layout.state.tabs.explorer.active, '/a.md')
+})
+
+test('tab reorder: both strips wire drag onto the shared tab row', async () => {
+  const tabsSrc = await readFile(join(root, 'src/client/ui/InspectorTabs.tsx'), 'utf8')
+  // Dragging exists only when a reorder verb is provided, and the live
+  // midpoint rule commits through it.
+  assert.match(tabsSrc, /draggable=\{onReorder !== undefined\}/)
+  assert.match(tabsSrc, /onReorder\?: \(id: string, to: number\) => void/)
+  const frameSrc = await readFile(join(root, 'src/client/shell/ThreeColumnFrame.tsx'), 'utf8')
+  assert.match(frameSrc, /onReorder=\{layout\.moveDockTab\}/)
+  assert.match(frameSrc, /if \(previews\) layout\.moveTab\(view\.id, id, to\)/)
+  const filesSrc = await readFile(join(root, 'src/client/features/files/FilesView.tsx'), 'utf8')
+  assert.match(filesSrc, /onReorder=\{onReorderTab\}/)
+})
