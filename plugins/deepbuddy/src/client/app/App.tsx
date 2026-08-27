@@ -81,6 +81,9 @@ export function apply(ctx: ClientContext): void {
   // that must share state.
   const dsh = createDsh(ctx, connection)
   const layout = new LayoutStore()
+  // ⌘J's first press must open the same pane the header button would — the
+  // store is catalog-agnostic, so the assembly names the default here.
+  layout.dockFallback = INSPECTOR_VIEW_TYPES[0]?.id ?? null
   const presets = new PresetPlane(dsh)
   const files = new FilesStore(dsh)
   const deps: AppDeps = { dsh, layout, presets, files }

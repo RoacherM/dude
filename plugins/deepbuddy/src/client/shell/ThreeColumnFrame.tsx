@@ -18,7 +18,7 @@
  * re-declares it in the disabled ui-layout row's place
  * (deepbuddy-design-current/ARCHITECTURE.md §4).
  */
-import { memo, useCallback, useLayoutEffect } from 'react'
+import { memo, useCallback } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { RenderSlot } from '../dsh/adapter.ts'
@@ -29,7 +29,7 @@ import type { AppDeps } from '../app/context.tsx'
 import { AppDepsProvider, useAppDeps } from '../app/context.tsx'
 import { useLayoutSelection } from './layout-store.ts'
 import type { LayoutStore, PaneTabs } from './layout-store.ts'
-import { ColumnFrame, Handle, IN_ELECTRON, NO_DRAG, PANEL, TrafficLights } from './ColumnFrame.tsx'
+import { ColumnFrame, Handle, NO_DRAG, PANEL, TrafficLights } from './ColumnFrame.tsx'
 import { KIT, ROW_METRICS } from '../ui/kit.tsx'
 import { Glyph, Maximize, Minimize, PanelLeft, PanelRight } from '../ui/icons.tsx'
 import { METRICS } from '../ui/tokens.ts'
@@ -37,6 +37,22 @@ import { ChatNav } from '../features/conversation/index.ts'
 
 /** Details column width when `ctx.layout` opens it (ui-layout's DETAILS_DEFAULT). */
 const DETAILS_WIDTH = 480
+
+/**
+ * The window's outermost ring stays OUT of the drag region: macOS puts its
+ * edge-resize hit zone exactly there, and Electron cannot resize through a
+ * draggable rect. Region collection ignores z-order and pointer-events, so
+ * four inert strips subtract the edges from the root's full-window drag face
+ * while the rest of the gap ring keeps moving the window.
+ */
+const RESIZE_EDGE = 6
+const EDGE_BASE = { position: 'absolute', pointerEvents: 'none', WebkitAppRegion: 'no-drag' } as CSSProperties
+const EDGE_STRIPS: readonly CSSProperties[] = [
+  { ...EDGE_BASE, top: 0, left: 0, right: 0, height: RESIZE_EDGE },
+  { ...EDGE_BASE, bottom: 0, left: 0, right: 0, height: RESIZE_EDGE },
+  { ...EDGE_BASE, top: 0, left: 0, bottom: 0, width: RESIZE_EDGE },
+  { ...EDGE_BASE, top: 0, right: 0, bottom: 0, width: RESIZE_EDGE },
+]
 
 // ── the sidebar column ──────────────────────────────────────────────────────
 
@@ -49,12 +65,15 @@ const DETAILS_WIDTH = 480
  */
 export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlot: RenderSlot }): ReactNode {
   const { layout } = useAppDeps()
+  // The committed width lives in the store, so a collapse/expand unmount
+  // cycle cannot silently reset a dragged width back to the default.
+  const sidePx = useLayoutSelection(layout, current => current.state.sidePx)
   return (
     <ColumnFrame
       rootRef={layout.sideRef}
       headerPad={12}
       style={{
-        width: METRICS.sidebar,
+        width: sidePx,
         flex: '0 0 auto',
         minWidth: 0,
       }}
@@ -174,29 +193,35 @@ const InspectorViewMount = memo(function InspectorViewMount({ view, tabs, visibl
  */
 function InspectorColumn(): ReactNode {
   const { layout } = useAppDeps()
+  const dock = useLayoutSelection(layout, current => current.state.dock)
   const dockMax = useLayoutSelection(layout, current => current.state.dockMax)
+  const dockPx = useLayoutSelection(layout, current => current.state.dockPx)
   const pane = useLayoutSelection(layout, current => current.state.pane)
   const tabsByView = useLayoutSelection(layout, current => current.state.tabs)
   const fence = useLayoutSelection(layout, current => current.state.fence)
   const views = INSPECTOR_VIEW_TYPES
   const active = pickEntry(views, pane)
-  // Mount and every dockMax flip are the commits where React's style diff
-  // rewrites the island's style keys — and clears the store's hand-written
-  // width pin with them. Re-pin before paint so the island never renders (or
-  // creeps) at its content width.
-  useLayoutEffect(() => { layout.repinDock() }, [layout, dockMax])
   return (
     <ColumnFrame
       rootRef={layout.dockRef}
       headerPad={10}
-      style={dockMax
-        // Maximized: an overlay over the whole frame. The columns underneath
-        // stay mounted and laid out, so restoring loses no scroll or state —
-        // and the header regains the lights cluster it now covers. It insets
-        // by the gap rather than to zero, so the full-frame panel is still an
-        // island floating on the window ground and not a lid over it.
-        ? { position: 'absolute', inset: 'var(--db-gap)', zIndex: 8, width: 'auto' }
-        : { flex: '0 0 auto', minWidth: 0 }}
+      style={!dock
+        // Closed is hidden, never an unmount: the keep-alive rule says view
+        // bodies survive dock closes, and unmounting the column here would
+        // silently cancel every display:none below it (webview history and
+        // xterm attachments died this way once).
+        ? { display: 'none' }
+        : dockMax
+          // Maximized: an overlay over the whole frame. The columns underneath
+          // stay mounted and laid out, so restoring loses no scroll or state —
+          // and the header regains the lights cluster it now covers. `inset: 0`
+          // against the root's padding box IS the island grid: the root's own
+          // gap padding already keeps the full-frame panel a floating island.
+          ? { position: 'absolute', inset: 0, zIndex: 8, width: 'auto' }
+          // The committed width is rendered state — a drag writes the element
+          // directly for the gesture and commits on release, so no style-branch
+          // swap can strand the island at content width.
+          : { flex: `0 0 ${dockPx}px`, minWidth: 0 }}
       header={(
         <>
           {dockMax && (
@@ -315,10 +340,10 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             userSelect: 'none',
           } as CSSProperties}
         >
-          {/* Deliberately NOT a positioned box: the full-frame dock insets
-              itself by the gap against the root's padding box, which is what
-              lands it exactly on the island grid instead of a second gap in
-              from it. */}
+          {EDGE_STRIPS.map((strip, i) => <div key={i} aria-hidden style={strip} />)}
+          {/* Deliberately NOT a positioned box: the full-frame dock's
+              `inset: 0` lands on the root's padding box — the island grid —
+              rather than a second gap in from it. */}
           <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>
           {sidebar && (
             <>
@@ -364,10 +389,14 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
             )}
             {renderSlot('conversation', {})}
           </div>
-          {dock && sessionStarted && (
+          {/* Mounted for the whole started session, hidden while closed: a
+              dock close must not unmount the column, or the keep-alive rule
+              below it (webview documents, xterm attachments) dies with the
+              mount. Only the session fence/end may tear this down. */}
+          {sessionStarted && (
             <>
-              {/* No seam to drag while the dock overlays the frame. */}
-              {!dockMax && <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />}
+              {/* No seam while the dock is closed or overlays the frame. */}
+              {dock && !dockMax && <Handle onDown={deps.layout.startDockDrag} onReset={deps.layout.resetDockWidth} title="拖拽调整停靠栏宽度 · 双击重置" />}
               <InspectorColumn />
             </>
           )}

@@ -395,37 +395,52 @@ test('dock drag captures its pointer, coalesces writes, and terminates every ges
   }
 })
 
-test('repinDock restores the width pin React\'s style diff cleared', async () => {
+test('column widths are committed state: remembered across max round-trips and reflowed with the budget', async () => {
   const previousWindow = globalThis.window
   globalThis.window = { innerWidth: 1980, addEventListener() {}, removeEventListener() {} }
   try {
     const { LayoutStore } = await import(join(root, 'src/client/shell/layout-store.ts'))
     const layout = new LayoutStore()
-    layout.sideRef.current = { style: { width: '268px' } }
-    const dockStyle = { width: '', flex: '' }
-    layout.dockRef.current = { style: dockStyle, getBoundingClientRect() { return { width: 0 } } }
 
-    // Opening writes no width itself; the inspector's mount effect pins it.
+    // First open ever: the 30%-of-window default, as state — no DOM involved.
     layout.openDock('terminal')
-    assert.equal(dockStyle.width, '')
-    layout.repinDock()
-    assert.equal(dockStyle.width, '594px', 'first pin is the 30%-of-window default')
+    assert.equal(layout.state.dockPx, 594)
 
-    // A dockMax round-trip clears the inline pin (React removes the width key
-    // and rewrites flex-basis auto). Re-pinning restores the REMEMBERED px —
-    // clamped for the current window — instead of letting flex-basis auto
-    // track the content width.
-    dockStyle.width = ''
-    dockStyle.flex = '0 0 auto'
-    layout.repinDock()
-    assert.equal(dockStyle.width, '594px', 'the clobbered pin comes back as the remembered px')
-    assert.equal(dockStyle.flex, '0 0 594px')
-
-    // While maximized the width is auto by design — repin must not fight it.
+    // A dockMax round-trip keeps the committed width: React re-renders the
+    // split style FROM state, so no style-branch swap can strand the island
+    // at content width (the old inline-pin bug).
     layout.toggleDockMax()
-    dockStyle.width = 'auto'
-    layout.repinDock()
-    assert.equal(dockStyle.width, 'auto')
+    assert.equal(layout.state.dockMax, true)
+    layout.toggleDockMax()
+    assert.equal(layout.state.dockMax, false)
+    assert.equal(layout.state.dockPx, 594)
+
+    // ⌘J must not be a dead key: reopening prefers the remembered pane, and a
+    // fresh store (no pane ever opened) falls back to the assembly's default.
+    layout.closeDock()
+    layout.dockFallback = 'explorer'
+    layout.toggleDock(layout.dockFallback)
+    assert.equal(layout.state.dock, true)
+    assert.equal(layout.state.pane, 'terminal', 'reopen keeps the pane the user last had')
+    const fresh = new LayoutStore()
+    fresh.dockFallback = 'explorer'
+    fresh.toggleDock(fresh.dockFallback)
+    assert.equal(fresh.state.pane, 'explorer', 'a first-ever ⌘J opens the catalog default')
+
+    // The conversation reserve holds on EVERY budget path, not just window
+    // resize: at 1200px a 380px sidebar leaves 780 − 460 < 416 for the dock,
+    // so committing that sidebar width closes the split dock.
+    globalThis.window.innerWidth = 1200
+    layout.toggleSidebar() // closed
+    layout.toggleSidebar() // reopened at 1200 — split still fits with 268
+    assert.equal(layout.state.dock, true)
+    layout.resetSideWidth()
+    const wide = { ...layout.state, sidePx: 380 }
+    layout.state = wide
+    layout.toggleSidebar()
+    layout.toggleSidebar()
+    assert.equal(layout.state.sidePx, 380, 'a committed sidebar width survives collapse/expand')
+    assert.equal(layout.state.dock, false, 'a sidebar too wide for the split closes the dock instead of squeezing the conversation')
   }
   finally {
     globalThis.window = previousWindow

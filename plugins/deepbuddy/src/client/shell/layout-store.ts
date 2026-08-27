@@ -9,12 +9,13 @@
  * The workbench app and view-type ids are strings; the catalogs
  * (app/catalog.ts) resolve them to components.
  *
- * Widths are the one thing deliberately kept OUT of the state object. A drag
- * writes the column's inline width directly and re-reads it from the DOM,
- * because routing sixty pointermove events per second through a store that every
- * column subscribes to would re-render every panel in the window to move one
- * divider. The state object carries booleans and ids; the geometry lives where
- * the browser already keeps it.
+ * Column widths are state with a drag-time fast path. The COMMITTED width
+ * (`sidePx`/`dockPx`) lives in the state object and is what React renders —
+ * so a remount or a style-branch swap can never lose it (the dock once
+ * degraded to content-width exactly this way). During a drag the gesture
+ * writes the element's inline width directly and commits ONCE on release,
+ * because routing sixty pointermove events per second through a store that
+ * every column subscribes to would re-render every panel to move one divider.
  */
 import type { ILayout } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { createRef, useCallback, useRef, useSyncExternalStore } from 'react'
@@ -68,15 +69,18 @@ export interface LayoutState {
    */
   sessionStarted: boolean
   /**
-   * Top-bar title contributed by the active workbench app; null falls back to
-   * the app entry's title.
-   *
-   * A title is content, not geometry, so the app contributes it rather than
-   * the shell inventing it — the conversation view is the only thing that
-   * knows a session is called 「重构缓存层」. Only the ACTIVE app renders, so
-   * only the active app can set it, and switching apps clears it.
+   * Committed sidebar width in px. React renders it; a drag writes the DOM
+   * directly and commits here on release, so the width survives the collapse/
+   * expand unmount cycle.
    */
-  title: string | null
+  sidePx: number
+  /**
+   * Committed dock width in px; 0 until the dock first opens (the opening
+   * width is the 30%-of-window default). Same ownership rule as `sidePx` —
+   * rendered by React, so the dockMax style-branch swap that once cleared a
+   * hand-written inline pin cannot lose it.
+   */
+  dockPx: number
   /**
    * Tab state per inspector view type. Each view draws the shared strip from
    * this fact and renders whatever its active tab means.
@@ -102,8 +106,9 @@ export class LayoutStore {
     dock: false,
     dockMax: false,
     pane: null,
-    title: null,
     sessionStarted: false,
+    sidePx: SIDEBAR_DEFAULT,
+    dockPx: 0,
     tabs: {},
     fence: 0,
   }
@@ -138,20 +143,12 @@ export class LayoutStore {
   /** uSES projection subscribers from the independent slot trees. */
   private readonly listeners = new Set<() => void>()
 
-  /** A hand-closed dock stays closed when the window grows back. */
-  private userClosedDock = false
-
   /**
-   * The dock's last pinned width. The pin itself is an inline style on the
-   * element (see the header note on widths), which React's style diff CLEARS
-   * whenever the dockMax branch swaps the island's style keys — so the store
-   * remembers the number and {@link repinDock} restores it after any commit
-   * that could have clobbered it. Without this the island falls back to
-   * `flex-basis: auto` and tracks its content width: the dock then creeps
-   * wider with every file-tree or terminal change until it pushes its own
-   * controls off screen.
+   * The pane ⌘J opens when none was ever opened this run. The assembly sets
+   * it from the catalog (the store stays catalog-agnostic), so the shortcut's
+   * first press is not a dead key while the header button works.
    */
-  private dockPx: number | null = null
+  dockFallback: string | null = null
 
   // ── store plumbing ────────────────────────────────────────────────────────
 
@@ -185,8 +182,7 @@ export class LayoutStore {
 
   /**
    * Collapse ordering under a shrinking window: the dock goes first, the
-   * sidebar second. A dock the user closed by hand stays closed when the
-   * window grows back — the automatic reopen is for the automatic close only.
+   * sidebar second.
    *
    * Only the SPLIT shape answers to this. A full-frame dock is an overlay: it
    * spends none of the column budget, so nothing about a narrowing window
@@ -194,73 +190,63 @@ export class LayoutStore {
    * the user can undo themselves with the control right there in its bar.
    */
   private onResize = (): void => {
-    const vw = window.innerWidth
-    if (this.state.dock && !this.state.dockMax && !canSplitDock(vw, this.sideWidth())) {
-      this.patch({ dock: false })
-    }
-    if (vw < SIDEBAR_BREAKPOINT && this.state.sidebar) this.patch({ sidebar: false })
-    this.clampDockWidth()
+    this.reflow(window.innerWidth < SIDEBAR_BREAKPOINT && this.state.sidebar ? { sidebar: false } : {})
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (!(e.metaKey || e.ctrlKey)) return
-    // ⌘J toggles the dock. The handoff's other shortcuts (⌘K, ⌘N, ⌘T, ⌘,)
-    // belong to surfaces the store does not own — settings is now the
-    // official slot's own trigger. Esc is handled by the floating layers
-    // themselves (DESIGN_INTENT §12: Popover first, then Dialog) — the shell
-    // never swallows it.
+    if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
+    // ⌘J toggles the dock (⇧/⌥ chords like DevTools' ⌥⌘J pass through). The
+    // handoff's other shortcuts (⌘K, ⌘N, ⌘T, ⌘,) belong to surfaces the
+    // store does not own — settings is now the official slot's own trigger.
+    // Esc is handled by the floating layers themselves (DESIGN_INTENT §12:
+    // Popover first, then Dialog) — the shell never swallows it.
     if (e.key === 'j') {
       e.preventDefault()
-      this.toggleDock()
+      this.toggleDock(this.dockFallback ?? undefined)
     }
   }
 
-  // ── measurements ──────────────────────────────────────────────────────────
+  // ── geometry ──────────────────────────────────────────────────────────────
+
+  /** The sidebar's spend including its seam; 0 while collapsed. */
+  private sideBudget(sidebar = this.state.sidebar, sidePx = this.state.sidePx): number {
+    return sidebar ? sidePx + GAP : 0
+  }
 
   /**
-   * Rendered sidebar width including its seam; 0 while collapsed. The seam is
-   * the full gap now: the handle fills it edge to edge instead of straddling
-   * a 1px rule.
+   * Re-establish the geometry invariants after ANY budget change — window
+   * resize, sidebar toggle, or a width drag committing. `extra` is the change
+   * being applied; the invariants are computed against it so one patch (one
+   * notification) carries both the change and its consequences. Invariants:
+   * a split dock that no longer fits closes (the conversation column's 460px
+   * reserve holds on every path, not just window resize), and the dock width
+   * stays inside its clamp.
    */
-  private sideWidth(): number {
-    const el = this.sideRef.current
-    if (!this.state.sidebar || el === null) return 0
-    const dragged = Number.parseFloat(el.style.width)
-    return (Number.isFinite(dragged) ? dragged : SIDEBAR_DEFAULT) + GAP
+  private reflow(extra: Partial<LayoutState> = {}): void {
+    const vw = window.innerWidth
+    const patch: Partial<LayoutState> = { ...extra }
+    const side = this.sideBudget(patch.sidebar ?? this.state.sidebar, patch.sidePx ?? this.state.sidePx)
+    if ((patch.dock ?? this.state.dock) && !this.state.dockMax && !canSplitDock(vw, side)) {
+      patch.dock = false
+    }
+    const dockPx = patch.dockPx ?? this.state.dockPx
+    if (dockPx > 0) {
+      const next = clampDock(dockPx, vw, side)
+      if (Math.abs(next - dockPx) > 0.5) patch.dockPx = next
+    }
+    for (const key of Object.keys(patch) as (keyof LayoutState)[]) {
+      if (patch[key] === this.state[key]) delete patch[key]
+    }
+    if (Object.keys(patch).length > 0) this.patch(patch)
   }
 
-  /** Hold the dock inside its range after the window changed size. */
-  private clampDockWidth(): void {
-    const el = this.dockRef.current
-    if (el === null || !this.state.dock || this.state.dockMax) return
-    const now = el.getBoundingClientRect().width
-    const next = clampDock(now, window.innerWidth, this.sideWidth())
-    if (Math.abs(next - now) > 0.5) this.writeDockWidth(el, next)
-  }
-
+  /** Drag-time fast path: inline width per frame, no store notification. */
   private writeDockWidth(el: HTMLElement, w: number): void {
-    this.dockPx = w
     const width = `${w}px`
     const flex = `0 0 ${width}`
     if (el.style.width === width && el.style.flex === flex) return
     el.style.flex = flex
     el.style.width = width
-  }
-
-  /**
-   * Restore the inline width pin after a commit that may have cleared it.
-   * The inspector calls this from a layout effect on mount and on every
-   * dockMax change — the two moments React rewrites the island's style keys.
-   * A no-op while the dock covers the frame (width is `auto` by design) or
-   * while the pin is intact.
-   */
-  repinDock = (): void => {
-    const el = this.dockRef.current
-    if (el === null || !this.state.dock || this.state.dockMax) return
-    if (el.style.width !== '') return
-    const vw = window.innerWidth
-    const side = this.sideWidth()
-    this.writeDockWidth(el, clampDock(this.dockPx ?? dockDefault(vw, side), vw, side))
   }
 
   /**
@@ -308,26 +294,18 @@ export class LayoutStore {
 
   // ── verbs ─────────────────────────────────────────────────────────────────
 
-  /** Switch the main column to another workbench app. */
+  /** Switch the main column to another workbench app. The started-session
+   *  fact belongs to the conversation view, so clearing it here keeps the
+   *  dock rule from leaking across apps (新建任务 relies on this). */
   setView = (view: string): void => {
-    // The title belongs to the app that set it; the next app contributes its
-    // own (or falls back to its catalog title). The started-session fact also
-    // belongs to the conversation view, so clearing it here keeps the dock
-    // rule from leaking across apps.
-    if (this.state.view === view && !this.state.sessionStarted && this.state.title === null) return
-    this.patch({ view, sessionStarted: false, title: null })
-  }
-
-  /** Contribute the main top bar's title. Call it from an effect, never from
-   *  a render body — it writes store state, and a write during render is the
-   *  classic re-entrant loop. */
-  setTitle = (title: string | null): void => {
-    if (this.state.title === title) return
-    this.patch({ title })
+    if (this.state.view === view && !this.state.sessionStarted) return
+    this.patch({ view, sessionStarted: false })
   }
 
   toggleSidebar = (): void => {
-    this.patch({ sidebar: !this.state.sidebar })
+    // The sidebar's seam is column budget: opening it can push a split dock
+    // below the conversation reserve, so the toggle reflows like a resize.
+    this.reflow({ sidebar: !this.state.sidebar })
   }
 
   /**
@@ -338,7 +316,6 @@ export class LayoutStore {
    * rule 5).
    */
   openDock = (pane: string): void => {
-    this.userClosedDock = false
     if (this.state.dock && this.state.pane === pane) return
     // An open dock switching view types is a pane change, not an opening: the
     // shape it is already in (split or maximized) is the user's, and picking
@@ -347,16 +324,17 @@ export class LayoutStore {
       this.patch({ pane })
       return
     }
-    const overlay = !canSplitDock(window.innerWidth, this.sideWidth())
-    if (overlay) dblog('layout', 'dock opened as overlay — split does not fit', { vw: window.innerWidth, side: this.sideWidth() })
-    // The opening width lands via repinDock: the inspector's layout effect
-    // runs on the mount this patch causes, which — unlike a rAF racing the
-    // commit — cannot fire before the element exists.
-    this.patch({ dock: true, pane, dockMax: overlay })
+    const vw = window.innerWidth
+    const side = this.sideBudget()
+    const overlay = !canSplitDock(vw, side)
+    if (overlay) dblog('layout', 'dock opened as overlay — split does not fit', { vw, side })
+    // The opening width: the remembered committed width re-clamped for the
+    // current window, or the 30%-of-window default on the first open ever.
+    const dockPx = this.state.dockPx > 0 ? clampDock(this.state.dockPx, vw, side) : dockDefault(vw, side)
+    this.patch({ dock: true, pane, dockMax: overlay, dockPx })
   }
 
   closeDock = (): void => {
-    this.userClosedDock = true
     this.patch({ dock: false, dockMax: false })
   }
 
@@ -369,8 +347,8 @@ export class LayoutStore {
    */
   toggleDockMax = (): void => {
     if (!this.state.dock) return
-    if (this.state.dockMax && !canSplitDock(window.innerWidth, this.sideWidth())) {
-      dblog('layout', 'overlay exit closed the dock — split still does not fit', { vw: window.innerWidth, side: this.sideWidth() })
+    if (this.state.dockMax && !canSplitDock(window.innerWidth, this.sideBudget())) {
+      dblog('layout', 'overlay exit closed the dock — split still does not fit', { vw: window.innerWidth, side: this.sideBudget() })
       this.patch({ dock: false, dockMax: false })
       return
     }
@@ -519,14 +497,15 @@ export class LayoutStore {
     if (el === null) return
     const startX = e.clientX
     const startW = el.getBoundingClientRect().width
+    let last = startW
     this.trackDrag(e.currentTarget, e.pointerId, (ev) => {
-      el.style.width = `${clampSidebar(startW + (ev.clientX - startX))}px`
-    }, () => { this.clampDockWidth() })
+      last = clampSidebar(startW + (ev.clientX - startX))
+      el.style.width = `${last}px`
+    }, () => { this.reflow({ sidePx: last }) })
   }
 
   resetSideWidth = (): void => {
-    const el = this.sideRef.current
-    if (el !== null) el.style.width = `${SIDEBAR_DEFAULT}px`
+    this.reflow({ sidePx: SIDEBAR_DEFAULT })
   }
 
   startDockDrag = (e: DragStartEvent): void => {
@@ -535,15 +514,19 @@ export class LayoutStore {
     if (el === null) return
     const startX = e.clientX
     const startW = el.getBoundingClientRect().width
+    let last = startW
     const thawEmbeds = this.freezeDockEmbeds(el)
     this.trackDrag(e.currentTarget, e.pointerId, (ev) => {
-      this.writeDockWidth(el, clampDock(startW + (startX - ev.clientX), window.innerWidth, this.sideWidth()))
-    }, thawEmbeds)
+      last = clampDock(startW + (startX - ev.clientX), window.innerWidth, this.sideBudget())
+      this.writeDockWidth(el, last)
+    }, () => {
+      thawEmbeds()
+      this.reflow({ dockPx: last })
+    })
   }
 
   resetDockWidth = (): void => {
-    const el = this.dockRef.current
-    if (el !== null) this.writeDockWidth(el, dockDefault(window.innerWidth, this.sideWidth()))
+    this.reflow({ dockPx: dockDefault(window.innerWidth, this.sideBudget()) })
   }
 
 }
