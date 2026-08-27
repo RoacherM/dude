@@ -80,10 +80,9 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
       }}
       header={(
         <>
-          {/* Lights, then the wordmark and the one red square on screen, then
-              the toggle pushed to the column's right edge — where the dock's
-              own close control sits, so the two column switches mirror each
-              other across the frame. */}
+          {/* Lights, then the wordmark, then the toggle pushed to the
+              column's right edge — where the dock's own close control sits,
+              so the two column switches mirror each other across the frame. */}
           <TrafficLights />
           <span style={{
             minWidth: 0,
@@ -100,12 +99,6 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
           >
             DeepBuddy
           </span>
-          {/* Brand red, used exactly once in the whole window (DESIGN_INTENT
-              §10). Nothing else — no selection, no status — may borrow it. */}
-          <span
-            aria-hidden
-            style={{ width: 7, height: 7, flex: '0 0 7px', borderRadius: 2, background: 'var(--db-brand)' }}
-          />
           <span style={{ ...NO_DRAG, marginLeft: 'auto' }}>
             <KIT.IconButton title="收起侧边栏" onClick={layout.toggleSidebar}>
               <PanelLeft size={16} />
@@ -114,12 +107,6 @@ export function DeepBuddySidebar({ renderSlot }: SidebarOwnerProps & { renderSlo
         </>
       )}
     >
-      {/* The muted slogan under the brand line — official muted tier
-          (label-tertiary), 12px, tight. */}
-      <div style={{ padding: `0 ${ROW_METRICS.gutter + ROW_METRICS.pad}px 12px` }}>
-        <div style={{ fontSize: 12, color: 'var(--db-text-3)', lineHeight: 1.4 }}>向着未知出发，把每一步都变成脚印。</div>
-      </div>
-
       {/* The conversation entry is the app's own full-width new-task button —
           it carries the app's new-task action, so it ships with the app, not
           with the shell. The 14px below gives the card breathing room before
