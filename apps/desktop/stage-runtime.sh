@@ -33,7 +33,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGING="$REPO_ROOT/apps/desktop/staging"
 RUNTIME="$STAGING/runtime"
 PLUGIN="$STAGING/plugin"
-LOCKED_DSH='@deepseek-ai/dsh@0.1.1-rc.2'
+LOCKED_DSH='@deepseek-ai/dsh@0.1.2-rc.1'
 # Host dependencies imported by the built DeepBuddy plugin. They are staged
 # explicitly instead of relying on dsh's current transitive graph; node-pty's
 # prebuilt native binary then lives in extraResources, outside app.asar.
@@ -66,10 +66,10 @@ node-linker=hoisted
 EOF
 echo "stage-runtime: pnpm install $LOCKED_DSH + DeepBuddy host deps (hoisted, prod) in isolated cache..." >&2
 (cd "$BUILD_DIR/runtime" && pnpm install "$LOCKED_DSH" "$LOCKED_NODE_PTY" "$LOCKED_WS" --prod --ignore-scripts)
-# Clear the pnpm workspace marker if pnpm created a nested store node_modules.
-rm -rf "$BUILD_DIR/runtime/node_modules/.pnpm"
-# Move the real tree into the staging (mv is cheaper than cp for 269M),
-# preserving the node_modules directory name ESM resolution depends on.
+# pnpm 11 still materializes packages under node_modules/.pnpm even with
+# node-linker=hoisted; the top-level names are relative symlinks into that
+# store. Deleting .pnpm leaves a 600K husk and the packaged app cannot boot.
+# Move the whole tree, including .pnpm, so those relative links stay valid.
 mkdir -p "$RUNTIME"
 mv "$BUILD_DIR/runtime/node_modules" "$RUNTIME/node_modules"
 

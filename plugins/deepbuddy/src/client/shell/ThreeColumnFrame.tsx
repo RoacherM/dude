@@ -456,6 +456,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
     const dock = useLayoutSelection(deps.layout, current => current.state.dock)
     const dockMax = useLayoutSelection(deps.layout, current => current.state.dockMax)
     const sessionStarted = useLayoutSelection(deps.layout, current => current.state.sessionStarted)
+    const sessionBound = useLayoutSelection(deps.layout, current => current.state.sessionBound)
     const detailsOpen = useLayoutSelection(deps.layout, current => current.detailsOpen)
     return (
       <AppDepsProvider value={deps}>
@@ -559,7 +560,7 @@ export function createThreeColumnFrame(deps: AppDeps): (props: RootProps) => Rea
               WebkitAppRegion: 'no-drag',
             } as CSSProperties}
           >
-            {renderSlot('details', {})}
+            {sessionBound ? renderSlot('details', {}) : null}
           </div>
           </div>
           {/* Frame-wide floating layer: click-through, entries opt back in. */}

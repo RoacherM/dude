@@ -11,7 +11,7 @@
     "typecheck": "pnpm -r --filter './plugins/*' typecheck"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh": "0.1.1-rc.2",
+    "@deepseek-ai/dsh": "0.1.2-rc.1",
     "esbuild": "^0.28.2"
   },
   "engines": {

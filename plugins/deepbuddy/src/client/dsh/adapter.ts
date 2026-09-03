@@ -10,22 +10,27 @@
  * DEVELOPMENT_RULES.md §5).
  *
  * `ctx.sessions` and `ctx.workspaces` are ordinary cordis services — the same
- * `ObservableSnapshot` objects the stock components consume — so every type
- * here derives from `ClientContext` instead of naming runtime exports, which
- * keeps the plugin compiling across harness release drift.
+ * snapshot objects the stock components consume — so every type here derives
+ * from those service faces instead of a vanished runtime barrel, which keeps
+ * the plugin compiling across harness release drift.
  */
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
+import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ISessions, SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { IWorkspaces, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 // Type-only: ui-layout's SlotMap merge names the four frame child slots
 // re-declared below. Its Context merge (`ctx.layout`) is no longer consumed by
 // any live row, so only the SlotMap merge is pulled in here. Erased at build
 // time — cross-plugin VALUE imports are a bundle-purity error.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { LayoutStore } from '../shell/layout-store.ts'
 import brandMarkUrl from '../assets/brand-mark.png'
-import { dbwarn } from '../log.ts'
 import { createFilesWire } from './files.ts'
 import type { WorkspaceFilesWire } from './files.ts'
 import { createPluginsWire, createPresetsWire } from './presets.ts'
@@ -34,38 +39,28 @@ import { installStyles } from '../ui/tokens.ts'
 import { FONT_CSS } from '../ui/fonts.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 
-// ── service faces, derived from the client context ──────────────────────────
+// ── service faces, derived from the 0.1.2 controller packages ───────────────
 
-export type Sessions = ClientContext['sessions']
-export type Workspaces = ClientContext['workspaces']
+export type Sessions = ISessions
+export type Workspaces = IWorkspaces
 
-export type SessionList = ReturnType<Sessions['list']['getSnapshot']>
+export type SessionList = SessionListState
 export type SessionId = SessionList['ids'][number]
-export type SessionSummary = SessionList['byId'] extends Partial<Record<string, infer S>> ? NonNullable<S> : never
-export type SessionBinding = NonNullable<ReturnType<Sessions['binding']>>
-export type SessionFace = SessionBinding['session']
-export type Conversation = ReturnType<SessionFace['getSnapshot']>
-export type ConversationChat = Conversation['chat']
-export type ChatSnapshot = ConversationChat
-export type ChatNode = NonNullable<ReturnType<ChatSnapshot['nodes']['get']>>
-export type AssistantStepNode = Extract<ChatNode, { kind: 'assistant-step' }>
-export type ToolCallNode = Extract<ChatNode, { kind: 'tool-call' }>
-export type ChatUserNode = Extract<ChatNode, { kind: 'user' | 'steering' | 'context' }>
-export type ChatErrorNode = Extract<ChatNode, { kind: 'turn-error' }>
-/** The deprecated legacy projection DeepBuddy formerly rendered. */
-export type ConversationNode = Conversation['nodes'][number]
-export type AssistantNode = Extract<ConversationNode, { kind: 'assistant' }>
-export type ToolResultNode = Extract<ConversationNode, { kind: 'tool-result' }>
-export type RunningToolCall = Conversation['runningCalls'][number]
+export type { SessionSummary }
 
 export type WorkspaceList = ReturnType<Workspaces['list']['getSnapshot']>
-export type WorkspaceView = WorkspaceList['items'][number]
+export type { WorkspaceView }
 export type WorkspaceId = WorkspaceView['workspaceId']
 
 /** The services every feature reaches through — one bundle per plugin fiber. */
 export interface Dsh {
   sessions: Sessions
   workspaces: Workspaces
+  /**
+   * Start a blank session (0.1.2: lives on `ctx.uiWorkspace`, not the
+   * workspace controller). Optional workspace inherits the current one.
+   */
+  startSession(workspaceId?: WorkspaceId): void
   /** Workspace file endpoints (see dsh/files.ts); null when the wire is absent. */
   files: WorkspaceFilesWire | null
   /** Agent-preset roster and authoring (see dsh/presets.ts). */
@@ -102,38 +97,34 @@ interface DshInternal extends Dsh {
  * @param ctx - the client root context (provides the services).
  * @param connection - the browser `connection` service, reached through
  * `ctx.get` rather than a Context member: the cordis Context type carries the
- * HOST connection under that name, and the runtime plugin resolves the
+ * HOST connection under that name, and the connection plugin resolves the
  * browser one the same way.
  * @returns the bundle.
  */
-export function createDsh(ctx: ClientContext, connection: ConnectionHandle): Dsh {
+export function createDsh(ctx: Context, connection: ConnectionHandle): Dsh {
   const rosterListeners = new Set<() => void>()
   const dsh: DshInternal = {
     sessions: ctx.sessions,
     workspaces: ctx.workspaces,
+    startSession(workspaceId) {
+      ctx.uiWorkspace.startSession(workspaceId)
+    },
     files: createFilesWire(connection.rpc),
-    presets: createPresetsWire(connection.api),
+    presets: createPresetsWire(ctx.remote),
     plugins: null,
     onRosterMoved(handler) {
       rosterListeners.add(handler)
       return () => { rosterListeners.delete(handler) }
     },
     async resolveHome(): Promise<string | null> {
-      // The host account's home is the `home` field of the no-path directory
-      // listing (the `browse` capability). When that surface is absent, fall
-      // back to the host process cwd — still host-provided, never client hardcoded.
+      // 0.1.2: listing with no path is the host home (uiWorkspace.listDirectory).
+      // Never hardcode a user path on the client.
       try {
-        const listing = await connection.api.host.listDirectory({}, undefined)
-        const home = (listing.result as { ok: true; value: { home?: string } } | undefined)?.value?.home
+        const listing = await ctx.uiWorkspace.listDirectory() as { home?: string; path?: string }
+        const home = listing.home ?? listing.path
         if (typeof home === 'string' && home !== '') return home
       }
-      catch { /* browse absent — fall through */ }
-      try {
-        const desc = await connection.api.host.describe({}, undefined)
-        const cwd = (desc.result as { ok: true; value: { cwd?: string } } | undefined)?.value?.cwd
-        if (typeof cwd === 'string' && cwd !== '') return cwd
-      }
-      catch { /* describe absent — no home */ }
+      catch { /* browse absent — no home */ }
       return null
     },
     notifyRosterMoved() {
@@ -251,7 +242,7 @@ function DeepBuddyBrandMark(): ReactNode {
  * @param ctx - the client root context.
  * @param dsh - the fiber's wire bundle (its roster listeners are fired here).
  */
-export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: LayoutStore): void {
+export function mountOfficialServices(ctx: Context, dsh: Dsh, layout: LayoutStore): void {
 
   // `ctx.layout` before the ui-conversation row's apply: it injects `layout`,
   // and ui-layout (the original provider) is disabled. Provide DeepBuddy's
@@ -305,88 +296,32 @@ export function mountOfficialServices(ctx: ClientContext, dsh: Dsh, layout: Layo
     return () => { layout.dispose() }
   }, 'deepbuddy: layout store')
 
-  // The dock renders only for a started session. The conversation view that
-  // used to contribute `sessionStarted` is gone (the official ConversationRoot
-  // owns the main column), so DeepBuddy observes the current session itself:
-  // a real (non-blank) session sets the dock gate; a blank or no session
-  // clears it. The official session service is the single record.
-  let watchedSessionId: string | undefined
-  let sessionOff: (() => void) | undefined
-  let bindingPoll: number | undefined
+  // The dock renders only for a started session. 0.1.2 puts `blank` on the
+  // session-list row itself, so the list snapshot is the single record —
+  // no binding poll, no per-session subscribe.
   const syncSessionStarted = (): void => {
     const list = ctx.sessions.list.getSnapshot()
     const cur = list.current
-    const session = cur === undefined ? undefined : ctx.sessions.binding(cur)?.session
-    const snapshot = session?.getSnapshot()
-    const started = snapshot !== undefined && snapshot.blank !== true
-    layout.setSessionStarted(started)
-    // Follow the current session's own snapshot: a blank session that starts
-    // (blank flips false on the first send) must open the dock gate without a
-    // list notification. Re-subscribe on a current-id change.
-    if (cur !== watchedSessionId || (cur !== undefined && session !== undefined && sessionOff === undefined)) {
-      sessionOff?.()
-      sessionOff = undefined
-      watchedSessionId = cur
-      if (bindingPoll !== undefined) {
-        window.clearInterval(bindingPoll)
-        bindingPoll = undefined
-      }
-      if (cur !== undefined && session !== undefined) {
-        sessionOff = session.subscribe(syncSessionStarted)
-      }
-      else if (cur !== undefined && session === undefined) {
-        // Binding not hydrated yet, and hydration does not re-notify `list`.
-        // One microtask never covers real IO (a cold start restoring the
-        // current session hydrates over the wire) — poll fast until the
-        // binding lands. Hydration has NO other completion signal, so a
-        // give-up would shut the dock gate on a running session forever;
-        // past 5s the poll degrades to 1s and keeps going until the binding
-        // appears or the session changes (which clears the timer above).
-        let tries = 0
-        const poll = (): void => {
-          const ready = ctx.sessions.binding(cur)?.session !== undefined
-          if (ready) {
-            window.clearInterval(bindingPoll)
-            bindingPoll = undefined
-            syncSessionStarted()
-            return
-          }
-          tries += 1
-          if (tries === 50) {
-            dbwarn('adapter', 'binding not hydrated after 5s — degrading to 1s polling', { session: cur })
-            window.clearInterval(bindingPoll)
-            bindingPoll = window.setInterval(poll, 1000)
-          }
-        }
-        bindingPoll = window.setInterval(poll, 100)
-      }
-    }
+    const summary = cur === undefined ? undefined : list.byId[cur]
+    layout.setSessionBound(cur !== undefined)
+    layout.setSessionStarted(summary !== undefined && summary.blank !== true)
   }
   const offList = ctx.sessions.list.subscribe(syncSessionStarted)
   syncSessionStarted()
-  ctx.effect(() => () => {
-    offList()
-    sessionOff?.()
-    if (bindingPoll !== undefined) window.clearInterval(bindingPoll)
-  }, 'deepbuddy: session-started watch')
+  ctx.effect(() => () => { offList() }, 'deepbuddy: session-started watch')
 
   // The Remote plane rides sub-scopes, never the plugin's own `inject`: a
   // deployment without api-remotes must still get the frame, and gating the
   ctx.inject(['remote'], (scope) => {
     scope.effect(() => {
-      // Every tab converges on a committed choice, including the one that did
-      // not make it — the runtime's own session store is the single record.
-      const offSelected = scope.remote.$on('agent-preset/selected', (sessionId, agentPreset) => {
-        ctx.sessions.noteAgentPreset(sessionId, agentPreset)
-      })
-      // The roster-moved channel is fired only by this adapter's own wiring,
-      // so the bundle's internal face is safe to reach through.
+      // 0.1.2: the session list is the single record for a committed preset;
+      // DeepBuddy only listens for roster document motion.
       const wire = dsh as DshInternal
       const offMoved = scope.remote.$on('settings/document-updated', (ns) => {
         if (ns !== PRESET_SETTINGS_NS) return
         wire.notifyRosterMoved()
       })
-      return () => { offSelected(); offMoved() }
+      return () => { offMoved() }
     }, 'deepbuddy: agent-preset host events')
   })
 

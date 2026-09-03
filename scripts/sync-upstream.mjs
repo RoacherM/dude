@@ -38,7 +38,7 @@ import { setTimeout as sleep } from 'node:timers/promises'
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)))
 
 /** The package whose published versions are the release anchor of the harness. */
-const ANCHOR = '@deepseek-ai/dsh-client-runtime'
+const ANCHOR = '@deepseek-ai/dsh-api-session-controller'
 
 /** The manifest that states the version this repo is locked to. */
 const LOCK_MANIFEST = join(REPO, 'plugins', 'deepbuddy', 'package.json')
@@ -53,7 +53,7 @@ const PROFILE = process.env.DSH_PROFILE ?? 'deepbuddy'
 const BOOT_TIMEOUT_MS = 30_000
 
 /** The four presets a stock install must offer. */
-const BUILTIN_PRESETS = ['standard', 'code', 'minimal', 'cordis']
+const BUILTIN_PRESETS = ['standard', 'ptc', 'minimal', 'cordis']
 
 /** The plugin entries that make the boot manifest DeepBuddy's, not stock. */
 const BOOT_ENTRIES = ['dsh-plugin-deepbuddy']
@@ -282,16 +282,52 @@ function survey(report) {
  * @param base - server origin.
  * @param method - the wire method, which is also the path segment.
  * @param payload - method payload.
+ * @param cookie - 0.1.2 browser-trust cookie from the token handshake.
  * @returns the parsed server response envelope.
  */
-async function rpc(base, method, payload) {
+async function rpc(base, method, args, cookie) {
   const res = await fetch(`${base}/api/${method}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'client-request', rpcId: randomUUID(), method, payload }),
+    headers: {
+      'content-type': 'application/json',
+      ...(cookie === undefined ? {} : { cookie }),
+    },
+    body: JSON.stringify({
+      type: 'client-request',
+      rpcId: randomUUID(),
+      method,
+      payload: { args },
+    }),
   })
   if (!res.ok) throw new Error(`${method}: HTTP ${res.status}`)
   return await res.json()
+}
+
+/**
+ * 0.1.2 serves the UI behind a one-shot `?token=` handshake that 303s to `/`
+ * and sets an HttpOnly cookie. Bare `/` is 401 until that cookie is present.
+ * @param log - the child's collected stdout/stderr.
+ * @returns the token, or null when the log has not printed the URL yet.
+ */
+function tokenFromLog(log) {
+  const m = /dsh web: https?:\/\/127\.0\.0\.1:\d+\/\?token=([A-Za-z0-9_-]+)/.exec(log)
+  return m === null ? null : m[1]
+}
+
+/**
+ * Trade the printed token for the session cookie subsequent fetches need.
+ * @param base - server origin.
+ * @param token - value of `?token=` from the boot URL.
+ * @returns a `name=value` Cookie header, or null when the handshake is not ready.
+ */
+async function handshakeCookie(base, token) {
+  const res = await fetch(`${base}/?token=${encodeURIComponent(token)}`, { redirect: 'manual' })
+  if (res.status !== 303 && res.status !== 200) return null
+  const setCookie = typeof res.headers.getSetCookie === 'function'
+    ? res.headers.getSetCookie()
+    : (res.headers.get('set-cookie') === null ? [] : [res.headers.get('set-cookie')])
+  const parts = setCookie.map(entry => entry.split(';')[0]).filter(Boolean)
+  return parts.length === 0 ? null : parts.join('; ')
 }
 
 /**
@@ -319,12 +355,12 @@ async function assertPortFree(port) {
  * @param dsh - path to the CLI.
  * @param port - the port to bind.
  * @param logPath - file collecting the server's own output.
- * @returns the child process, once `/` returns 200.
+ * @returns the child and the cookie the smoke checks must send.
  */
 async function bootServer(dsh, port, logPath) {
   await assertPortFree(port)
   writeFileSync(logPath, '')
-  const child = spawn(dsh, ['--profile', PROFILE, '--port', String(port)], {
+  const child = spawn(dsh, ['--profile', PROFILE, '--port', String(port), '--no-open'], {
     cwd: REPO,
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -335,13 +371,20 @@ async function bootServer(dsh, port, logPath) {
   child.stderr.on('data', collect)
 
   const deadline = Date.now() + BOOT_TIMEOUT_MS
+  const base = `http://127.0.0.1:${port}`
   while (Date.now() < deadline) {
     if (child.exitCode !== null) {
       throw new Error(`dsh exited with ${child.exitCode} before serving; log: ${logPath}`)
     }
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/`)
-      if (res.status === 200) return child
+      const token = tokenFromLog(readFileSync(logPath, 'utf8'))
+      if (token !== null) {
+        const cookie = await handshakeCookie(base, token)
+        if (cookie !== null) {
+          const res = await fetch(`${base}/`, { headers: { cookie } })
+          if (res.status === 200) return { child, cookie }
+        }
+      }
     } catch { /* not listening yet */ }
     await sleep(500)
   }
@@ -366,8 +409,9 @@ async function stopServer(child) {
  * @param base - the smoke server's origin.
  * @returns one `{name, verdict, detail}` per check, in order.
  */
-async function smokeChecks(base) {
+async function smokeChecks(base, cookie) {
   const checks = []
+  const headers = cookie === undefined ? {} : { cookie }
 
   /**
    * @param name - the check's title in the report.
@@ -385,9 +429,14 @@ async function smokeChecks(base) {
   //    the self-registering artifact the ModuleLoader expects.
   let indexHtml = ''
   await step('首页 + client bundle', async () => {
-    const index = await fetch(`${base}/`)
+    const index = await fetch(`${base}/`, { headers })
     indexHtml = await index.text()
-    const bundle = await fetch(`${base}/plugins/dsh-plugin-deepbuddy/client.js`)
+    const bootMatch = /__DSH_BOOT__["'\]]*\s*=\s*(\{[\s\S]*?\})<\/script>/.exec(indexHtml)
+    const entry = bootMatch === null
+      ? undefined
+      : JSON.parse(bootMatch[1]).entries.find(e => e.id === 'dsh-plugin-deepbuddy')
+    const bundleUrl = entry?.url ?? '/plugins/??dsh-plugin-deepbuddy/client.js'
+    const bundle = await fetch(`${base}${bundleUrl}`, { headers })
     const head = (await bundle.text()).slice(0, 120)
     const banner = head.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-deepbuddy"')
     const ok = index.status === 200 && bundle.status === 200 && banner
@@ -398,8 +447,8 @@ async function smokeChecks(base) {
   })
 
   // 2. The preset roster is the whole official agent plane reaching the UI.
-  await step('agentPreset.list', async () => {
-    const res = await rpc(base, 'agentPreset.list', {})
+  await step('agentPresets/list', async () => {
+    const res = await rpc(base, 'agentPresets/list', {}, cookie)
     const presets = res.result?.value?.presets ?? []
     const ids = presets.map(p => p.id)
     const missing = BUILTIN_PRESETS.filter(id => !ids.includes(id))
@@ -414,15 +463,15 @@ async function smokeChecks(base) {
   // 3. The rc.6 regression card: the file tree resolves a session's root even
   //    when the host plugin row cannot see that session live.
   await step('session.list → deepbuddyFiles/listDirectory', async () => {
-    const sessions = await rpc(base, 'session.list', {})
+    const sessions = await rpc(base, 'session/list', { _request: {} }, cookie)
     const items = sessions.result?.value?.items ?? []
     const withCwd = items.find(s => typeof s.cwd === 'string' && s.cwd !== '')
     if (withCwd === undefined) {
       return { verdict: 'SKIP', detail: `${items.length} 个会话，均无 cwd，无法验证文件树回退` }
     }
     const listed = await rpc(base, 'deepbuddyFiles/listDirectory', {
-      args: { request: { sessionId: withCwd.sessionId, path: '' } },
-    })
+      request: { sessionId: withCwd.sessionId ?? withCwd.id, path: '' },
+    }, cookie)
     const value = listed.result?.value
     const kind = value?.error?.kind
     const ok = listed.result?.ok === true && kind === undefined
@@ -470,8 +519,9 @@ async function cmdSmoke(report) {
   let child = null
   let checks = []
   try {
-    child = await bootServer(dsh, SMOKE_PORT, logPath)
-    checks = await smokeChecks(base)
+    const boot = await bootServer(dsh, SMOKE_PORT, logPath)
+    child = boot.child
+    checks = await smokeChecks(base, boot.cookie)
   } catch (error) {
     report.say(`✗ 起服务失败：${error?.message ?? error}`)
     report.add('')

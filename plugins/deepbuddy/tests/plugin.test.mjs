@@ -88,7 +88,6 @@ test('client bundle keeps only platform modules external', async () => {
     '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-ui-slots',
     '@deepseek-ai/dsh-client-web-react', '@deepseek-ai/dsh-client-ui-primitives',
     '@deepseek-ai/dsh-client-ui-attachment', '@deepseek-ai/dsh-client-schema-form',
-    '@deepseek-ai/dsh-client-runtime/client',
   ])
   for (const [, spec] of bundle.matchAll(/require\("([^"]+)"\)/g)) {
     assert.ok(PLATFORM.has(spec), `non-platform require in client bundle: ${spec}`)
@@ -758,16 +757,13 @@ test('client bundle provides the layout service the enabled ui-conversation inje
 
 test('client bundle reaches the preset plane without gating the root shadow', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // The plugin's own inject list stays the five services the frame cannot do
-  // without — `theme` joined them when the frame took the presenter over from
-  // the disabled ui-layout row. An assembly with no api-remotes must still get
-  // a UI, so everything optional rides a sub-scope instead.
-  assert.match(bundle, /inject = \["slots", "connection", "sessions", "workspaces", "theme"\]/)
-  // The Remote plane rides sub-scopes instead.
+  // 0.1.2 dropped `connection.api` and `workspaces.startSession`, so the
+  // frame also waits on `remote` (agent-presets / settings) and `uiWorkspace`.
+  // pluginInventory stays optional on a sub-scope: an assembly without the
+  // inventory namespace still gets a UI.
+  assert.match(bundle, /inject = \["slots", "connection", "sessions", "workspaces", "theme", "remote", "uiWorkspace"\]/)
   assert.match(bundle, /inject\(\["remote"\]/)
   assert.match(bundle, /inject\(\["remote", "remote.pluginInventory"\]/)
-  // Both host events the roster follows are subscribed.
-  assert.match(bundle, /\$on\("agent-preset\/selected"/)
   assert.match(bundle, /\$on\("settings\/document-updated"/)
 })
 
@@ -975,9 +971,8 @@ test('presets: a pick during a busy apply is staged, drained by intent generatio
           return { current: 'A', byId: { A: { id: 'A', blank: true, agentPreset: 'base' } } }
         },
       },
-      noteAgentPreset() {},
     },
-    workspaces: { startSession() {} },
+    startSession() {},
     onRosterMoved() { return () => {} },
     presets: {
       async list() { return { ok: true, value: { presets: [] } } },

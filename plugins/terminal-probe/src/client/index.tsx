@@ -11,12 +11,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the SlotMap merge that declares 'shell.overlay'. The row
 // that DECLARES the seat at runtime is DeepBuddy's frame, not this package —
 // the merge is a compile-time fact about the key's shape.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 
 /** Entry name; matches the package name the boot graph addresses. */
 export const name = 'dsh-plugin-terminal-probe'
@@ -188,7 +189,7 @@ function createPanel(rpc: ConnectionRpc): () => ReactNode {
  * Mount the panel.
  * @param ctx - client root context.
  */
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: Context): void {
   ctx.effect(() => installStyles(), 'terminal-probe: styles')
   // The browser `connection` service is reached through `ctx.get`, not a
   // Context member: the cordis Context type carries the HOST connection under

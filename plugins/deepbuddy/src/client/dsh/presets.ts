@@ -12,24 +12,19 @@
  * - the inventory rides the typed Remote `ctx.remote.pluginInventory.list()`;
  *   there is no apiproxy route for it.
  *
- * Every type derives from `ConnectionHandle['api']` / `ClientContext['remote']`
- * rather than naming a harness export, the same rule dsh.ts follows, so a
- * release that moves a payload shape breaks the typecheck instead of the UI.
+ * Every type derives from `ClientRemote` rather than naming a harness
+ * export, the same rule adapter.ts follows, so a release that moves a
+ * payload shape breaks the typecheck instead of the UI.
  *
  * Failures are values: both wires answer `{ ok: false, error }` for a business
  * refusal AND for a transport rejection, because every DeepBuddy surface shows
  * them the same way (the promptError red-line pattern) and a thrown error
  * inside a click handler would be lost.
  */
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-// Type-only: mounts the api-remotes assembly's `ctx.remote` member and its
-// `pluginInventory` namespace into this compilation. Erased at build time.
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientRemote } from '@deepseek-ai/dsh-api-remotes/client'
 import type { Dsh, SessionSummary } from './adapter.ts'
 
-type Api = ConnectionHandle['api']
-type Remote = ClientContext['remote']
+type Remote = ClientRemote
 
 /**
  * The success branch's payload of an `ok`-discriminated result union. Written
@@ -38,16 +33,13 @@ type Remote = ClientContext['remote']
  */
 type ValueOf<S> = S extends { ok: true; value: infer V } ? V : never
 
-/** Success value of an `RpcResponse<T>`-shaped reply. */
-type RpcValue<R> = Awaited<R> extends { result: infer S } ? ValueOf<S> : never
-
 /** Success value of a `RemoteResult<T>`-shaped reply. */
 type RemoteValue<R> = ValueOf<Awaited<R>>
 
-export type AgentPresetRoster = RpcValue<ReturnType<Api['agentPresets']['list']>>
+export type AgentPresetRoster = RemoteValue<ReturnType<Remote['agentPresets']['list']>>
 export type AgentPresetEntry = AgentPresetRoster['presets'][number]
-/** The branded session id `select` addresses, taken from its own payload. */
-export type PresetSessionId = Parameters<Api['agentPresets']['select']>[0]['sessionId']
+/** The branded session id `select` addresses, taken from its first argument. */
+export type PresetSessionId = Parameters<Remote['agentPresets']['select']>[0]
 export type PluginInventory = RemoteValue<ReturnType<Remote['pluginInventory']['list']>>
 export type PluginEntry = PluginInventory['entries'][number]
 
@@ -87,50 +79,53 @@ function messageOf(error: unknown): string {
 }
 
 /**
- * Build the preset wire over the connection's api face.
- * @param api - `connection.api`.
+ * Fold one Remote result: a business refusal AND a transport rejection are
+ * the same thing to a surface that renders a message.
+ */
+async function remoteUnary<T>(run: () => Promise<{ ok: true; value: T } | { ok: false; error: { code?: string; message: string } }>): Promise<PresetResult<T>> {
+  try {
+    const result = await run()
+    return result.ok
+      ? { ok: true, value: result.value }
+      : { ok: false, error: result.error.message }
+  }
+  catch (error) {
+    return { ok: false, error: messageOf(error) }
+  }
+}
+
+/**
+ * Build the preset wire over the typed Remote namespaces (`ctx.remote`).
+ * 0.1.2 dropped `connection.api`; agent-presets and settings ride remotes.
+ * @param remote - `ctx.remote`.
  * @returns the five calls the frame makes.
  */
-export function createPresetsWire(api: Api): PresetsWire {
-  /**
-   * Fold one apiproxy call: the transport can reject, and the reply can carry
-   * `ok: false`; both mean the same thing to a surface that renders a message.
-   */
-  const unary = async <T>(run: () => Promise<{ result: { ok: true; value: T } | { ok: false; error: { message: string } } }>): Promise<PresetResult<T>> => {
-    try {
-      const response = await run()
-      return response.result.ok
-        ? { ok: true, value: response.result.value }
-        : { ok: false, error: response.result.error.message }
-    }
-    catch (error) {
-      return { ok: false, error: messageOf(error) }
-    }
-  }
+export function createPresetsWire(remote: Remote): PresetsWire {
   return {
     async list() {
-      return await unary(() => api.agentPresets.list({}))
+      return await remoteUnary(() => remote.agentPresets.list())
     },
     async select(sessionId, agentPreset) {
-      const r = await unary(() => api.agentPresets.select({ sessionId, agentPreset }))
-      return r.ok ? { ok: true, value: r.value.agentPreset } : r
+      const r = await remoteUnary(() => remote.agentPresets.select(sessionId, agentPreset))
+      return r.ok ? { ok: true, value: r.value } : r
     },
     async copy(from, agentPreset, name) {
       const trimmed = name.trim()
       // `exactOptionalPropertyTypes`: an absent name and a `undefined` one are
       // different shapes on the wire, and an empty one would name the row ''.
-      const r = await unary(() => api.agentPresets.copy({ from, agentPreset, ...trimmed === '' ? {} : { name: trimmed } }))
-      return r.ok ? { ok: true, value: r.value.agentPreset } : r
+      const r = await remoteUnary(() => remote.agentPresets.copy(from, agentPreset, trimmed === '' ? undefined : trimmed))
+      return r.ok ? { ok: true, value: agentPreset } : r
     },
     async remove(agentPreset) {
-      const r = await unary(() => api.agentPresets.remove({ agentPreset }))
+      const r = await remoteUnary(() => remote.agentPresets.deletePreset(agentPreset))
       return r.ok ? { ok: true, value: null } : r
     },
     async setDefault(agentPreset) {
-      const r = await unary(() => api.settings.update({
-        ns: DEFAULT_PRESET_NS,
-        patch: { [DEFAULT_PRESET_FIELD]: agentPreset },
-      }))
+      const r = await remoteUnary(() => remote.settings.update(
+        DEFAULT_PRESET_NS,
+        { [DEFAULT_PRESET_FIELD]: agentPreset },
+        undefined,
+      ))
       return r.ok ? { ok: true, value: null } : r
     },
   }
@@ -379,7 +374,7 @@ export class PresetPlane {
     const seq = this.stageSeq
     const summary = this.currentSummary
     if (staged === null || summary === undefined || this.state.presetBusy) return
-    if (!summary.blank || summary.agentPreset === staged) {
+    if (!summary.blank) {
       this.setState({ stagedPreset: null })
       return
     }
@@ -395,9 +390,6 @@ export class PresetPlane {
       return
     }
     this.setState({ presetBusy: false, ...consumed })
-    // Fold the committed choice into the session store this renders from; the
-    // host's own `agent-preset/selected` does the same for every other tab.
-    this.dsh.sessions.noteAgentPreset(summary.id, r.value)
     this.drainStage()
   }
 
@@ -465,6 +457,6 @@ export class PresetPlane {
   startCreatorSession = (): void => {
     this.stageSeq += 1
     this.setState({ stagedPreset: 'cordis', presetError: null })
-    this.dsh.workspaces.startSession()
+    this.dsh.startSession()
   }
 }

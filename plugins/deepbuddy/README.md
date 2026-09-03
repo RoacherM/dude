@@ -68,9 +68,9 @@ src/client/
 
 ## 数据面
 
-- 直接注入 `ctx.sessions` / `ctx.workspaces`（与官方组件消费同一批 ObservableSnapshot
-  服务），类型全部从 `ClientContext` 派生（`src/client/dsh/adapter.ts`），抗 harness
-  版本漂移。
+- 直接注入 `ctx.sessions` / `ctx.workspaces`（0.1.2 起由
+  `dsh-api-session-controller` / `dsh-api-workspace-controller` 提供），类型从
+  那些服务面派生（`src/client/dsh/adapter.ts`），抗 harness 版本漂移。
 - 文件树/文件读取走本插件 host 半部自持的 `deepbuddyFiles/listDirectory|readFile`
   Typert Remote 端点（host：`src/host.js`，session 围栏 + sessionPersistence 回退；
   client 线：`src/client/dsh/files.ts`，含 session 水合重试）。

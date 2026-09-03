@@ -5,9 +5,12 @@
  * port, spawns the staged dsh runtime (real files, not pnpm symlinks — see
  * stage-runtime.sh / electron-builder extraResources) with Electron's bundled
  * Node (ELECTRON_RUN_AS_NODE=1 + process.execPath, Node 22.x ≥ dsh's engine),
- * polls the HTTP endpoint, and loads the window. DSH_HOME is ~/.deepbuddy, the
- * isolated root (config isolation, wave 9); first run migrates from ~/.dsh
- * (canonical semantics live in scripts/deepbuddy — this JS mirrors them).
+ * polls until dsh prints its listen URL, and loads that URL in the window.
+ * 0.1.2 gates the UI behind a one-shot `?token=` handshake; the shell reads
+ * the token from dsh stdout so a double-click never asks the user for a URL.
+ * DSH_HOME is ~/.deepbuddy, the isolated root (config isolation, wave 9);
+ * first run migrates from ~/.dsh (canonical semantics live in scripts/deepbuddy
+ * — this JS mirrors them).
  *
  * The app runs an APP-EXCLUSIVE profile: `desktop` (not the dev `deepbuddy`
  * profile, whose plugin node_modules links back into this repo and would fight
@@ -132,10 +135,14 @@ function ensureDesktopProfile(resourcesDir) {
 
 // ── spawn + poll dsh ───────────────────────────────────────────────────────
 
+/** dsh 0.1.2 prints `dsh web: http://127.0.0.1:PORT/?token=...`; 0.1.1 omitted the query. */
+const DSH_WEB_LINE = /dsh web: (https?:\/\/127\.0\.0\.1:\d+\/\S*)/
+
 /**
  * Spawn the packaged dsh runtime as a child of this main process, using
  * ELECTRON_RUN_AS_NODE so the harness runs on Electron's bundled Node (no
- * system Node dependency). Returns the child (killed on app quit).
+ * system Node dependency). Returns the child (killed on app quit) and a
+ * promise for the listen URL dsh prints — including the 0.1.2 handshake token.
  */
 function spawnDsh(port) {
   const resourcesDir = process.resourcesPath ?? ''
@@ -148,7 +155,14 @@ function spawnDsh(port) {
   if (!fs.existsSync(binPath)) {
     throw new Error(`[deepbuddy] packaged dsh runtime missing at ${binPath}`)
   }
-  const profileDir = ensureDesktopProfile(resourcesDir)
+  ensureDesktopProfile(resourcesDir)
+
+  let settleUrl
+  const readyUrl = new Promise((resolve, reject) => {
+    settleUrl = { resolve, reject }
+  })
+  let buf = ''
+  let settled = false
 
   const child = spawn(process.execPath, [binPath, '--profile', APP_PROFILE, '--port', String(port), '--no-open'], {
     cwd: runtimeDir,
@@ -167,23 +181,41 @@ function spawnDsh(port) {
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
-  child.stdout?.on('data', (b) => process.stdout.write(`[dsh] ${b}`))
-  child.stderr?.on('data', (b) => process.stderr.write(`[dsh] ${b}`))
-  return child
+  const onData = (b) => {
+    const text = b.toString()
+    process.stdout.write(`[dsh] ${text}`)
+    if (settled) return
+    buf += text
+    const m = DSH_WEB_LINE.exec(buf)
+    if (m) {
+      settled = true
+      settleUrl.resolve(m[1].trim())
+    }
+  }
+  child.stdout?.on('data', onData)
+  child.stderr?.on('data', onData)
+  child.once('exit', (code) => {
+    if (!settled) settleUrl.reject(new Error(`[deepbuddy] dsh exited ${code} before printing its listen URL`))
+  })
+  return { child, readyUrl }
 }
 
-/** Poll the endpoint until HTTP 200 (the web server is up), or timeout. */
-function waitForHttp(url, timeoutMs = 60000) {
+/**
+ * Poll until the origin answers. Do NOT fetch the `?token=` URL here:
+ * that handshake is for the BrowserWindow session. 0.1.2's bare `/` is 401
+ * until Chromium spends the token; 0.1.1's bare `/` is 200. Either means up.
+ */
+function waitForOrigin(origin, timeoutMs = 60000) {
   const start = Date.now()
   const attempt = () => new Promise((resolve) => {
-    fetch(url, { method: 'GET', signal: AbortSignal.timeout(2000) })
-      .then((r) => resolve(r.ok))
+    fetch(origin, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(2000) })
+      .then((r) => resolve(r.status === 200 || r.status === 401 || r.status === 303))
       .catch(() => resolve(false))
   })
   return new Promise((resolve, reject) => {
     const tick = async () => {
       if (await attempt()) return resolve()
-      if (Date.now() - start > timeoutMs) return reject(new Error(`[deepbuddy] dsh did not answer ${url} within ${timeoutMs}ms`))
+      if (Date.now() - start > timeoutMs) return reject(new Error(`[deepbuddy] dsh did not answer ${origin} within ${timeoutMs}ms`))
       setTimeout(tick, RETRY_MS)
     }
     tick()
@@ -221,14 +253,23 @@ function createWindow(url) {
     },
   })
   win.removeMenu?.()
-  win.loadURL(url)
-  win.webContents.on('did-fail-load', () => {
-    // The retry can outlive the window (quit while the server is still
-    // coming up) — a loadURL on a destroyed window is an uncaught TypeError.
+  win.webContents.on('console-message', (_e, level, message) => {
+    console.log(`[renderer:${level}] ${message}`)
+  })
+  win.webContents.on('did-finish-load', () => {
+    console.log('[deepbuddy] loaded', win.webContents.getURL())
+  })
+  win.webContents.on('did-fail-load', (_e, code, desc, validatedURL, isMainFrame) => {
+    console.log('[deepbuddy] fail-load', { code, desc, validatedURL, isMainFrame })
+    // 303 handshake and in-page redirects abort the first navigation (-3).
+    // Retrying the token URL fights Chromium's follow and can stick on a
+    // black window (the shell's backgroundColor is already #0b0b0c).
+    if (!isMainFrame || code === -3) return
     setTimeout(() => {
       if (!win.isDestroyed()) void win.loadURL(url)
     }, RETRY_MS)
   })
+  win.loadURL(url)
   win.webContents.setWindowOpenHandler(({ url: u }) => {
     void shell.openExternal(u)
     return { action: 'deny' }
@@ -280,11 +321,13 @@ app.whenReady().then(async () => {
     // Packaged: own the dsh lifecycle.
     ensureDeepBuddyHome()
     const port = await findFreePort()
-    const url = `http://127.0.0.1:${port}`
-    const child = spawnDsh(port)
+    const { child, readyUrl } = spawnDsh(port)
     app.on('before-quit', () => killChild(child))
+    let url
     try {
-      await waitForHttp(url)
+      url = await readyUrl
+      const origin = new URL(url)
+      await waitForOrigin(`${origin.protocol}//${origin.host}/`)
     } catch (e) {
       killChild(child)
       throw e

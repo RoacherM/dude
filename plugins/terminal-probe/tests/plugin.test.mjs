@@ -70,7 +70,6 @@ test('client bundle keeps only platform modules external', async () => {
     '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-ui-slots',
     '@deepseek-ai/dsh-client-web-react', '@deepseek-ai/dsh-client-ui-primitives',
     '@deepseek-ai/dsh-client-ui-attachment', '@deepseek-ai/dsh-client-schema-form',
-    '@deepseek-ai/dsh-client-runtime/client',
   ])
   for (const [, spec] of bundle.matchAll(/require\("([^"]+)"\)/g)) {
     assert.ok(PLATFORM.has(spec), `non-platform require in client bundle: ${spec}`)

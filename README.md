@@ -32,7 +32,7 @@ DeepBuddy 自绘的三列两区桌面 UI。
 │ DeepBuddy UI 插件  plugins/deepbuddy/                    │  本仓库唯一自研代码
 │  接管 root 与 frame 四子槽；消费官方服务                  │
 ├─────────────────────────────────────────────────────────┤
-│ 官方 dsh core + web UI 插件（npm 锁 0.1.1-rc.*）          │  零修改
+│ 官方 dsh core + web UI 插件（npm 锁 0.1.2-rc.*）          │  零修改
 │  @deepseek-ai/dsh-base + @deepseek-ai/dsh-web-app        │
 └─────────────────────────────────────────────────────────┘
 ```

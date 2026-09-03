@@ -13,8 +13,9 @@
 import type { ReactNode } from 'react'
 import type { ChildrenDecl } from '@deepseek-ai/dsh-client-ui-slots'
 
+import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { createDsh, FRAME_SLOT_MAP, mountOfficialServices, ROOT_PRIORITY, SIDEBAR_SLOT_MAP } from '../dsh/adapter.ts'
 import { PresetPlane } from '../dsh/presets.ts'
 import { LayoutStore, useLayoutSelection } from '../shell/layout-store.ts'
@@ -36,7 +37,7 @@ export const name = 'dsh-plugin-deepbuddy'
  * base-layer rows of any web assembly; optional services ride sub-scopes below
  * so a deployment missing one still gets a UI.
  */
-export const inject = ['slots', 'connection', 'sessions', 'workspaces', 'theme']
+export const inject = ['slots', 'connection', 'sessions', 'workspaces', 'theme', 'remote', 'uiWorkspace']
 
 /**
  * The dock-toggle action in the official session header. The old dock toggle
@@ -69,7 +70,7 @@ function DeepBuddyDockToggle(): ReactNode {
  * Mount the distribution as the shell.
  * @param ctx - client root context.
  */
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: Context): void {
   // The browser `connection` service is reached through `ctx.get`, not a
   // Context member: the cordis Context type carries the HOST connection under
   // that name, and the runtime plugin resolves the browser one the same way.

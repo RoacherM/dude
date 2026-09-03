@@ -85,6 +85,12 @@ export interface LayoutState {
    */
   sessionStarted: boolean
   /**
+   * Whether a current session id exists (blank included). 0.1.2 throws if a
+   * `scope: 'session'` slot is rendered without a binding; the official
+   * `details` seat needs this, not `sessionStarted`.
+   */
+  sessionBound: boolean
+  /**
    * Committed sidebar width in px. React renders it; a drag writes the DOM
    * directly and commits here on release, so the width survives the collapse/
    * expand unmount cycle.
@@ -140,6 +146,7 @@ export class LayoutStore {
     dockTabs: [],
     dockActive: null,
     sessionStarted: false,
+    sessionBound: false,
     sidePx: SIDEBAR_DEFAULT,
     dockPx: 0,
     tabs: {},
@@ -449,6 +456,12 @@ export class LayoutStore {
   setSessionStarted = (started: boolean): void => {
     if (this.state.sessionStarted === started) return
     this.patch({ sessionStarted: started })
+  }
+
+  /** Contribute whether `sessions.list.current` is set (blank included). */
+  setSessionBound = (bound: boolean): void => {
+    if (this.state.sessionBound === bound) return
+    this.patch({ sessionBound: bound })
   }
 
   // ── inspector tabs ────────────────────────────────────────────────────────

@@ -20,7 +20,7 @@ export function ChatNav(): ReactNode {
     // Reveal the conversation the new session lands in — same rule as
     // clicking a session row (FEATURE_MAP §2).
     layout.setView(CONVERSATION_APP_ID)
-    dsh.workspaces.startSession()
+    dsh.startSession()
   }
   return (
     <button
