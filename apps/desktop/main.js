@@ -446,7 +446,8 @@ function setMenu() {
   ]))
 }
 
-app.whenReady().then(async () => {
+/** Settles once startup has created the first window (or failed). */
+const started = app.whenReady().then(async () => {
   const bundledDir = path.join(process.resourcesPath ?? '', 'dsh-runtime')
   if (fs.existsSync(path.join(bundledDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'))) {
     // Packaged: own the dsh lifecycle.
@@ -478,9 +479,14 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    // Re-open against the same URL — the dsh child is still alive (it only
-    // dies on before-quit), so this reconnects instead of erroring out.
-    createWindow(currentUrl)
-  }
+  // macOS sends activate for a second double-click or a Dock click while dsh
+  // is still booting. Startup opens the first window itself, so wait for it;
+  // opening one here too gave two windows.
+  void started.then(() => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      // Re-open against the same URL — the dsh child is still alive (it only
+      // dies on before-quit), so this reconnects instead of erroring out.
+      createWindow(currentUrl)
+    }
+  })
 })
