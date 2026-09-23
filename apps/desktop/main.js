@@ -18,16 +18,21 @@
  * ~/.dude/profiles/dude-app and points its node_modules/dsh-plugin-dude
  * at the packaged plugin in resources.
  *
+ * The kernel can also be hot-updated from the app menu without reinstalling
+ * the app: kernel.js installs a newer dsh into ~/.dude/runtime/<version> and
+ * the highest installed version wins at launch.
+ *
  * Dev mode (`electron .` from the repo, no packaged resources) keeps the old
  * behavior: it loads DSH_WEB_URL (default http://127.0.0.1:3080) without
  * spawning or migrating anything.
  */
-const { app, BrowserWindow, dialog, nativeTheme, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, nativeTheme, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
+const kernel = require('./kernel.js')
 
 /** Where the dev profile's web server listens; `--port` moves it. */
 const DSH_WEB_URL = process.env.DSH_WEB_URL ?? 'http://127.0.0.1:3080'
@@ -152,9 +157,9 @@ const DSH_WEB_LINE = /dsh web: (https?:\/\/127\.0\.0\.1:\d+\/\S*)/
  * system Node dependency). Returns the child (killed on app quit) and a
  * promise for the listen URL dsh prints — including the 0.1.2 handshake token.
  */
-function spawnDsh(port) {
+function spawnDsh(port, runtime) {
   const resourcesDir = process.resourcesPath ?? ''
-  const runtimeDir = path.join(resourcesDir, 'dsh-runtime')
+  const runtimeDir = runtime.dir
   // The staged tree lives under a literal node_modules so ESM bare imports
   // between the staged packages resolve by ancestor walk-up — NODE_PATH is
   // CJS-only and cannot carry them (stage-runtime.sh).
@@ -164,6 +169,14 @@ function spawnDsh(port) {
     throw new Error(`[dude] packaged dsh runtime missing at ${binPath}`)
   }
   ensureDesktopProfile(resourcesDir)
+  if (runtime.installed) {
+    // Since dsh 0.1.5 the loader imports the plugin from the runtime's own
+    // node_modules. The baseline has it staged; a hot-update runtime gets the
+    // packaged plugin copied in on every launch, like the profile does.
+    const pluginDest = path.join(modulesDir, 'dsh-plugin-dude')
+    fs.rmSync(pluginDest, { recursive: true, force: true })
+    fs.cpSync(path.join(resourcesDir, 'dude-plugin'), pluginDest, { recursive: true })
+  }
 
   let settleUrl
   const readyUrl = new Promise((resolve, reject) => {
@@ -257,7 +270,6 @@ function createWindow(url) {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
     title: 'Dude',
   })
-  win.removeMenu?.()
   win.webContents.on('console-message', (_e, level, message) => {
     console.log(`[renderer:${level}] ${message}`)
   })
@@ -271,7 +283,7 @@ function createWindow(url) {
     // blank window.
     if (!isMainFrame || code === -3) return
     setTimeout(() => {
-      if (!win.isDestroyed()) void win.loadURL(url)
+      if (!win.isDestroyed()) void win.loadURL(currentUrl)
     }, RETRY_MS)
   })
   win.loadURL(url)
@@ -307,29 +319,153 @@ function killChild(child) {
   }
 }
 
+/** Kill the dsh child and wait until it has exited, so its port and files are free. */
+function stopChild(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve()
+  const exited = new Promise((resolve) => child.once('exit', resolve))
+  killChild(child)
+  const force = setTimeout(() => {
+    try { process.kill(-child.pid, 'SIGKILL') } catch { /* already gone */ }
+  }, 5000)
+  return exited.finally(() => clearTimeout(force))
+}
+
+// ── kernel lifecycle and hot update ─────────────────────────────────────────
+
+/** The running kernel: `{ child, runtime, url }`. Only this module replaces it. */
+let dsh = null
+/** Set while a hot update downloads or restarts the kernel. */
+let updating = null
+
+/** Boot a runtime on a free port and wait until it answers. */
+async function startDsh(runtime) {
+  const { child, readyUrl } = spawnDsh(await findFreePort(), runtime)
+  try {
+    const url = await readyUrl
+    const origin = new URL(url)
+    await waitForOrigin(`${origin.protocol}//${origin.host}/`)
+    return { child, runtime, url }
+  } catch (e) {
+    await stopChild(child)
+    throw e
+  }
+}
+
+/** Point every window (and any window `activate` reopens) at the kernel's URL. */
+function showUrl(url) {
+  currentUrl = url
+  for (const win of BrowserWindow.getAllWindows()) void win.loadURL(url)
+}
+
+/**
+ * Install the newest upstream release and restart the kernel on it. The old
+ * kernel stops first so two servers never share ~/.dude. If the new one does
+ * not boot, its runtime is deleted and the old one starts again.
+ */
+async function updateKernel() {
+  const current = dsh.runtime.version
+  const latest = await kernel.latestRelease()
+  if (kernel.compareVersions(latest, current) <= 0) {
+    await dialog.showMessageBox({
+      message: `内核已是最新：dsh ${current}`,
+      detail: 'npm 的 latest / next 通道没有更新的版本。',
+    })
+    return
+  }
+  const { response } = await dialog.showMessageBox({
+    type: 'question',
+    buttons: ['下载并更新', '取消'],
+    defaultId: 0,
+    cancelId: 1,
+    message: `发现 dsh ${latest}（当前 ${current}）`,
+    detail: '新内核从 npm 下载，约 280MB，在后台进行。装好后内核会重启，正在运行的任务会中断。\n\n'
+      + '这个版本没有经过 Dude 的测试和冒烟。新内核起不来时会删掉它，回到当前版本。',
+  })
+  if (response !== 0) return
+
+  updating = `正在下载 dsh ${latest}…`
+  setMenu()
+  const dir = await kernel.installRuntime(latest, path.join(process.resourcesPath, 'pnpm', 'bin', 'pnpm.mjs'))
+  updating = `正在重启内核 dsh ${latest}…`
+  setMenu()
+  const previous = dsh
+  await stopChild(previous.child)
+  try {
+    dsh = await startDsh({ dir, version: latest, installed: true })
+  } catch (e) {
+    fs.rmSync(dir, { recursive: true, force: true })
+    dsh = await startDsh(previous.runtime)
+    showUrl(dsh.url)
+    throw new Error(`dsh ${latest} 没能启动，已回到 ${previous.runtime.version}。\n\n${e?.message ?? e}`)
+  }
+  showUrl(dsh.url)
+  kernel.removeOtherRuntimes(dir)
+  await dialog.showMessageBox({ message: `内核已更新到 dsh ${latest}` })
+}
+
+function checkForKernelUpdate() {
+  updateKernel()
+    .catch((e) => {
+      console.error('[dude] kernel update failed:', e)
+      dialog.showErrorBox('内核更新失败', String(e?.message ?? e))
+    })
+    .finally(() => {
+      updating = null
+      setMenu()
+    })
+}
+
+/**
+ * The standard macOS menus plus, in the packaged app, the kernel update item.
+ * The edit menu is what makes ⌘C / ⌘V work in the page.
+ */
+function setMenu() {
+  const kernelItems = dsh === null ? [] : [
+    { label: updating ?? `检查内核更新…（当前 dsh ${dsh.runtime.version}）`, enabled: updating === null, click: checkForKernelUpdate },
+    { type: 'separator' },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      role: 'appMenu',
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        ...kernelItems,
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' },
+  ]))
+}
+
 app.whenReady().then(async () => {
-  const resourcesDir = process.resourcesPath ?? ''
-  const runtimeBin = path.join(resourcesDir, 'dsh-runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
-  if (fs.existsSync(runtimeBin)) {
+  const bundledDir = path.join(process.resourcesPath ?? '', 'dsh-runtime')
+  if (fs.existsSync(path.join(bundledDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'))) {
     // Packaged: own the dsh lifecycle.
     ensureDudeHome()
-    const port = await findFreePort()
-    const { child, readyUrl } = spawnDsh(port)
-    app.on('before-quit', () => killChild(child))
-    let url
+    app.on('before-quit', () => { if (dsh !== null) killChild(dsh.child) })
+    const runtime = kernel.activeRuntime(bundledDir)
     try {
-      url = await readyUrl
-      const origin = new URL(url)
-      await waitForOrigin(`${origin.protocol}//${origin.host}/`)
+      dsh = await startDsh(runtime)
     } catch (e) {
-      killChild(child)
-      throw e
+      if (!runtime.installed) throw e
+      throw new Error(`内核 dsh ${runtime.version} 没能启动。删掉 ${runtime.dir} 可回到 app 自带的版本。\n\n${e?.message ?? e}`)
     }
-    createWindow(url)
+    setMenu()
+    createWindow(dsh.url)
   } else {
     // Dev mode: no packaged runtime — fall back to the old behavior (external
     // DSH_WEB_URL / default 3080).
     console.log('[dude] dev mode: no packaged runtime, loading %s', DSH_WEB_URL)
+    setMenu()
     createWindow(DSH_WEB_URL)
   }
 }).catch((e) => {

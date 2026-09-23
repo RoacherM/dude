@@ -76,8 +76,8 @@
 ## 6. Electron 与 Host
 
 - Renderer 不直接 import Node 或 Electron 主进程 API。
-- 壳没有 Preload、没有 IPC、没有原生菜单（`win.removeMenu()`），不开 `webviewTag`；
-  新增任何一样前先确认官方 web 客户端里做不到。
+- 壳没有 Preload、没有 IPC，不开 `webviewTag`；原生菜单是 macOS 标准菜单加「检查内核
+  更新…」一项。新增任何一样前先确认官方 web 客户端里做不到。
 - Host 半部（`src/host.js`）当前是空实现；若未来需要新增 host 侧能力，先确认官方
   Host 服务是否已提供等价端点，不重建会话围栏或文件端点这类官方已有能力。
 - DSH Approval 与 Sandbox 继续作为真正权限边界。

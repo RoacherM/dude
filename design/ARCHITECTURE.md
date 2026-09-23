@@ -32,8 +32,9 @@ Dude 只贡献官方没有的一样东西：**桌面窗口集成**——一段�
 
 ```text
 Electron Main（apps/desktop/main.js）
-├── 窗口：hiddenInset、红绿灯位置、底色；removeMenu() 去掉原生菜单
+├── 窗口：hiddenInset、红绿灯位置、底色
 ├── 打包版起停 dsh 子进程（profile dude-app）
+├── 内核热更新（kernel.js，Dude 菜单「检查内核更新…」）
 └── 页面开新窗口的链接交给系统浏览器
 
 Renderer（官方 web 客户端；没有 Preload，没有 IPC）
@@ -119,7 +120,8 @@ Dude 不持有任何领域状态或布局状态：
 
 ## 8. Electron 边界
 
-- Main 只管窗口和打包版的 dsh 子进程；`win.removeMenu()`，没有原生菜单。
+- Main 只管窗口、打包版的 dsh 子进程和内核热更新。原生菜单是 macOS 标准菜单，只多一项
+  「检查内核更新…」，见下面「内核热更新」。
 - 没有 Preload，没有 IPC，不开 `webviewTag`。Renderer 就是官方 web 客户端，只经 dsh
   的 HTTP 接口工作，拿不到 `fs`、`child_process` 或 `ipcRenderer`。
 - 插件没有 host 侧业务端点（`deepbuddyFiles/*`、`/deepbuddy/media`、
@@ -133,6 +135,36 @@ Dude 不持有任何领域状态或布局状态：
     `~/.dsh/profiles/dude` 用 `cp -RP` 复制，保留指向本仓库的插件符号链接；
   - `~/.dude/profiles/dude-app`：打包版专用，由 `apps/desktop/main.js` 每次启动时生成，
     插件从 app 资源目录复制进来，不链接源码仓库，也不与开发热更新冲突。
+
+### 内核热更新
+
+内核就是 dsh 运行时（`@deepseek-ai/dsh` 及其依赖）。app 自带一份（基线，版本等于根
+`package.json` 锁定的版本）。热更新不重装 app，用 app 自带的 pnpm 把 npm 上更新的版本
+装进 `~/.dude/runtime/<版本>`。
+
+| 状态 | 在哪 | 谁写 |
+|---|---|---|
+| 基线内核 | `Dude.app/Contents/Resources/dsh-runtime` | 打包（`stage-runtime.sh`） |
+| 热更新内核 | `~/.dude/runtime/<版本>`，装到 `.install-<版本>` 成功后才改名 | `kernel.js` |
+| 正在跑的内核 | `main.js` 的 `dsh`（子进程、运行时、地址） | `main.js` |
+
+启动时跑版本最高的那份，所以装了更新的 app 之后，它自带的新基线会盖过旧的热更新。
+目录列表就是全部状态，没有另存的指针文件。
+
+```text
+点「检查内核更新…」
+  → 查 npm dist-tags，取 latest / next 中较新者（alpha 不算，与 sync-upstream 同规则）
+  → 不比当前新：提示「已是最新」
+  → 更新：确认 → pnpm 装到 ~/.dude/runtime/<新版本>
+          → 停掉旧内核（两个 dsh 不同时写 ~/.dude）→ 起新内核
+          → 起来了：窗口切到新地址，删掉其它热更新目录
+          → 起不来：删掉新目录，重起旧内核，报错
+```
+
+热更新跳过了 `sync-upstream.mjs --apply` 的契约测试和冒烟，这是取舍：更新快，但壳与
+dsh 之间的接口（启动参数、`dsh web:` 输出行、插件加载位置、保留的 profile 名）如果变了，
+问题会直接出现在用户机器上。起不来的会自动回退；起来了但拖拽区失效（官方改了样式表选中
+的 `data-*` 属性）不会自动发现，要在 app 里点一遍。
 
 ---
 

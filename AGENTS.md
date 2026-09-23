@@ -26,7 +26,8 @@ Electron 窗口里。
 - DSH 负责领域能力、数据、窗口布局（`ui-layout`）、左右两侧栏与会话交互。
 - Dude 插件只加一样官方没有的东西：窗口拖拽区域（含红绿灯避让）的样式表。Hero 用官方
   鲸鱼标记。`src/host.js` 是空实现。
-- Electron 壳只管窗口和 dsh 进程启停；没有 Preload、IPC 或原生菜单。
+- Electron 壳只管窗口、dsh 进程启停和内核热更新（Dude 菜单「检查内核更新…」）；没有
+  Preload 或 IPC。
 - 官方缺的能力（例如锁定版本的右栏没有终端和浏览器）是能力缺口，靠升级官方版本补，
   不自绘平行实现。
 - 不做公共 UI 插件平台：不实现动态 UI 插件、Placement DSL、`when` DSL 或 Manifest。

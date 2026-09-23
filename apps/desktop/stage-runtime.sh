@@ -18,6 +18,7 @@
 # Produces:
 #   apps/desktop/staging/runtime/node_modules/  real npm tree (@deepseek-ai/dsh + deps)
 #   apps/desktop/staging/plugin/                built dsh-plugin-dude (lib + package.json + cordis.patch.yml)
+#   apps/desktop/staging/pnpm/                  the pnpm package, for the kernel hot update
 #
 # The tree MUST stay under a directory literally named node_modules: ESM bare
 # imports resolve ONLY by walking up node_modules directories (NODE_PATH is
@@ -67,6 +68,17 @@ echo "stage-runtime: pnpm install $LOCKED_DSH (hoisted, prod) in isolated cache.
 # Move the whole tree, including .pnpm, so those relative links stay valid.
 mkdir -p "$RUNTIME"
 mv "$BUILD_DIR/runtime/node_modules" "$RUNTIME/node_modules"
+
+# The kernel hot update (kernel.js) installs newer dsh releases on the user's
+# machine, which has no package manager of its own. Ship the pnpm that built
+# this runtime; it has no dependencies and runs on Electron's bundled Node.
+PNPM_VERSION="$(pnpm --version)"
+echo "stage-runtime: pnpm install pnpm@$PNPM_VERSION for the kernel hot update..." >&2
+mkdir -p "$BUILD_DIR/pnpm"
+echo '{ "name": "dude-pnpm", "private": true }' > "$BUILD_DIR/pnpm/package.json"
+cp "$BUILD_DIR/runtime/.npmrc" "$BUILD_DIR/pnpm/.npmrc"
+(cd "$BUILD_DIR/pnpm" && pnpm install "pnpm@$PNPM_VERSION" --prod --ignore-scripts)
+cp -RL "$BUILD_DIR/pnpm/node_modules/pnpm" "$STAGING/pnpm"
 
 # The built Dude plugin rides along as an extra resource so the app's
 # generated profile can point its node_modules/dsh-plugin-dude here.

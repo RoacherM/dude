@@ -8,7 +8,8 @@ Dude 桌面壳（Electron）。一个 `hiddenInset` macOS 窗口加载发行版 
   标题栏按钮、右栏 Tab 同一行，落在插件给左栏留出的 36px 顶带里。
 - 窗口底色跟官方地色 `--dsw-alias-bg-base` 一致：浅色 `#ffffff`、深色 `#151517`，
   快速拖动或缩放时不闪错色。
-- `win.removeMenu()`，没有原生菜单；没有 Preload、IPC 或 webview。
+- 菜单是 macOS 标准菜单（⌘C / ⌘V 靠它），Dude 菜单里多一项「检查内核更新…」；没有
+  Preload、IPC 或 webview。
 - 页面里打开新窗口的链接一律交给系统浏览器。
 - 应用图标 `build/icon.png`（胖蓝鱼），源图 `build/icon-source.png`。
 
@@ -22,13 +23,28 @@ Dude 桌面壳（Electron）。一个 `hiddenInset` macOS 窗口加载发行版 
    `dsh --profile dude-app --port <端口> --no-open`，`DSH_HOME=~/.dude`；
 4. 从 dsh 输出里读带一次性 `?token=` 的地址，等服务应答后加载。
 
+第 3 步用的内核是 app 自带的基线和 `~/.dude/runtime/` 里热更新装的版本中最高的那个。
+「检查内核更新…」从 npm 装更新的 dsh 进去并重启内核，起不来就删掉它、回到原来的版本
+（设计见 `design/ARCHITECTURE.md` §8「内核热更新」，代码在 `kernel.js`）。
+
 退出 app 时连同 dsh 进程组一起结束；关窗不退出，重新激活时连回同一个服务。
 
 开发版（`electron .`，没有打包资源）：不起 dsh，直接加载 `DSH_WEB_URL`
 （默认 `http://127.0.0.1:3080`），加载失败每 1.2s 重试。
 
+开发用 profile `dude` 装在 `~/.dude/profiles/dude`，插件以链接方式指回本仓库，改完
+`pnpm build` 后刷新页面即可。第一次先装好它：
+
 ```sh
-# 1. 起开发 profile（安装步骤见仓库根 README）
+export DSH_HOME=~/.dude
+node_modules/.bin/dsh --profile dude --from-default-profile web --dump-config > /dev/null
+node_modules/.bin/dsh plugin --profile dude add "$PWD/plugins/dude"
+```
+
+`scripts/dude` 设好 `DSH_HOME=~/.dude` 后起这个 profile，参数原样透传：
+
+```sh
+# 1. 起开发 profile
 ./scripts/dude --port 3081 --no-open
 
 # 2. 启动壳
@@ -44,8 +60,8 @@ pnpm --filter dude-desktop build   # 备料 + 出 .app 和 dmg（macOS arm64）
 ```
 
 `stage-runtime.sh` 在仓库外用 hoisted 布局装锁定版本的 `@deepseek-ai/dsh`，得到不链接
-回仓库的自包含依赖树，连同构建好的插件一起作为 extraResources 打进 app。它只在
-`plugins/dude/lib/client.js` 不存在时才构建插件，改过插件源码后先 `pnpm build` 再打包。
+回仓库的自包含依赖树，连同构建好的插件和热更新要用的 pnpm 一起作为 extraResources 打进
+app。插件每次打包都会重新构建。
 
 ## 验证钩子
 
