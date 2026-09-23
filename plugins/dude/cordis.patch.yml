@@ -1,8 +1,7 @@
 # dsh-plugin-dude bundle layer.
 # `dsh plugin add` activates this patch automatically because package.json
 # declares dsh.bundle.patch. The row loads the (empty) host half; the browser
-# half — the stylesheet and the hero brand mark — rides the
-# same row through dsh.client.
+# half — the stylesheet — rides the same row through dsh.client.
 #
 # This layer applies after @deepseek-ai/dsh-web-app's. Official ui-layout
 # owns the frame and ctx.layout. Official ui-sidebar owns the left column.

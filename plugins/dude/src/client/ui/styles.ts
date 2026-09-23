@@ -1,6 +1,6 @@
 /**
  * The rules Dude adds to the official app: window drag surfaces for the
- * hidden-inset title bar, and the hero mark's hover motion.
+ * hidden-inset title bar.
  *
  * `-webkit-app-region: drag` makes an element move the window, and it
  * swallows clicks on everything inside it unless that part opts out with
@@ -27,24 +27,6 @@ button, a, input, textarea, select,
 [role="tab"], [role="button"], [role="menuitem"], [role="treeitem"],
 [contenteditable], [role="dialog"], [role="menu"], [role="listbox"], [role="option"] {
   -webkit-app-region: no-drag;
-}
-
-/* ── hero fish hover motion ────────────────────────────────────────────── */
-/* The hero mark sways on hover. Reduced motion keeps it still. */
-.hero-fish {
-  transform-origin: 50% 60%;
-  display: block;
-  overflow: visible;
-}
-@keyframes dbdy-hero-fish-swim {
-  0%, 100% { transform: none; }
-  35% { transform: rotate(-4deg) translate(-.4px, -.9px); }
-  70% { transform: rotate(1.6deg) translate(.3px, .2px); }
-}
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .hero-fish:hover {
-    animation: 1.6s ease-in-out infinite dbdy-hero-fish-swim;
-  }
 }
 
 /* Window drag surfaces. Each one is an official element whose clickable

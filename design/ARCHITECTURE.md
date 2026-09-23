@@ -18,14 +18,11 @@ Dude 直接复用 DSH 的全部官方能力与交互：
 - 持久日志、恢复、Fork 与运行状态；
 - 底层文件系统、沙箱与环境能力。
 
-Dude 只贡献官方没有的两样东西：
-
-- **桌面窗口集成**：一段全局样式表，声明窗口拖拽区域，让左栏顶部避开 macOS 红绿灯，
-  右栏全屏时让出展开的左栏；
-- **品牌**：把 Dude 自己的胖蓝鱼标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽。
+Dude 只贡献官方没有的一样东西：**桌面窗口集成**——一段全局样式表，声明窗口拖拽区域，
+让左栏顶部避开 macOS 红绿灯，右栏全屏时让出展开的左栏。Hero 的品牌标记也用官方的鲸鱼。
 
 没有第二套侧栏、没有自绘布局、没有自己的检查器（Inspector）。官方缺的能力是能力缺口，
-靠升级官方版本补，不自绘平行实现：锁定的 0.1.5-rc.2 官方右栏只有 Files 页，终端和
+靠升级官方版本补，不自绘平行实现：锁定的 0.1.5-rc.3 官方右栏只有 Files 页，终端和
 浏览器由上游 0.1.6 的 `ui-sidebar-terminal` / `ui-sidebar-browser` 提供。已删除的自研
 部分见 `FEATURE_MAP.md` §3。
 
@@ -45,9 +42,8 @@ Renderer（官方 web 客户端；没有 Preload，没有 IPC）
     ├── Official Sidebar（工作区 / 会话列表 / 设置入口）
     ├── Official Conversation（会话流 / Agent Loop / Hero / 输入框）
     ├── Official Rightbar（dockkit：锁定版本只有 Files 页）
-    └── Dude Plugin（唯一自研代码，两个 Effect）
-        ├── 样式表：窗口拖拽区域 + 红绿灯避让 + Hero 悬停动效
-        └── Hero 品牌标记：注册进 conversation.hero.brand.mark
+    └── Dude Plugin（唯一自研代码，一个 Effect）
+        └── 样式表：窗口拖拽区域 + 红绿灯避让
 ```
 
 ---
@@ -58,10 +54,10 @@ Renderer（官方 web 客户端；没有 Preload，没有 IPC）
 
 ```text
 src/client/
-├── app/App.tsx        # 入口：inject = ['slots']，调用 mountOfficialServices
-├── dsh/adapter.ts      # 唯一理解 DSH ABI 的层：安装样式表 + 注册 Hero 品牌标记
+├── app/App.tsx        # 入口：调用 mountOfficialServices
+├── dsh/adapter.ts      # 唯一接触官方应用的层：安装样式表
 └── ui/
-    └── styles.ts       # 拖拽区域与红绿灯避让 CSS + Hero 悬停动效
+    └── styles.ts       # 拖拽区域与红绿灯避让 CSS
 src/host.js              # Host 半部，空实现（只声明 name + 空 apply）
 ```
 
@@ -86,12 +82,8 @@ DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugi
 
 ## 5. DSH ABI 边界
 
-`dsh/adapter.ts` 是唯一理解 DSH slot 注册 ABI（`ctx.slots.inject` / `.register`）的
-文件。它做两件事，各自一个独立 `ctx.effect`，卸载互不影响：
-
-- 安装样式表（`ui/styles.ts`）；
-- 把 `DudeBrandMark` 注册进官方 `conversation.hero.brand.mark` 槽（优先级 -1，
-  低于官方 fish logo 的优先级 0，因此单一 occupant 的槽渲染 Dude 的版本）。
+`dsh/adapter.ts` 是唯一接触官方应用的文件，只做一件事：在一个 `ctx.effect` 里安装
+样式表（`ui/styles.ts`），卸载时移除。Dude 不注册任何 slot，不 `inject` 任何服务。
 
 不覆写内部私有 ABI，不注入破坏性 CSS 隐藏官方组件。样式表通过官方组件暴露的 `data-*`
 属性（`data-rightbar-col` / `data-phase` / `data-composer-seat` / `data-dockkit-strip` /
@@ -112,7 +104,6 @@ Dude 不持有任何领域状态或布局状态：
 |---|---|
 | Session / Agent / Model / Preset / 文件 / 布局显隐宽度 | DSH 官方（Session Service / Agent Service / ui-layout / dockkit） |
 | 样式表是否安装 | `ctx.effect`（插件挂载期间恒为已安装） |
-| Hero 品牌标记是否注册 | `ctx.effect`（插件挂载期间恒为已注册） |
 
 没有 Layout Store、Inspector Store 或 Terminal Resource Manager。
 
@@ -166,9 +157,9 @@ Dude 不持有任何领域状态或布局状态：
   不出现禁用它们的行；
 - `client.js` bundle 不重新声明 `root`、`sidebar`、`main` 或第二份 `layout`；
 - 插件卸载后官方界面完整可用，不留下任何遗留状态；
-- 两个 Effect（样式表、Hero 品牌标记）各自独立清理；
+- 唯一的 Effect（样式表）卸载时清理干净；
 - 客户端 bundle 里不出现已删除功能的痕迹（xterm、`deepbuddyFiles`、
   `/deepbuddy/terminal` 等）；
 - `node scripts/sync-upstream.mjs --smoke` 三项全绿；
 - 在桌面壳里目测：左栏展开和收起、右栏全屏几种状态下，红绿灯不压官方控件，拖拽区域
-  能拖窗口、其中的按钮能点；Hero 显示 Dude 的鱼标。
+  能拖窗口、其中的按钮能点；打开设置弹窗时拖拽区全部让位；Hero 显示官方鲸鱼。

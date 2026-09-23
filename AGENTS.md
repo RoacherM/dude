@@ -24,8 +24,8 @@ Dude 是 DeepSeek Harness（dsh）的桌面发行版：官方 `dsh-web-app` 界�
 Electron 窗口里。
 
 - DSH 负责领域能力、数据、窗口布局（`ui-layout`）、左右两侧栏与会话交互。
-- Dude 插件只加两样官方没有的东西：窗口拖拽区域（含红绿灯避让）的样式表，和 Hero
-  品牌标记。`src/host.js` 是空实现。
+- Dude 插件只加一样官方没有的东西：窗口拖拽区域（含红绿灯避让）的样式表。Hero 用官方
+  鲸鱼标记。`src/host.js` 是空实现。
 - Electron 壳只管窗口和 dsh 进程启停；没有 Preload、IPC 或原生菜单。
 - 官方缺的能力（例如锁定版本的右栏没有终端和浏览器）是能力缺口，靠升级官方版本补，
   不自绘平行实现。

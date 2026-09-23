@@ -8,7 +8,7 @@
 ## 1. Rule of Three
 
 同一类问题出现第三个真实实例之前，不建立公共框架。当前插件只有两个客户端模块
-（`dsh/adapter.ts` 安装样式表、注册 Hero 品牌标记），远未触发任何抽象信号。
+（`dsh/adapter.ts` 安装样式表，`ui/styles.ts` 是样式本身），远未触发任何抽象信号。
 
 禁止为“未来也许会有”提前建立：
 
@@ -30,8 +30,8 @@
 2. **避免脆弱的 CSS 隐藏**：绝不通过 `div[class*="_hash"] > span` 暴力隐藏或改写官方
    组件；拖拽区域这类必须定位官方元素的规则，用官方暴露的 `data-*` 属性，不用 hash
    化的 CSS 类名。
-3. **通过标准扩展槽接入**：Dude 唯一使用的扩展点是 `conversation.hero.brand.mark`
-   槽。新增接入点前先确认官方是否已提供等价能力。
+3. **通过标准扩展槽接入**：Dude 当前不使用任何扩展槽。确需接入时只用官方公开 Slot，
+   接入前先确认官方是否已提供等价能力。
 4. **不覆写内部私有 ABI**：不模拟或依赖官方未公开的内部方法，保障上游快速升级零破损。
 5. **保障上游零阻力升级**：任何改动必须保证在 DSH 核心包 `pnpm update` 时不发生布局
    断裂或服务成环死锁——`cordis.patch.yml` 不禁用 `ui-layout` / `ui-sidebar`，不重复
@@ -41,18 +41,17 @@
 
 ## 3. DSH ABI 约束
 
-`dsh/adapter.ts` 是唯一理解 DSH slot 注册 ABI 的文件。新增或修改与官方 slot、Cordis
-Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inject` 声明 + 调用
-`mountOfficialServices`），`ui/styles.ts` 只是一段 CSS 字符串和装卸它的函数，不感知
-DSH ABI。
+`dsh/adapter.ts` 是唯一接触官方应用的文件。新增或修改与官方 slot、Cordis Context
+相关的代码只应出现在这里；`app/App.tsx` 只做装配（调用 `mountOfficialServices`），
+`ui/styles.ts` 只是一段 CSS 字符串和装卸它的函数，不感知 DSH ABI。
 
 ---
 
 ## 4. Cordis / DSH Effect
 
-- 所有注册（样式表安装、slot 注册）必须包在 `ctx.effect(...)` 里，插件卸载时自动撤销；
+- 所有注册（当前只有样式表安装）必须包在 `ctx.effect(...)` 里，插件卸载时自动撤销；
 - 不依赖偶然的加载顺序；
-- 依赖通过 `inject` 显式声明（当前只有 `['slots']`）；
+- 依赖通过 `inject` 显式声明（当前不注入任何服务）；
 - 仅在官方已有真实扩展点时直接使用 Slot，不为了 Dude 的普通样式或品牌需求另建
   平行 Slot 系统。
 
@@ -70,7 +69,7 @@ DSH ABI。
   `DESIGN_INTENT.md` §2。
 - 拖拽区域加在官方元素本身上，不盖覆盖层；被全屏面板盖住的拖拽区（会话标题栏、收起的
   左栏 rail）要切回 `no-drag`，因为 Electron 不管上面画了什么都照收拖拽矩形。
-- 没有 Dude 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §4。
+- 没有 Dude 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §3。
 
 ---
 
@@ -91,11 +90,11 @@ DSH ABI。
 `cordis.patch.yml` / `package.json`）当作契约来检查：
 
 - bundle 自注册、依赖表只包含平台外部模块；
-- `cordis.patch.yml` 不禁用官方 `ui-layout` / `ui-sidebar`，`ui-conversation` 保持启用；
+- `cordis.patch.yml` 只 insert `dude` 一行，不禁用或重述任何官方行；
 - bundle 不重新声明 `root` / `sidebar` / `main` / 第二份 `layout` / 第二套主题；
-- 拖拽区域规则和 Hero 品牌标记存在于 bundle 中；
+- 拖拽区域规则存在于 bundle 中，且每条 drag 规则都带「无模态对话框」守卫；
 - 右栏全屏的锚点规则、收起左栏时的 80px 让位、全屏时的 `no-drag` 切换存在于 bundle 中；
-- Hero 鱼标不是官方鲸鱼的路径；
+- bundle 不注册任何 slot，Hero 保持官方鲸鱼；
 - 已删除的功能（Terminal、`deepbuddyFiles`、`/deepbuddy/terminal` 等）
   不出现在 bundle 或 host 半部里；
 - `package.json` 没有运行时 `dependencies`（`node-pty` / `ws` 等已随 Inspector 一起

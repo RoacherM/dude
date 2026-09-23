@@ -25,26 +25,10 @@ importers:
         version: 25.1.8(bluebird@3.7.2)(electron-builder-squirrel-windows@25.1.8)(supports-color@7.2.0)
 
   plugins/dude:
-    dependencies:
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: ^4.0.2
         version: 4.0.2(@deepseek-ai/cordis-plugin-include@1.0.7)(@deepseek-ai/cordis-plugin-loader@1.0.3)
-      '@deepseek-ai/dsh-client-ui-renderer':
-        specifier: 0.1.5-rc.3
-        version: 0.1.5-rc.3(@deepseek-ai/cordis@4.0.2)
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: 0.1.5-rc.3
-        version: 0.1.5-rc.3(@deepseek-ai/cordis@4.0.2)
-      '@types/react':
-        specifier: ^18.3.12
-        version: 18.3.31
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

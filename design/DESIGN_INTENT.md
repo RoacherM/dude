@@ -9,12 +9,8 @@
 
 Dude 不拥有布局。窗口的列结构、列的开关、列内容、响应式收列，全部由官方
 `ui-layout` / `ui-sidebar` / `ui-conversation` / dockkit（官方右栏）决定。Dude 在这套
-官方结构上只叠加两层：
-
-```text
-窗口拖拽区域   —— 让无边框窗口在 macOS 上可以用鼠标拖动、给红绿灯让位、不挡官方控件
-Hero 品牌标记  —— 官方 Hero 的 conversation.hero.brand.mark 槽渲染 Dude 的鱼标
-```
+官方结构上只叠加一层：窗口拖拽区域——让无边框窗口在 macOS 上可以用鼠标拖动、给红绿灯
+让位、不挡官方控件。Hero 的品牌标记是官方的鲸鱼，Dude 不替换。
 
 没有 Sidebar / Workbench / Inspector 三列职责划分，没有 Dude 自己的状态栏、
 Column、KIT 组件或设计令牌体系。官方组件的圆角、配色、字体由官方主题决定，Dude 不
@@ -70,32 +66,11 @@ Electron 收集拖拽区域时不管上面画了什么，被面板盖住的拖�
 
 ---
 
-## 3. Hero 品牌标记
-
-官方 Hero（首页 / 空白会话页）用 `conversation.hero.brand.mark` 槽渲染品牌图标，默认
-是官方的鲸鱼 Logo（`FishLogo`，priority 0）。Dude 在同一个槽以 priority -1 注册
-自己的版本（`DudeBrandMark`，`plugins/dude/src/client/dsh/adapter.ts`），单 occupant
-槽只渲染较低优先级的 Dude 版本。
-
-`DudeBrandMark` 是 Dude 自己的鱼：一条胖蓝鱼 SVG，34×25，宽度与官方 34px 的品牌格
-一致，用 app 图标（`apps/desktop/build/icon.png`）的配色——鱼身 `#7FB3E6`、肚皮
-`#F7F1EC`、眼睛 `#3F6FB5`、腮红 `#F2C4C0`。颜色直接写死，不走 `currentColor`，所以
-浅色和深色主题下是同一条鱼。
-
-官方的标题（“探索未至之境”）和预览徽标（“预览版”）不受影响，因为它们是
-`ui-conversation` 独占的本地化文案，不经过这个槽。
-
-标记本身有一个悬停摆动动效（`.hero-fish:hover`），`prefers-reduced-motion: reduce`
-时不播放。
-
----
-
-## 4. 视觉语言
+## 3. 视觉语言
 
 Dude 不维护独立的颜色、圆角、间距、字体或组件体系。界面视觉由官方主题（`--dsw-*`
 变量）决定，正文和代码字体都是官方的。Dude 自己决定的视觉只有：
 
-- **Hero 鱼标**：见第 3 节；
 - **红绿灯避让与右栏全屏**：见第 2 节的三处尺寸和位置调整；
 - **窗口底色**：壳的 `backgroundColor` 跟官方地色 `--dsw-alias-bg-base` 一致（浅色
   `#ffffff`、深色 `#151517`），快速拖动或缩放、网页还没重绘时不闪错色。
@@ -106,7 +81,7 @@ Dude 不维护独立的颜色、圆角、间距、字体或组件体系。界面
 
 ---
 
-## 5. 当前不做
+## 4. 当前不做
 
 - 自绘的第二套侧栏、状态栏或检查器；
 - 布局响应式规则（完全由官方 ui-layout 处理）；
@@ -114,6 +89,6 @@ Dude 不维护独立的颜色、圆角、间距、字体或组件体系。界面
 - 任意 Feature 自定位浮窗、任意 Webview 或 Overlay；
 - 多主题生态。
 
-终端和浏览器是锁定版本（0.1.5-rc.2）的能力缺口：官方右栏目前只有 Files 页，上游
+终端和浏览器是锁定版本（0.1.5-rc.3）的能力缺口：官方右栏目前只有 Files 页，上游
 0.1.6 加入 `ui-sidebar-terminal` / `ui-sidebar-browser`，升级官方版本即补上。Dude 不自建
 平行实现。

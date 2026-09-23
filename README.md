@@ -1,7 +1,7 @@
 # Dude
 
 DeepSeek Harness（`dsh`）的桌面发行版：官方界面一件不少、一行不改，Dude 只加
-窗口拖拽区域和 Hero 品牌标记两样官方没有的东西。
+窗口拖拽区域这一样官方没有的东西。
 「官方有、Dude 没有」是缺陷；Dude 不再自绘平行界面。
 
 ## 文档
@@ -14,13 +14,13 @@ DeepSeek Harness（`dsh`）的桌面发行版：官方界面一件不少、一�
 |---|---|---|
 | [`AGENTS.md`](AGENTS.md) | Coding Agent 开工约束与提交检查（在仓库根） | 执行入口 |
 | [`ARCHITECTURE.md`](design/ARCHITECTURE.md) | 系统边界、模块关系、DSH 集成方式 | 最高 |
-| [`DESIGN_INTENT.md`](design/DESIGN_INTENT.md) | 窗口拖拽区域与 Hero 品牌标记的交互基线 | 高 |
+| [`DESIGN_INTENT.md`](design/DESIGN_INTENT.md) | 窗口拖拽区域的交互基线 | 高 |
 | [`DEVELOPMENT_RULES.md`](design/DEVELOPMENT_RULES.md) | 工程约束与检查表 | 高 |
 | [`FEATURE_MAP.md`](design/FEATURE_MAP.md) | 当前功能落点、状态 Owner | 当前状态 |
 | [`prototype/`](design/prototype/README.md) | 早期自绘界面的可交互原型 | 历史视觉参考，不约束实现 |
 
 代码与现行设计已对齐：Dude 界面本体就是官方 `dsh-web-app`，插件只叠加窗口拖拽
-区域和 Hero 品牌标记。
+区域。
 
 ## 当前实现
 
@@ -30,9 +30,9 @@ DeepSeek Harness（`dsh`）的桌面发行版：官方界面一件不少、一�
 │  hiddenInset 红绿灯 / 打包版起停 dsh / 外链 → 系统浏览器  │
 ├───────────────────────────────────────────────────────────┤
 │ Dude UI 插件  plugins/dude/                               │  本仓库唯一自研代码
-│  样式表（拖拽区域 + 红绿灯避让）+ Hero 鱼标               │
+│  样式表（拖拽区域 + 红绿灯避让）                          │
 ├───────────────────────────────────────────────────────────┤
-│ 官方 dsh core + web UI 插件（npm 锁 0.1.5-rc.2）          │  零修改
+│ 官方 dsh core + web UI 插件（npm 锁 0.1.5-rc.3）          │  零修改
 │  @deepseek-ai/dsh-base + @deepseek-ai/dsh-web-app         │
 └───────────────────────────────────────────────────────────┘
 ```
@@ -42,9 +42,8 @@ DeepSeek Harness（`dsh`）的桌面发行版：官方界面一件不少、一�
   锁定版本的右栏只有 Files 页；终端（`ui-sidebar-terminal`）和浏览器
   （`ui-sidebar-browser`）页由上游 0.1.6 加入，升级后才有。
 - **Dude UI 插件**：不注册 `root`，不提供第二份 `layout`，没有自己的右栏或检查器。
-  只做两件事：装一段样式表（窗口拖拽区域，左栏顶部让出红绿灯），把 Dude 自己的
-  胖蓝鱼标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽。`src/host.js`
-  是空实现，没有 host 侧业务端点。
+  只做一件事：装一段样式表（窗口拖拽区域，左栏顶部让出红绿灯）。Hero 用官方的鲸鱼
+  标记。`src/host.js` 是空实现，没有 host 侧业务端点。
 - **Electron 壳**：一个窗口。打包版自带 dsh runtime，自己起服务再加载；开发时加载
   本地跑着的发行版 profile。详见 `apps/desktop/README.md`。
 
@@ -139,7 +138,7 @@ boot 清单含 `dsh-plugin-dude` 这一项。
 
 绿了之后还要人工确认一遍
 [`ARCHITECTURE.md` §10「架构验收」](design/ARCHITECTURE.md)列的几项（官方
-`ui-layout` / `ui-sidebar` / `ui-conversation` 仍启用、拖拽区域和 Hero 品牌标记正常）
+`ui-layout` / `ui-sidebar` / `ui-conversation` 仍启用、拖拽区域正常、Hero 是官方鲸鱼）
 才能 commit。
 每次运行的报告追加写 `reports/upstream-sync/<日期>.md`（入库，不 gitignore）。
 每周一自动查一次：`.github/workflows/upstream-sync.yml`。

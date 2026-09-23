@@ -1,8 +1,8 @@
 /**
  * Contract tests for the dude plugin. The client bundle is checked as
  * an artifact: self-registration, no stray `@deepseek-ai/` requires beyond
- * the platform table, the official frame left alone, the drag surfaces and
- * the hero mark present, and the removed inspector features absent.
+ * the platform table, the official frame and hero left alone, the drag
+ * surfaces present, and the removed inspector features absent.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -142,20 +142,13 @@ test('slots: no second sidebar and no hand-rolled new-task button', async () => 
   assert.doesNotMatch(bundle, /\\u6253\\u5F00\\u68C0\\u67E5\\u5668/)
 })
 
-test('slots: Dude registers its brand into the official hero mark', async () => {
+test('the official hero brand mark stays the official whale', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // The official hero brand mark seat is filled by Dude at priority -1
-  // (the ui-brand-official fish registers at 0). The mark carries the
-  // Dude name. The official hero's brand cell is a fixed 34px grid
-  // column and its headline/preview texts are a single-occupant locale NS
-  // (ui-conversation owns it), so the Dude slogan cannot replace the
-  // official headline without breaking ui-conversation — the name is the
-  // achievable override.
-  assert.match(bundle, /name: "conversation\.hero\.brand\.mark"/)
-  assert.match(bundle, /priority: -1/)
-  assert.match(bundle, /"aria-label": "Dude"/)
-  // The mark is Dude's own fish, not the official whale path.
-  assert.doesNotMatch(bundle, /M22\.9168 1\.43018/)
+  // ui-brand-official fills `conversation.hero.brand.mark`. Dude registers
+  // nothing into any slot, so the hero is exactly the official one.
+  assert.doesNotMatch(bundle, /conversation\.hero\.brand\.mark/)
+  assert.doesNotMatch(bundle, /slots\.register|slots\.inject/)
+  assert.doesNotMatch(bundle, /hero-fish|DudeBrandMark/)
   // Dude no longer renders the composer chrome (the official apply does).
   assert.doesNotMatch(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
   assert.doesNotMatch(bundle, /ModelChip/)
@@ -170,7 +163,7 @@ test('the removed inspector features and their host half are gone', async () => 
   assert.doesNotMatch(bundle, /Archivo|font\/woff2|--dsw-font-family/)
   assert.doesNotMatch(bundle, /deepbuddyFiles/)
   assert.doesNotMatch(bundle, /\/deepbuddy\/terminal/)
-  assert.match(bundle, /inject = \["slots"\]/)
+  assert.doesNotMatch(bundle, /inject = /)
   const host = await readFile(join(root, 'lib/index.js'), 'utf8')
   assert.doesNotMatch(host, /node-pty|WebSocketServer|typert/)
   const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))

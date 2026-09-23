@@ -15,11 +15,10 @@
 | Rightbar（锁定版本只有 Files 页） | 右列 | DSH 官方（dockkit） | DSH Files / Workspaces | DSH 官方 |
 | Settings | 弹层 | DSH 官方 | DSH Settings / Models / Presets | DSH 官方 |
 | 窗口拖拽区域与红绿灯避让 | 左栏、Hero 页、右栏 Tab 栏、会话标题栏；右栏全屏面板 | Dude | CSS `-webkit-app-region`、`padding`、anchor positioning | `ctx.effect`（样式表） |
-| Hero 品牌标记 | 官方 Hero | Dude | `conversation.hero.brand.mark` 槽 | `ctx.effect`（slot 注册） |
 | Terminal / Browser | 右列 | 缺口：锁定版本官方没有 | 上游 0.1.6 的 `ui-sidebar-terminal` / `ui-sidebar-browser` | 升级后归 DSH 官方 |
 
-除去窗口拖拽区域与红绿灯避让、Hero 品牌标记这两项，其余全部是 DSH 官方原生能力，
-Dude 不做任何包装或代理。
+除去窗口拖拽区域与红绿灯避让这一项，其余全部是 DSH 官方原生能力（包括 Hero 的鲸鱼
+品牌标记），Dude 不做任何包装或代理。
 
 ---
 
@@ -27,7 +26,7 @@ Dude 不做任何包装或代理。
 
 Dude 客户端只有两个模块（见 `ARCHITECTURE.md` §3）：
 
-- `dsh/adapter.ts`：安装样式表、注册 Hero 品牌标记，各自一个独立的 `ctx.effect`；
+- `dsh/adapter.ts`：在一个 `ctx.effect` 里安装样式表；
 - `ui/styles.ts`：一段 CSS 常量和装卸它的 `installStyles()`，被 `adapter.ts` 调用。
 
 `src/host.js` 是空实现（只有 `name` 和一个空 `apply`）——没有 host 侧业务逻辑。
@@ -48,7 +47,8 @@ Dude 客户端只有两个模块（见 `ARCHITECTURE.md` §3）：
 - Session 围栏与 host 侧 `deepbuddyFiles/*` 端点、`/deepbuddy/media`、
   `/deepbuddy/terminal`；
 - `node-pty` / `ws` / `xterm` 等运行时依赖；
-- Archivo 正文字体：官方样式压过了它，从未生效，已删除。
+- Archivo 正文字体：官方样式压过了它，从未生效，已删除；
+- Hero 胖蓝鱼标记（`DudeBrandMark`）：Hero 改回官方鲸鱼。
 
 不要为了恢复其中某一项而重建平行实现——官方已经覆盖的（例如 Files 预览）直接消费；
 官方即将提供的（终端、浏览器）等升级；官方确实没有的，新增前先确认这是不是第三个真实
@@ -64,5 +64,5 @@ Dude 当前架构被认为跑通，当：
 - 插件卸载后官方界面完整可用，没有残留状态或死代码路径；
 - 窗口拖拽区域覆盖 macOS 无边框窗口的可用性需求，红绿灯不压官方控件，且不挡任何
   官方控件点击（左栏展开 / 收起、右栏全屏都成立）；
-- Hero 品牌标记渲染 Dude 的胖蓝鱼，官方标题与徽标不受影响；
-- 客户端 bundle 体积保持精简（当前约 8KB），不夹带已删除功能的死代码。
+- Hero 显示官方鲸鱼，Dude 不注册任何 slot；
+- 客户端 bundle 体积保持精简（当前约 6KB），不夹带已删除功能的死代码。
