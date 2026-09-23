@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-terminal-probe",
   "version": "0.1.0",
-  "description": "P4a acceptance probe: a third-party terminal panel that enters the DeepBuddy frame through the open 'shell.overlay' surface and runs commands over its own Remote endpoint. Disposable — see README.",
+  "description": "P4a acceptance probe: a third-party terminal panel that enters the Dude frame through the open 'shell.overlay' surface and runs commands over its own Remote endpoint. Disposable — see README.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

@@ -1,5 +1,5 @@
 /**
- * Build for the deepbuddy plugin's two halves. Same contract as
+ * Build for the dude plugin's two halves. Same contract as
  * workspace-shell's build: the host half as ordinary Node ESM, the browser
  * half as the CJS factory bundle the dsh client module loader registers.
  * The four loader rules (only platform modules external; everything else

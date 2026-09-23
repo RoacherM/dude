@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#
+# Dude launcher — runs the distribution against DSH_HOME=~/.dude so
+# its configuration never mixes with the official ~/.dsh (config isolation,
+# wave 9).
+#
+# On first run (when ~/.dude does not exist) it migrates the user data it
+# needs from ~/.dsh by COPYING — the official ~/.dsh is never modified. The
+# migration preserves symlinks (cp -RP) because
+# profiles/dude/node_modules/dsh-plugin-dude points back at this
+# repository, and a copied real directory would break hot-reload.
+#
+# Usage: scripts/dude [--port N] [--no-open] [dsh args...]
+set -euo pipefail
+
+# Repository root = the directory containing this script's parent.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DSH_BIN="$REPO_ROOT/node_modules/.bin/dsh"
+
+# Dude's isolated harness home.
+DUDE_HOME="$HOME/.dude"
+OFFICIAL_HOME="$HOME/.dsh"
+
+# fail-fast: the dsh executable is a hard prerequisite, never silently skipped.
+if [[ ! -x "$DSH_BIN" ]]; then
+  echo "dude: dsh executable not found at $DSH_BIN — run 'pnpm install' in $REPO_ROOT first." >&2
+  exit 1
+fi
+
+# First run: migrate the officially-owned user data into the isolated root.
+if [[ ! -d "$DUDE_HOME" ]]; then
+  if [[ ! -d "$OFFICIAL_HOME" ]]; then
+    echo "dude: no ~/.dude and no ~/.dsh to migrate from — creating an empty home at $DUDE_HOME." >&2
+    mkdir -p "$DUDE_HOME/profiles"
+  else
+    echo "dude: first run — migrating Dude configuration from $OFFICIAL_HOME to $DUDE_HOME (copy, ~/.dsh untouched)." >&2
+    mkdir -p "$DUDE_HOME"
+    mkdir -p "$DUDE_HOME/profiles"
+
+    # Files (copied, never moved — the official home stays byte-identical).
+    for f in settings.yaml .credentials.yaml .anonymous-user-id; do
+      if [[ -e "$OFFICIAL_HOME/$f" ]]; then
+        cp -P "$OFFICIAL_HOME/$f" "$DUDE_HOME/$f"
+      fi
+    done
+
+    # Directories.  -R recurses, -P preserves symlinks (critical: the profile's
+    # dsh-plugin-dude is a symlink back into this repository).
+    for d in .agent-presets storages sessions; do
+      if [[ -d "$OFFICIAL_HOME/$d" ]]; then
+        cp -RP "$OFFICIAL_HOME/$d" "$DUDE_HOME/$d"
+      fi
+    done
+
+    # The dude profile only — never profiles/web or profiles/headless
+    # (those are the official distribution's own).
+    if [[ -d "$OFFICIAL_HOME/profiles/dude" ]]; then
+      cp -RP "$OFFICIAL_HOME/profiles/dude" "$DUDE_HOME/profiles/dude"
+    fi
+
+    echo "dude: migration complete — Dude data now lives at $DUDE_HOME (source $OFFICIAL_HOME was read-only)." >&2
+  fi
+else
+  echo "dude: $DUDE_HOME already exists — skipping first-run migration (no merge/sync)." >&2
+fi
+
+export DSH_HOME="$DUDE_HOME"
+exec "$DSH_BIN" --profile dude "$@"

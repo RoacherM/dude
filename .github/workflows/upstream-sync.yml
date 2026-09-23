@@ -38,10 +38,10 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: 检出 deepbuddy
+      - name: 检出 dude
         uses: actions/checkout@v4
         with:
-          path: deepbuddy
+          path: dude
 
       - name: pnpm
         uses: pnpm/action-setup@v4
@@ -53,26 +53,26 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
-          cache-dependency-path: deepbuddy/pnpm-lock.yaml
+          cache-dependency-path: dude/pnpm-lock.yaml
 
       - name: 安装依赖
-        working-directory: deepbuddy
+        working-directory: dude
         run: pnpm install --frozen-lockfile
 
-      # 冒烟要一个装好的 deepbuddy profile。dsh 自己不在 workspace 里，
+      # 冒烟要一个装好的 dude profile。dsh 自己不在 workspace 里，
       # 用 npx 现装；--apply 的 bump 只动 npm 依赖，不动这个 CLI。
-      - name: 装 dsh CLI 并组装 deepbuddy profile
+      - name: 装 dsh CLI 并组装 dude profile
         run: |
           set -euo pipefail
           npm exec -y dsh@latest -- --version
           DSH="$(command -v dsh || echo 'npm exec -y dsh@latest --')"
           echo "DSH=$DSH" >> "$GITHUB_ENV"
-          $DSH plugin --profile deepbuddy add "$PWD/deepbuddy/plugins/deepbuddy"
-          $DSH --profile deepbuddy --dump-config | grep '^# =='
+          $DSH plugin --profile dude add "$PWD/dude/plugins/dude"
+          $DSH --profile dude --dump-config | grep '^# =='
 
       - name: check
         id: check
-        working-directory: deepbuddy
+        working-directory: dude
         # exit 1 是「有新版」，不是错误；把它折成一个输出量。
         run: |
           if node scripts/sync-upstream.mjs --check; then
@@ -84,7 +84,7 @@ jobs:
       - name: apply（bump + 门禁 + 冒烟）
         id: apply
         if: steps.check.outputs.behind == 'true'
-        working-directory: deepbuddy
+        working-directory: dude
         continue-on-error: true
         run: node scripts/sync-upstream.mjs --apply
 
@@ -92,7 +92,7 @@ jobs:
       - name: 收集报告
         if: steps.check.outputs.behind == 'true'
         id: report
-        working-directory: deepbuddy
+        working-directory: dude
         run: |
           set -euo pipefail
           path="reports/upstream-sync/$(date -u +%F).md"
@@ -106,7 +106,7 @@ jobs:
         if: steps.check.outputs.behind == 'true' && steps.apply.outcome == 'success'
         uses: peter-evans/create-pull-request@v6
         with:
-          path: deepbuddy
+          path: dude
           branch: upstream-sync/bump
           delete-branch: true
           commit-message: 'chore: bump @deepseek-ai/* to the latest upstream release'

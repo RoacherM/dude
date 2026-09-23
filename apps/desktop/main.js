@@ -1,21 +1,21 @@
 /**
- * DeepBuddy desktop shell (packaged, wave 10).
+ * Dude desktop shell (packaged, wave 10).
  *
- * The packaged DeepBuddy.app is self-contained: this main process finds a free
+ * The packaged Dude.app is self-contained: this main process finds a free
  * port, spawns the staged dsh runtime (real files, not pnpm symlinks — see
  * stage-runtime.sh / electron-builder extraResources) with Electron's bundled
  * Node (ELECTRON_RUN_AS_NODE=1 + process.execPath, Node 22.x ≥ dsh's engine),
  * polls until dsh prints its listen URL, and loads that URL in the window.
  * 0.1.2 gates the UI behind a one-shot `?token=` handshake; the shell reads
  * the token from dsh stdout so a double-click never asks the user for a URL.
- * DSH_HOME is ~/.deepbuddy, the isolated root (config isolation, wave 9);
- * first run migrates from ~/.dsh (canonical semantics live in scripts/deepbuddy
+ * DSH_HOME is ~/.dude, the isolated root (config isolation, wave 9);
+ * first run migrates from ~/.dsh (canonical semantics live in scripts/dude
  * — this JS mirrors them).
  *
- * The app runs an APP-EXCLUSIVE profile: `deepbuddy-app` (not the dev `deepbuddy`
+ * The app runs an APP-EXCLUSIVE profile: `dude-app` (not the dev `dude`
  * profile, whose plugin node_modules links back into this repo and would fight
  * dev hot-reload). The app profile is generated idempotently in
- * ~/.deepbuddy/profiles/deepbuddy-app and points its node_modules/dsh-plugin-deepbuddy
+ * ~/.dude/profiles/dude-app and points its node_modules/dsh-plugin-dude
  * at the packaged plugin in resources.
  *
  * Dev mode (`electron .` from the repo, no packaged resources) keeps the old
@@ -33,15 +33,15 @@ const path = require('node:path')
 const DSH_WEB_URL = process.env.DSH_WEB_URL ?? 'http://127.0.0.1:3080'
 /** Retry cadence while the profile's web server is still coming up. */
 const RETRY_MS = 1200
-/** DeepBuddy's isolated harness home (config isolation, wave 9). */
-const DEEP_BUDDY_HOME = path.join(os.homedir(), '.deepbuddy')
+/** Dude's isolated harness home (config isolation, wave 9). */
+const DUDE_HOME = path.join(os.homedir(), '.dude')
 const OFFICIAL_HOME = path.join(os.homedir(), '.dsh')
-const PROFILES_DIR = path.join(DEEP_BUDDY_HOME, 'profiles')
+const PROFILES_DIR = path.join(DUDE_HOME, 'profiles')
 
-/** App-exclusive profile name — never the dev `deepbuddy` profile, and not
+/** App-exclusive profile name — never the dev `dude` profile, and not
  * `desktop` either: since dsh 0.1.5 the launcher reserves that name for the
  * official Electron app and refuses it on the command line. */
-const APP_PROFILE = 'deepbuddy-app'
+const APP_PROFILE = 'dude-app'
 
 // ── free port (net listen 0) ────────────────────────────────────────────────
 
@@ -57,18 +57,18 @@ function findFreePort() {
   })
 }
 
-// ── first-run migration (JS mirror of scripts/deepbuddy) ────────────────────
+// ── first-run migration (JS mirror of scripts/dude) ────────────────────
 //
-// Canonical semantics live in scripts/deepbuddy. This copy-run-migrate mirrors
-// it: copy (never move) the isolation set from ~/.dsh into ~/.deepbuddy, with
+// Canonical semantics live in scripts/dude. This copy-run-migrate mirrors
+// it: copy (never move) the isolation set from ~/.dsh into ~/.dude, with
 // cp -RP-equivalent symlink preservation (the app profile's plugin link is
 // NOT copied here — the app generates that profile itself). Only runs when
-// ~/.deepbuddy does not exist. ~/.dsh is read-only.
-function ensureDeepBuddyHome() {
-  if (fs.existsSync(DEEP_BUDDY_HOME)) return
-  console.log('[deepbuddy] first run — migrating config %s -> %s (copy, ~/.dsh untouched)', OFFICIAL_HOME, DEEP_BUDDY_HOME)
-  fs.mkdirSync(DEEP_BUDDY_HOME, { recursive: true })
-  fs.mkdirSync(path.join(DEEP_BUDDY_HOME, 'profiles'), { recursive: true })
+// ~/.dude does not exist. ~/.dsh is read-only.
+function ensureDudeHome() {
+  if (fs.existsSync(DUDE_HOME)) return
+  console.log('[dude] first run — migrating config %s -> %s (copy, ~/.dsh untouched)', OFFICIAL_HOME, DUDE_HOME)
+  fs.mkdirSync(DUDE_HOME, { recursive: true })
+  fs.mkdirSync(path.join(DUDE_HOME, 'profiles'), { recursive: true })
 
   const copyPreservingSymlinks = (src, dest) => {
     // Node fs.cp with dereference:false preserves symlinks, exactly like cp -RP.
@@ -77,33 +77,33 @@ function ensureDeepBuddyHome() {
 
   for (const f of ['settings.yaml', '.credentials.yaml', '.anonymous-user-id']) {
     const src = path.join(OFFICIAL_HOME, f)
-    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DEEP_BUDDY_HOME, f))
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(DUDE_HOME, f))
   }
   for (const d of ['.agent-presets', 'storages', 'sessions']) {
     const src = path.join(OFFICIAL_HOME, d)
-    if (fs.existsSync(src)) copyPreservingSymlinks(src, path.join(DEEP_BUDDY_HOME, d))
+    if (fs.existsSync(src)) copyPreservingSymlinks(src, path.join(DUDE_HOME, d))
   }
-  // The dev deepbuddy profile is NOT migrated (the app uses its own
+  // The dev dude profile is NOT migrated (the app uses its own
   // profile). The official home's profiles are left untouched.
 }
 
 // ── app-exclusive app profile ───────────────────────────────────────────────
 
 /**
- * Generate ~/.deepbuddy/profiles/deepbuddy-app idempotently. Its manifest mirrors
+ * Generate ~/.dude/profiles/dude-app idempotently. Its manifest mirrors
  * the dev profile (dsh-base + dsh-web-app bundles from the staged runtime;
- * dsh-plugin-deepbuddy from the bundled resources). The plugin is COPIED into
+ * dsh-plugin-dude from the bundled resources). The plugin is COPIED into
  * the profile's node_modules so it never links back to a source repo.
  *
  * Returns the profile directory (must exist before dsh boots).
  */
 function ensureDesktopProfile(resourcesDir) {
   const profileDir = path.join(PROFILES_DIR, APP_PROFILE)
-  const pluginDest = path.join(profileDir, 'node_modules', 'dsh-plugin-deepbuddy')
-  const pluginSrc = path.join(resourcesDir, 'deepbuddy-plugin')
+  const pluginDest = path.join(profileDir, 'node_modules', 'dsh-plugin-dude')
+  const pluginSrc = path.join(resourcesDir, 'dude-plugin')
   if (!fs.existsSync(profileDir)) fs.mkdirSync(profileDir, { recursive: true })
   if (!fs.existsSync(pluginSrc)) {
-    throw new Error(`[deepbuddy] packaged plugin resources missing at ${pluginSrc}`)
+    throw new Error(`[dude] packaged plugin resources missing at ${pluginSrc}`)
   }
   // Re-copy the plugin every launch: the bundled version must always be the
   // one running, or an app upgrade would keep serving the seeded snapshot.
@@ -112,14 +112,14 @@ function ensureDesktopProfile(resourcesDir) {
   fs.cpSync(pluginSrc, pluginDest, { recursive: true, force: true })
 
   const manifest = {
-    name: 'dsh-profile-deepbuddy-app',
+    name: 'dsh-profile-dude-app',
     private: true,
     dependencies: {
-      'dsh-plugin-deepbuddy': 'file:node_modules/dsh-plugin-deepbuddy',
+      'dsh-plugin-dude': 'file:node_modules/dsh-plugin-dude',
     },
     dsh: {
       profile: {
-        bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-plugin-deepbuddy'],
+        bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-plugin-dude'],
         // `startup`, like the official shipped templates: `live` (the
         // default) loads the HMR plugin to watch patch files, which needs
         // --expose-internals and has nothing to watch in a packaged app.
@@ -159,7 +159,7 @@ function spawnDsh(port) {
   const modulesDir = path.join(runtimeDir, 'node_modules')
   const binPath = path.join(modulesDir, '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   if (!fs.existsSync(binPath)) {
-    throw new Error(`[deepbuddy] packaged dsh runtime missing at ${binPath}`)
+    throw new Error(`[dude] packaged dsh runtime missing at ${binPath}`)
   }
   ensureDesktopProfile(resourcesDir)
 
@@ -179,7 +179,7 @@ function spawnDsh(port) {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
-      DSH_HOME: DEEP_BUDDY_HOME,
+      DSH_HOME: DUDE_HOME,
       // CJS requires anchored outside the runtime (the generated profile dir)
       // still find the same staged tree — one resolution target for both
       // module systems, so every package loads exactly once.
@@ -201,7 +201,7 @@ function spawnDsh(port) {
   child.stdout?.on('data', onData)
   child.stderr?.on('data', onData)
   child.once('exit', (code) => {
-    if (!settled) settleUrl.reject(new Error(`[deepbuddy] dsh exited ${code} before printing its listen URL`))
+    if (!settled) settleUrl.reject(new Error(`[dude] dsh exited ${code} before printing its listen URL`))
   })
   return { child, readyUrl }
 }
@@ -221,7 +221,7 @@ function waitForOrigin(origin, timeoutMs = 60000) {
   return new Promise((resolve, reject) => {
     const tick = async () => {
       if (await attempt()) return resolve()
-      if (Date.now() - start > timeoutMs) return reject(new Error(`[deepbuddy] dsh did not answer ${origin} within ${timeoutMs}ms`))
+      if (Date.now() - start > timeoutMs) return reject(new Error(`[dude] dsh did not answer ${origin} within ${timeoutMs}ms`))
       setTimeout(tick, RETRY_MS)
     }
     tick()
@@ -241,10 +241,10 @@ function createWindow(url) {
     minWidth: 860,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    // The official sidebar's first 36px is a safe band (tokens.ts). Lights
-    // are about 14px tall, so y 12 puts them inside that band and clear of
-    // the logo row that starts at 36px.
-    trafficLightPosition: { x: 14, y: 12 },
+    // Lights are about 14px tall; y 17 centres them 24px down, on the row
+    // the official conversation header and right sidebar tabs already use,
+    // and inside the sidebar's 36px safe band (the plugin's styles.ts).
+    trafficLightPosition: { x: 14, y: 17 },
     // The compositor shows this during fast drag/resize before the web
     // content repaints — it must match the UI's ground (--dsw-alias-bg-base
     // per scheme; the theme presenter follows the system by default), or the
@@ -252,7 +252,7 @@ function createWindow(url) {
     // Matches --db-window per scheme (ui/tokens.ts): the compositor flash
     // during fast drag/resize must show the island window ground.
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0c' : '#dcdde1',
-    title: 'DeepBuddy',
+    title: 'Dude',
     webPreferences: {
       webviewTag: true,
     },
@@ -262,10 +262,10 @@ function createWindow(url) {
     console.log(`[renderer:${level}] ${message}`)
   })
   win.webContents.on('did-finish-load', () => {
-    console.log('[deepbuddy] loaded', win.webContents.getURL())
+    console.log('[dude] loaded', win.webContents.getURL())
   })
   win.webContents.on('did-fail-load', (_e, code, desc, validatedURL, isMainFrame) => {
-    console.log('[deepbuddy] fail-load', { code, desc, validatedURL, isMainFrame })
+    console.log('[dude] fail-load', { code, desc, validatedURL, isMainFrame })
     // 303 handshake and in-page redirects abort the first navigation (-3).
     // Retrying the token URL fights Chromium's follow and can stick on a
     // black window (the shell's backgroundColor is already #0b0b0c).
@@ -287,7 +287,7 @@ function createWindow(url) {
       setTimeout(async () => {
         const image = await win.webContents.capturePage()
         fs.writeFileSync(shot, image.toPNG())
-        console.log('[deepbuddy] screenshot written, quitting')
+        console.log('[dude] screenshot written, quitting')
         app.quit()
       }, 1500)
     })
@@ -324,7 +324,7 @@ app.whenReady().then(async () => {
   const runtimeBin = path.join(resourcesDir, 'dsh-runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
   if (fs.existsSync(runtimeBin)) {
     // Packaged: own the dsh lifecycle.
-    ensureDeepBuddyHome()
+    ensureDudeHome()
     const port = await findFreePort()
     const { child, readyUrl } = spawnDsh(port)
     app.on('before-quit', () => killChild(child))
@@ -341,11 +341,11 @@ app.whenReady().then(async () => {
   } else {
     // Dev mode: no packaged runtime — fall back to the old behavior (external
     // DSH_WEB_URL / default 3080).
-    console.log('[deepbuddy] dev mode: no packaged runtime, loading %s', DSH_WEB_URL)
+    console.log('[dude] dev mode: no packaged runtime, loading %s', DSH_WEB_URL)
     createWindow(DSH_WEB_URL)
   }
 }).catch((e) => {
-  console.error('[deepbuddy] startup failed:', e)
+  console.error('[dude] startup failed:', e)
   app.quit()
 })
 

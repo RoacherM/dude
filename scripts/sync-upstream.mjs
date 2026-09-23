@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Upstream sync for the DeepBuddy distribution.
+ * Upstream sync for the Dude distribution.
  *
- * DeepBuddy is "the best distribution of the DeepSeek Harness: every official
+ * Dude is "the best distribution of the DeepSeek Harness: every official
  * capability, a curated UI, curated plugins". The official packages are never
  * patched, so an upgrade is exactly three moves — bump the pinned versions, run
  * the contract tests, smoke the assembled profile — and any incompatibility the
@@ -16,7 +16,7 @@
  *             `@deepseek-ai/*` dependency across `plugins/*`, install, run the
  *             build gates, and finish with --smoke. Any failure restores the
  *             manifests and the lockfile byte-for-byte and exits 1.
- *   --smoke   boot a throwaway `dsh --profile deepbuddy` on its own port and
+ *   --smoke   boot a throwaway `dsh --profile dude` on its own port and
  *             assert the four facts that make the distribution a distribution.
  *
  * Every mode appends its result to `reports/upstream-sync/<date>.md` and prints
@@ -41,13 +41,13 @@ const REPO = dirname(dirname(fileURLToPath(import.meta.url)))
 const ANCHOR = '@deepseek-ai/dsh-api-session-controller'
 
 /** The manifest that states the version this repo is locked to. */
-const LOCK_MANIFEST = join(REPO, 'plugins', 'deepbuddy', 'package.json')
+const LOCK_MANIFEST = join(REPO, 'plugins', 'dude', 'package.json')
 
 /** Port for the throwaway smoke server — never 3081, which is the dev server. */
 const SMOKE_PORT = Number(process.env.SMOKE_PORT ?? 3082)
 
 /** Profile the distribution is assembled into. */
-const PROFILE = process.env.DSH_PROFILE ?? 'deepbuddy'
+const PROFILE = process.env.DSH_PROFILE ?? 'dude'
 
 /** Seconds to wait for the smoke server to answer its first request. */
 const BOOT_TIMEOUT_MS = 30_000
@@ -55,8 +55,8 @@ const BOOT_TIMEOUT_MS = 30_000
 /** The four presets a stock install must offer. */
 const BUILTIN_PRESETS = ['standard', 'ptc', 'minimal', 'cordis']
 
-/** The plugin entries that make the boot manifest DeepBuddy's, not stock. */
-const BOOT_ENTRIES = ['dsh-plugin-deepbuddy']
+/** The plugin entries that make the boot manifest Dude's, not stock. */
+const BOOT_ENTRIES = ['dsh-plugin-dude']
 
 // ---------------------------------------------------------------------------
 // version arithmetic
@@ -212,7 +212,7 @@ class Report {
 /**
  * Read the version this repo is locked to.
  *
- * The lock is whatever the anchor package is pinned at in the DeepBuddy
+ * The lock is whatever the anchor package is pinned at in the Dude
  * plugin's devDependencies. Ranged entries (`@deepseek-ai/cordis: ^4.0.1`) are
  * a separate versioning line and are not part of the lock.
  * @returns the pinned version and the dependency names carrying it.
@@ -432,7 +432,7 @@ async function smokeChecks(base, cookie) {
     }
   }
 
-  // 1. The page and DeepBuddy's own bundle are both served, and the bundle is
+  // 1. The page and Dude's own bundle are both served, and the bundle is
   //    the self-registering artifact the ModuleLoader expects.
   let indexHtml = ''
   await step('首页 + client bundle', async () => {
@@ -441,11 +441,11 @@ async function smokeChecks(base, cookie) {
     const bootMatch = /__DSH_BOOT__["'\]]*\s*=\s*(\{[\s\S]*?\})<\/script>/.exec(indexHtml)
     const entry = bootMatch === null
       ? undefined
-      : JSON.parse(bootMatch[1]).entries.find(e => e.id === 'dsh-plugin-deepbuddy')
-    const bundleUrl = entry?.url ?? '/plugins/??dsh-plugin-deepbuddy/client.js'
+      : JSON.parse(bootMatch[1]).entries.find(e => e.id === 'dsh-plugin-dude')
+    const bundleUrl = entry?.url ?? '/plugins/??dsh-plugin-dude/client.js'
     const bundle = await fetch(`${base}${bundleUrl}`, { headers })
     const head = (await bundle.text()).slice(0, 120)
-    const banner = head.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-deepbuddy"')
+    const banner = head.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-dude"')
     const ok = index.status === 200 && bundle.status === 200 && banner
     return {
       verdict: ok ? 'PASS' : 'FAIL',
@@ -519,7 +519,7 @@ async function cmdSmoke(report) {
     return 1
   }
   const base = `http://127.0.0.1:${SMOKE_PORT}`
-  const logPath = join(tmpdir(), `deepbuddy-smoke-${SMOKE_PORT}.log`)
+  const logPath = join(tmpdir(), `dude-smoke-${SMOKE_PORT}.log`)
   report.say(`冒烟：${dsh} --profile ${PROFILE} --port ${SMOKE_PORT}`)
   report.add(`服务日志：\`${logPath}\``)
 
@@ -673,8 +673,8 @@ async function cmdApply(report) {
   if (!gate('pnpm install', install, '依赖安装')) return 1
 
   for (const script of ['build', 'test', 'typecheck']) {
-    const r = run('pnpm', ['--filter', 'dsh-plugin-deepbuddy', script])
-    if (!gate(`pnpm --filter dsh-plugin-deepbuddy ${script}`, r, `deepbuddy ${script} 门禁`)) return 1
+    const r = run('pnpm', ['--filter', 'dsh-plugin-dude', script])
+    if (!gate(`pnpm --filter dsh-plugin-dude ${script}`, r, `dude ${script} 门禁`)) return 1
   }
 
   const smoke = await cmdSmoke(report)

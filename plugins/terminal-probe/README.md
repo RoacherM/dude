@@ -4,11 +4,11 @@
 
 它存在的唯一理由是回答 P4a 的验收问题：
 
-> 装一个该面的真实生态插件，在 DeepBuddy 界面里出现并可用。
+> 装一个该面的真实生态插件，在 Dude 界面里出现并可用。
 
 所以它被刻意写成「任何第三方插件都会写成的样子」——一次
-`slots.inject('shell.overlay', …)` 注册，对 DeepBuddy 一无所知，样式走自己的
-类前缀与 `--dsw-alias-*` token，生命周期全挂在插件 fiber 上。它能在 DeepBuddy
+`slots.inject('shell.overlay', …)` 注册，对 Dude 一无所知，样式走自己的
+类前缀与 `--dsw-alias-*` token，生命周期全挂在插件 fiber 上。它能在 Dude
 的界面里出现并跑通命令，就说明那个面是真的开着的。
 
 ## 它是什么
@@ -27,16 +27,16 @@
 DSH=/Users/byron/.npm/_npx/1e7f6d9597241db0/node_modules/.bin/dsh   # 你机器上的路径
 
 pnpm --filter dsh-plugin-terminal-probe build
-"$DSH" plugin --profile deepbuddy add /Users/byron/Desktop/Projects/Devs/deepbuddy/plugins/terminal-probe
-"$DSH" --profile deepbuddy --port 3081      # 面板出现在右下角，跑 `echo hello`
+"$DSH" plugin --profile dude add /Users/byron/Desktop/Projects/Devs/dude/plugins/terminal-probe
+"$DSH" --profile dude --port 3081      # 面板出现在右下角，跑 `echo hello`
 
 # 删：
-"$DSH" plugin --profile deepbuddy remove dsh-plugin-terminal-probe
+"$DSH" plugin --profile dude remove dsh-plugin-terminal-probe
 rm -rf plugins/terminal-probe
 ```
 
 ## 为什么它不进「精选插件」
 
 `UPGRADE.md` 的准入四条它满足前三条（有测试、可独立安装、不 gate root shadow、
-失败即值不抛），但它没有产品理由：DeepBuddy 的终端是工作区面板的活，
+失败即值不抛），但它没有产品理由：Dude 的终端是工作区面板的活，
 不是一块右下角浮窗。它留在仓库里只是为了让 P4a 的验收结论可以随时复跑。

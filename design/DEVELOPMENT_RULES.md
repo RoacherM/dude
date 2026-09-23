@@ -1,4 +1,4 @@
-# DeepBuddy 开发约束
+# Dude 开发约束
 
 > 目标：让代码保持官方优先、最小侵入，同时保持未来可重构。
 > 默认策略：**直接实现，晚点抽象。**
@@ -29,7 +29,7 @@
 2. **避免脆弱的 CSS 隐藏**：绝不通过 `div[class*="_hash"] > span` 暴力隐藏或改写官方
    组件；拖拽区域这类必须定位官方元素的规则，用官方暴露的 `data-*` 属性，不用 hash
    化的 CSS 类名。
-3. **通过标准扩展槽接入**：DeepBuddy 唯一使用的扩展点是 `conversation.hero.brand.mark`
+3. **通过标准扩展槽接入**：Dude 唯一使用的扩展点是 `conversation.hero.brand.mark`
    槽。新增接入点前先确认官方是否已提供等价能力。
 4. **不覆写内部私有 ABI**：不模拟或依赖官方未公开的内部方法，保障上游快速升级零破损。
 5. **保障上游零阻力升级**：任何改动必须保证在 DSH 核心包 `pnpm update` 时不发生布局
@@ -52,7 +52,7 @@ Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inj
 - 所有注册（样式表安装、slot 注册）必须包在 `ctx.effect(...)` 里，插件卸载时自动撤销；
 - 不依赖偶然的加载顺序；
 - 依赖通过 `inject` 显式声明（当前只有 `['slots']`）；
-- 仅在官方已有真实扩展点时直接使用 Slot，不为了 DeepBuddy 的普通样式或品牌需求另建
+- 仅在官方已有真实扩展点时直接使用 Slot，不为了 Dude 的普通样式或品牌需求另建
   平行 Slot 系统。
 
 ---
@@ -65,7 +65,7 @@ Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inj
   死官方组件的 hash 化 class 名。
 - 不覆盖官方组件自身的样式（拖拽区域规则只加 `-webkit-app-region`，不改动布局、颜色
   或间距）。
-- 没有 DeepBuddy 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §4。
+- 没有 Dude 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §4。
 
 ---
 

@@ -1,11 +1,11 @@
-# DeepBuddy 交互原型（UI 设计基线）
+# Dude 交互原型（UI 设计基线）
 
 > 状态：**现行 UI 设计基线。后续 UI/交互改动一律先在本原型上迭代，
-> 验收通过后再落到 `plugins/deepbuddy/` 实现。**
+> 验收通过后再落到 `plugins/dude/` 实现。**
 
 ## 是什么
 
-DeepBuddy 界面的高保真、可交互、零依赖原型：
+Dude 界面的高保真、可交互、零依赖原型：
 
 - `index.html` — 单文件原型（内嵌 CSS / SVG 图标 / vanilla JS / 假数据）。
 - `fonts.css` — Archivo（latin 子集）+ Departure Mono + Fusion Pixel 的 base64
@@ -57,7 +57,7 @@ open design/prototype/index.html
 
 1. 新 UI 需求 → 先在 `index.html` 上改出可交互效果并自查零死点。
 2. 与真实 app 并排目测（必要时重新采集 computed style 进 proto-ref）。
-3. 验收通过后，按原型规格在 `plugins/deepbuddy/src/client/` 落实现；
+3. 验收通过后，按原型规格在 `plugins/dude/src/client/` 落实现；
    实现与原型不一致时，以最新验收过的原型为准。
 4. 每轮改动更新 `.agents/handoffs/2026-08-24-html-prototype.md`。
 

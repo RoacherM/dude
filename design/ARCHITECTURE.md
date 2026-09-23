@@ -1,4 +1,4 @@
-# DeepBuddy 架构
+# Dude 架构
 
 > 状态：现行
 > 架构形态：**官方优先的轻量增强客户端（Option A: Official-First Thin Client）**
@@ -8,9 +8,9 @@
 
 ## 1. 产品定位
 
-DeepBuddy 是 DeepSeek Harness 的桌面发行版，执行“最小可侵入性”的套壳与增强策略，而非重写一套平行的 UI 框架。
+Dude 是 DeepSeek Harness 的桌面发行版，执行“最小可侵入性”的套壳与增强策略，而非重写一套平行的 UI 框架。
 
-DeepBuddy 直接复用 DSH 的全部官方能力与交互：
+Dude 直接复用 DSH 的全部官方能力与交互：
 
 - 官方应用布局（`ui-layout`）、官方左侧栏（`ui-sidebar`）与官方右侧栏（dockkit，含 Files 页）；
 - 官方会话交互（Conversation 流、Agent Loop、Hero、输入框、模型与 Preset 选择）；
@@ -18,10 +18,10 @@ DeepBuddy 直接复用 DSH 的全部官方能力与交互：
 - 持久日志、恢复、Fork 与运行状态；
 - 底层文件系统、沙箱与环境能力。
 
-DeepBuddy 只贡献官方没有的两样东西：
+Dude 只贡献官方没有的两样东西：
 
 - **桌面窗口集成**：一段全局样式表，负责 macOS 交通灯的拖拽避让区和正文字体；
-- **品牌**：把 DeepBuddy 的鱼形标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽。
+- **品牌**：把 Dude 的鱼形标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽。
 
 没有第二套侧栏、没有自绘布局、没有自己的检查器（Inspector）。之前存在的 Terminal /
 Browser / Files 预览、三列布局壳、KIT、设计令牌、Preset Plane、Session 围栏、host 侧
@@ -47,7 +47,7 @@ Renderer
     ├── Official Sidebar（工作区 / 会话列表 / 设置入口）
     ├── Official Conversation（会话流 / Agent Loop / Hero / 输入框）
     ├── Official Rightbar（dockkit：Files 等官方页面）
-    └── DeepBuddy Plugin（唯一自研代码，两个 Effect）
+    └── Dude Plugin（唯一自研代码，两个 Effect）
         ├── 样式表：字体 + 窗口拖拽区域 + Hero 悬停动效
         └── Hero 品牌标记：注册进 conversation.hero.brand.mark
 ```
@@ -68,15 +68,15 @@ src/client/
 src/host.js              # Host 半部，空实现（只声明 name + 空 apply）
 ```
 
-新增能力前先确认：官方是否已经原生提供。DeepBuddy 不为了“可能有用”预先搭 Feature
+新增能力前先确认：官方是否已经原生提供。Dude 不为了“可能有用”预先搭 Feature
 目录、Catalog 或 Registry —— 当前没有第二个、第三个自研 UI 模块，抽象没有意义。
 
 ---
 
 ## 4. DSH 插件与 UI 插件不是同一件事
 
-DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugin-deepbuddy` 以 Cordis 插件
-形式挂载，是为了拿到生命周期 Effect（挂载即安装、卸载即撤销），不代表 DeepBuddy 对外
+DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugin-dude` 以 Cordis 插件
+形式挂载，是为了拿到生命周期 Effect（挂载即安装、卸载即撤销），不代表 Dude 对外
 承诺一套公开 UI 插件协议。
 
 ```text
@@ -93,8 +93,8 @@ DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugi
 文件。它做两件事，各自一个独立 `ctx.effect`，卸载互不影响：
 
 - 安装样式表（`ui/styles.ts` 的拖拽区域规则 + `ui/fonts.ts` 的字体覆写）；
-- 把 `DeepBuddyBrandMark` 注册进官方 `conversation.hero.brand.mark` 槽（优先级 -1，
-  低于官方 fish logo 的优先级 0，因此单一 occupant 的槽渲染 DeepBuddy 的版本）。
+- 把 `DudeBrandMark` 注册进官方 `conversation.hero.brand.mark` 槽（优先级 -1，
+  低于官方 fish logo 的优先级 0，因此单一 occupant 的槽渲染 Dude 的版本）。
 
 不覆写内部私有 ABI，不注入破坏性 CSS 隐藏官方组件；拖拽区域规则通过官方组件暴露的
 `data-*` 属性（`data-rightbar-col` / `data-phase` / `data-dockkit-strip` /
@@ -105,7 +105,7 @@ DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugi
 
 ## 6. 状态所有权
 
-DeepBuddy 不持有任何领域状态或布局状态：
+Dude 不持有任何领域状态或布局状态：
 
 | 状态 | Owner |
 |---|---|
@@ -135,10 +135,10 @@ DeepBuddy 不持有任何领域状态或布局状态：
 - 插件不再自带任何 host 侧业务端点（`deepbuddyFiles/*`、`/deepbuddy/media`、
   `/deepbuddy/terminal` 均已删除）；`src/host.js` 是空实现，文件与终端能力完全由官方
   dockkit 提供。
-- **配置隔离**：发行版一律以 `DSH_HOME=~/.deepbuddy` 运行（启动器 `scripts/deepbuddy`），
-  用户数据（settings / credentials / sessions / storages / profiles/deepbuddy）全部落在
-  `~/.deepbuddy`，与官方 `~/.dsh` 自首次迁移时刻起分叉、互不可见。首次运行从 `~/.dsh`
-  **复制**（非移动，官方目录只读），`profiles/deepbuddy` 用 `cp -RP` 保留指向本仓库的
+- **配置隔离**：发行版一律以 `DSH_HOME=~/.dude` 运行（启动器 `scripts/dude`），
+  用户数据（settings / credentials / sessions / storages / profiles/dude）全部落在
+  `~/.dude`，与官方 `~/.dsh` 自首次迁移时刻起分叉、互不可见。首次运行从 `~/.dsh`
+  **复制**（非移动，官方目录只读），`profiles/dude` 用 `cp -RP` 保留指向本仓库的
   符号链接。
 
 ---

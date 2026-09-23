@@ -4,9 +4,9 @@
  *
  * This is the P4a acceptance probe (ARCHITECTURE.md「P4a 验收案例」), so it is
  * deliberately written the way any third-party plugin would be — one
- * `slots.inject('shell.overlay', …)` registration, no knowledge of DeepBuddy
+ * `slots.inject('shell.overlay', …)` registration, no knowledge of Dude
  * whatsoever, styles under its own class prefix, everything on the plugin
- * fiber. If it renders and runs a command inside the DeepBuddy frame, the
+ * fiber. If it renders and runs a command inside the Dude frame, the
  * open surface is genuinely open.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 // Type-only: pulls the SlotMap merge that declares 'shell.overlay'. The row
-// that DECLARES the seat at runtime is DeepBuddy's frame, not this package —
+// that DECLARES the seat at runtime is Dude's frame, not this package —
 // the merge is a compile-time fact about the key's shape.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Build the self-contained runtime staging that the packaged DeepBuddy.app
+# Build the self-contained runtime staging that the packaged Dude.app
 # carries as extraResources (wave 10). The staged runtime is REAL files — a
 # flat (hoisted) install of @deepseek-ai/dsh at the locked version, plus the
-# built dsh-plugin-deepbuddy lib — so the app can spawn dsh with Electron's
+# built dsh-plugin-dude lib — so the app can spawn dsh with Electron's
 # bundled Node (ELECTRON_RUN_AS_NODE) WITHOUT depending on the repo's pnpm
 # symlink layout (which would break inside a .app bundle and fight dev
 # hot-reload).
@@ -17,7 +17,7 @@
 #
 # Produces:
 #   apps/desktop/staging/runtime/node_modules/  real npm tree (@deepseek-ai/dsh + deps)
-#   apps/desktop/staging/plugin/                built dsh-plugin-deepbuddy (lib + package.json + cordis.patch.yml)
+#   apps/desktop/staging/plugin/                built dsh-plugin-dude (lib + package.json + cordis.patch.yml)
 #
 # The tree MUST stay under a directory literally named node_modules: ESM bare
 # imports resolve ONLY by walking up node_modules directories (NODE_PATH is
@@ -41,9 +41,9 @@ trap 'rm -rf "$BUILD_DIR"' EXIT
 
 # The plugin lib is a build artifact — build it if missing (it never edits the
 # plugin source; it only produces lib/index.js + lib/client.js).
-if [[ ! -f "$REPO_ROOT/plugins/deepbuddy/lib/client.js" ]]; then
-  echo "stage-runtime: building dsh-plugin-deepbuddy lib..." >&2
-  (cd "$REPO_ROOT" && pnpm --filter dsh-plugin-deepbuddy build)
+if [[ ! -f "$REPO_ROOT/plugins/dude/lib/client.js" ]]; then
+  echo "stage-runtime: building dsh-plugin-dude lib..." >&2
+  (cd "$REPO_ROOT" && pnpm --filter dsh-plugin-dude build)
 fi
 
 rm -rf "$STAGING"
@@ -54,7 +54,7 @@ mkdir -p "$PLUGIN"
 # avoids any postinstall from the packed tree.
 mkdir -p "$BUILD_DIR/runtime"
 cat > "$BUILD_DIR/runtime/package.json" <<'EOF'
-{ "name": "deepbuddy-runtime", "private": true }
+{ "name": "dude-runtime", "private": true }
 EOF
 cat > "$BUILD_DIR/runtime/.npmrc" <<'EOF'
 node-linker=hoisted
@@ -68,16 +68,16 @@ echo "stage-runtime: pnpm install $LOCKED_DSH (hoisted, prod) in isolated cache.
 mkdir -p "$RUNTIME"
 mv "$BUILD_DIR/runtime/node_modules" "$RUNTIME/node_modules"
 
-# The built DeepBuddy plugin rides along as an extra resource so the app's
-# generated profile can point its node_modules/dsh-plugin-deepbuddy here.
-echo "stage-runtime: copying dsh-plugin-deepbuddy lib..." >&2
-cp -R "$REPO_ROOT/plugins/deepbuddy/lib" "$PLUGIN/lib"
-cp "$REPO_ROOT/plugins/deepbuddy/package.json" "$PLUGIN/package.json"
-cp "$REPO_ROOT/plugins/deepbuddy/cordis.patch.yml" "$PLUGIN/cordis.patch.yml"
+# The built Dude plugin rides along as an extra resource so the app's
+# generated profile can point its node_modules/dsh-plugin-dude here.
+echo "stage-runtime: copying dsh-plugin-dude lib..." >&2
+cp -R "$REPO_ROOT/plugins/dude/lib" "$PLUGIN/lib"
+cp "$REPO_ROOT/plugins/dude/package.json" "$PLUGIN/package.json"
+cp "$REPO_ROOT/plugins/dude/cordis.patch.yml" "$PLUGIN/cordis.patch.yml"
 # Since dsh 0.1.5 the plugin loader imports a bundle by bare name from its own
 # location inside the runtime, not from the profile directory — so the same
 # built plugin must also sit at the runtime's node_modules top level. The
 # profile copy stays: it is what the profile manifest points at.
-cp -R "$PLUGIN" "$RUNTIME/node_modules/dsh-plugin-deepbuddy"
+cp -R "$PLUGIN" "$RUNTIME/node_modules/dsh-plugin-dude"
 
 echo "stage-runtime: complete — $(du -sh "$RUNTIME" | cut -f1) runtime, plugin staged at $STAGING." >&2

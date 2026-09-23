@@ -1,7 +1,7 @@
 {
-  "name": "dsh-plugin-deepbuddy",
+  "name": "dsh-plugin-dude",
   "version": "0.1.0",
-  "description": "The DeepBuddy distribution: the official dsh web app with DeepBuddy's typeface, macOS window drag surfaces and hero brand mark.",
+  "description": "The Dude distribution: the official dsh web app with Dude's typeface, macOS window drag surfaces and hero brand mark.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

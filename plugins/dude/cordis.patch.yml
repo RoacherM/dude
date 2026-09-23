@@ -1,4 +1,4 @@
-# dsh-plugin-deepbuddy bundle layer.
+# dsh-plugin-dude bundle layer.
 # `dsh plugin add` activates this patch automatically because package.json
 # declares dsh.bundle.patch. The row loads the (empty) host half; the browser
 # half — the stylesheet and the hero brand mark — rides the
@@ -6,7 +6,7 @@
 #
 # This layer applies after @deepseek-ai/dsh-web-app's. Official ui-layout
 # owns the frame and ctx.layout. Official ui-sidebar owns the left column.
-# DeepBuddy does not disable either row: a second declarer of `root` is
+# Dude does not disable either row: a second declarer of `root` is
 # rejected by ui-slots, and a second `layout` provider deadlocks boot.
 # Removing this plugin from the profile removes only the typeface, the window
 # drag surfaces and the hero mark.
@@ -17,5 +17,5 @@
   name: '@deepseek-ai/dsh-client-ui-conversation'
 
 - insert:
-    - id: deepbuddy
-      name: dsh-plugin-deepbuddy
+    - id: dude
+      name: dsh-plugin-dude

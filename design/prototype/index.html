@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DeepBuddy UI Prototype</title>
+  <title>Dude UI Prototype</title>
   <style>
     :root {
       /* 与 tokens.ts / tokens-computed.json 对应 */
@@ -359,7 +359,7 @@
       --dsw-font-xxxs-strong-11-font-size: 11px;
       --dsw-font-xxxs-strong-11-font-style: normal;
       /* ============================================================
-         DeepBuddy 视觉基线 v3 · 官方平铺对齐 + 无缝工作台
+         Dude 视觉基线 v3 · 官方平铺对齐 + 无缝工作台
          去除 Floating 悬浮外壳与间隙，三列平铺贴合窗口，融入 Synara 设计细节
          三条纪律不变：分隔靠材质与细线 / 层级靠透明度 / 颜色只属于状态。
          ============================================================ */
@@ -2201,26 +2201,26 @@
         },
         "Simple Greetings": {
           user: "你好，介绍一下这个项目",
-          assistant: "DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。界面保持三列两区，告别悬浮框设计，统一采用平贴表面与竖线指引，并提供文件、终端和浏览器检查器。",
+          assistant: "Dude 是 DeepSeek Harness 的精选 Electron 客户端。界面保持三列两区，告别悬浮框设计，统一采用平贴表面与竖线指引，并提供文件、终端和浏览器检查器。",
           steps: [
             { icon: "▣", text: '上下文注入 · <span class="mono">README.md</span>' },
             { icon: "▣", text: '上下文注入 · <span class="mono">design/ARCHITECTURE.md</span>' },
-            { icon: "⌘", text: '思考 · 提取 DeepBuddy 的三列两区架构与无缝设计要点' }
+            { icon: "⌘", text: '思考 · 提取 Dude 的三列两区架构与无缝设计要点' }
           ],
           time: "1.4s"
         },
         "用 bash 运行 echo": {
-          user: "用 bash 运行 echo deepbuddy",
-          assistant: "已在终端中执行命令：echo deepbuddy，返回结果为 deepbuddy。",
+          user: "用 bash 运行 echo dude",
+          assistant: "已在终端中执行命令：echo dude，返回结果为 dude。",
           steps: [
             { icon: "⌘", text: '思考 · 校验安全白名单，调用内置 bash runner' },
-            { svg: "i-terminal", text: '终端运行 · <span class="mono">echo "deepbuddy"</span>', output: 'deepbuddy' }
+            { svg: "i-terminal", text: '终端运行 · <span class="mono">echo "dude"</span>', output: 'dude' }
           ],
           time: "0.6s"
         },
         "AI助手自我介绍": {
           user: "你是谁？",
-          assistant: "我是 DeepBuddy 客户端中由 DeepSeek 驱动的编程智能体，支持工具调用、终端交互与上下文感知。",
+          assistant: "我是 Dude 客户端中由 DeepSeek 驱动的编程智能体，支持工具调用、终端交互与上下文感知。",
           steps: [
             { icon: "▣", text: '系统角色注入 · <span class="mono">agent-profile</span>' },
             { icon: "⌘", text: '思考 · 确认模型身份与预设边界' }
@@ -2493,11 +2493,11 @@
     });
     $$(".launcher-row").forEach(row => row.addEventListener("click", () => openDockTab(row.dataset.launch)));
     const fileBodies = {
-      "README.md": "# DeepBuddy\n\nDeepSeek Harness 的精选 Electron 客户端。\n\n- 三列两区\n- Files / Terminal / Browser\n- 资源 keep-alive",
-      "AGENTS.md": "# DeepBuddy 开发约束\n\n主列永远存在；左右列可收起。\nShell 只负责布局、Selection 与 Inspector View 实例。",
-      "ARCHITECTURE.md": "# DeepBuddy 架构\n\n能力属于 DSH，界面属于 DeepBuddy。\n当前形态：模块化单体 Electron Client。",
+      "README.md": "# Dude\n\nDeepSeek Harness 的精选 Electron 客户端。\n\n- 三列两区\n- Files / Terminal / Browser\n- 资源 keep-alive",
+      "AGENTS.md": "# Dude 开发约束\n\n主列永远存在；左右列可收起。\nShell 只负责布局、Selection 与 Inspector View 实例。",
+      "ARCHITECTURE.md": "# Dude 架构\n\n能力属于 DSH，界面属于 Dude。\n当前形态：模块化单体 Electron Client。",
       "DESIGN_INTENT.md": "# UI 设计意图\n\n分隔靠材质，不靠密集边框。\n层级靠透明度，不靠不断加粗。",
-      "package.json": '{\n  "name": "deepbuddy",\n  "private": true,\n  "packageManager": "pnpm@10.18.3"\n}',
+      "package.json": '{\n  "name": "dude",\n  "private": true,\n  "packageManager": "pnpm@10.18.3"\n}',
       "2026-08-24-drag.md": "# 拖拽手势生命周期\n\nPointer Events + setPointerCapture\n8px 命中区 / 1px 视觉线\nfinish 与 thaw 幂等。"
     };
     function renderFileTabs() {
@@ -2591,7 +2591,7 @@
         title: "终端 " + number,
         cwd: "/Users/byron/Desktop/film-studio",
         status: "ready",
-        lines: number === 1 ? ["DeepBuddy terminal ready.", "Type help for available fake commands."] : ["Terminal " + number + " attached."]
+        lines: number === 1 ? ["Dude terminal ready.", "Type help for available fake commands."] : ["Terminal " + number + " attached."]
       };
       state.terminalTabs.push(tab);
       state.activeTerminal = tab.id;
@@ -2610,7 +2610,7 @@
       const tab = state.terminalTabs.find(item => item.id === id);
       if (!tab) return;
       tab.status = "ready";
-      tab.lines = ["DeepBuddy terminal ready.", "Type help for available fake commands."];
+      tab.lines = ["Dude terminal ready.", "Type help for available fake commands."];
       renderTerminals();
       requestAnimationFrame(() => $('[data-terminal-pane="' + id + '"] .terminal-input')?.focus());
     }
@@ -2667,7 +2667,7 @@
       const host = hostOf(url);
       if (!url) return "empty";
       if (host === "x.com" || host.endsWith(".x.com") || host === "baidu.com" || host.endsWith(".baidu.com") || host.includes("blocked") || host.includes("refuse")) return "blocked";
-      if (host.includes("docs") || host.includes("deepbuddy")) return "docs";
+      if (host.includes("docs") || host.includes("dude")) return "docs";
       return "example";
     }
     function addBrowser(url, title) {
@@ -2689,7 +2689,7 @@
       const type = pageType(tab.url);
       if (type === "empty") return '<div class="browser-empty"><div>' + svg("i-globe") + '<span>输入地址开始浏览</span></div></div>';
       if (type === "blocked") return '<div class="blocked-page"><div class="blocked-card">' + svg("i-globe") + '<div>该站点拒绝嵌入</div><button class="outline-button blocked-external">' + svg("i-external", "small") + ' 在系统浏览器打开</button></div></div>';
-      if (type === "docs") return '<div class="docs-page"><h1>DeepBuddy Design Notes</h1><div class="hero-line">Offline prototype · keep-alive scroll test</div>' +
+      if (type === "docs") return '<div class="docs-page"><h1>Dude Design Notes</h1><div class="hero-line">Offline prototype · keep-alive scroll test</div>' +
         Array.from({ length: 10 }, (_, index) => '<div class="docs-card"><strong>Section ' + (index + 1) + '</strong><p>三列两区保持稳定；切换 Files / Terminal / Browser 后回到此页，滚动位置不会丢失。</p></div>').join("") + '</div>';
       return '<div class="example-page"><article><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><a href="#" class="learn-more">Learn more</a></article></div>';
     }

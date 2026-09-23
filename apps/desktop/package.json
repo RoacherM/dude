@@ -1,8 +1,8 @@
 {
-  "name": "deepbuddy-desktop",
+  "name": "dude-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "DeepBuddy.app — a self-contained Electron shell that spawns the staged dsh runtime and loads its web UI in a hiddenInset window (wave 10).",
+  "description": "Dude.app — a self-contained Electron shell that spawns the staged dsh runtime and loads its web UI in a hiddenInset window (wave 10).",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -15,8 +15,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "dev.deepbuddy.desktop",
-    "productName": "DeepBuddy",
+    "appId": "dev.dude.desktop",
+    "productName": "Dude",
     "asar": true,
     "mac": {
       "category": "public.app-category.developer-tools",
@@ -34,7 +34,7 @@
     ],
     "extraResources": [
       { "from": "staging/runtime", "to": "dsh-runtime" },
-      { "from": "staging/plugin", "to": "deepbuddy-plugin" }
+      { "from": "staging/plugin", "to": "dude-plugin" }
     ]
   }
 }

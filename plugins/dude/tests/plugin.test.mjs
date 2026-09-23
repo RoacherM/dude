@@ -1,5 +1,5 @@
 /**
- * Contract tests for the deepbuddy plugin. The client bundle is checked as
+ * Contract tests for the dude plugin. The client bundle is checked as
  * an artifact: self-registration, no stray `@deepseek-ai/` requires beyond
  * the platform table, the official frame left alone, the drag surfaces and
  * the hero mark present, and the removed inspector features absent.
@@ -14,7 +14,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 test('client bundle self-registers under the package name', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  assert.ok(bundle.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-deepbuddy"'))
+  assert.ok(bundle.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-dude"'))
   assert.doesNotMatch(bundle, /\bmaximized\b/, 'obsolete dock-maximized state is absent')
   // The factory footer sits ahead of esbuild's trailing sourcemap comment.
   const tail = bundle.replace(/\/\/# sourceMappingURL=\S*\s*$/, '').trimEnd()
@@ -44,18 +44,18 @@ test('the bundle patch leaves official layout and sidebar enabled', async () => 
   // ui-conversation stays enabled so the official conversation column runs.
   assert.match(patch, /^- id: ui-conversation\n {2}name: '@deepseek-ai\/dsh-client-ui-conversation'$/m)
   assert.doesNotMatch(patch, /id: ui-conversation\n {2}disabled: true/)
-  assert.match(patch, /- insert:\n {4}- id: deepbuddy\n {6}name: dsh-plugin-deepbuddy/)
+  assert.match(patch, /- insert:\n {4}- id: dude\n {6}name: dsh-plugin-dude/)
 })
 
 test('client bundle does not redeclare the official frame', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   assert.doesNotMatch(bundle, /name: "root"/)
   assert.doesNotMatch(bundle, /DeepBuddySidebar/)
-  assert.doesNotMatch(bundle, /deepbuddy:shell/)
+  assert.doesNotMatch(bundle, /dude:shell/)
   // Terminal and browser are not a second sidebar. The official columns
   // are the only sidebars, and the title bar is what moves the window.
-  assert.doesNotMatch(bundle, /deepbuddy\.inspector/)
-  assert.doesNotMatch(bundle, /deepbuddy-inspector/)
+  assert.doesNotMatch(bundle, /dude\.inspector/)
+  assert.doesNotMatch(bundle, /dude-inspector/)
   assert.match(bundle, /padding-top: 36px/)
   assert.match(bundle, /-webkit-app-region: drag/)
 })
@@ -68,7 +68,7 @@ test('client bundle lets the official columns own sidebar and conversation', asy
   assert.doesNotMatch(bundle, /reflect\.provide\("layout"\)/)
 })
 
-test('conversation folding is the official apply\'s job; DeepBuddy does not stub layout', async () => {
+test('conversation folding is the official apply\'s job; Dude does not stub layout', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // The chat-fold definitions (conv.chat.order / chat.nodes.get) are registered
   // by the enabled ui-conversation row. Official ui-layout provides `layout`.
@@ -81,7 +81,7 @@ test('conversation folding is the official apply\'s job; DeepBuddy does not stub
 
 test('client bundle follows the official theme and does not present a second one', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // Official ui-layout owns the theme. DeepBuddy does not install a second
+  // Official ui-layout owns the theme. Dude does not install a second
   // presenter.
   assert.doesNotMatch(bundle, /theme\.getTheme\(\)/)
   assert.doesNotMatch(bundle, /on\("theme\/change"/)
@@ -95,18 +95,24 @@ test('the window drag surface does not cover official controls', async () => {
   assert.match(bundle, /-webkit-app-region: drag;/)
   assert.doesNotMatch(bundle, /WebkitAppRegion: "drag"/)
   assert.match(bundle, /\[role="treeitem"\]/)
-  // Right sidebar fullscreen: the tab strip shares the traffic lights' row,
-  // and only the top-left pane clears them. No band pushes the panel down.
-  assert.match(bundle, /\[data-rightbar-fullscreen\] \[data-dockkit-strip\] \{ padding-top: 4px; \}/)
-  assert.match(bundle, /\[data-dockkit-cell\]:not\(:first-child\) \*\) \[data-dockkit-strip\] \{\s*padding-left: 80px;/)
+  // Right sidebar fullscreen covers the conversation, not an open sidebar.
+  // With the sidebar collapsed it covers the window and its tab strip clears
+  // the traffic lights. The strip keeps its official row either way.
+  assert.match(bundle, /anchor-name: --db-sidebar;/)
+  assert.match(bundle, /:not\(\[data-sidebar-collapsed\]\) > \[data-rightbar-col\] \[data-sidebar-right-panel\]\[data-sidebar-right-panel="fullscreen"\] \{\s*left: anchor\(--db-sidebar right\);\s*max-width: calc\(100vw - anchor-size\(--db-sidebar width\)\);/)
+  // The strip keeps its official height in both modes, so icons stay put.
+  assert.doesNotMatch(bundle, /\[data-dockkit-strip\] \{ padding-top/)
+  assert.match(bundle, /\[data-sidebar-collapsed\] \[data-sidebar-right-panel="fullscreen"\] \[data-dockkit-pane\]:not\(\[data-dockkit-cell\]:not\(:first-child\) \*\) \[data-dockkit-strip\] \{\s*padding-left: 80px;/)
   assert.doesNotMatch(bundle, /\[data-rightbar-fullscreen\] \[data-sidebar-right-panel\]/)
+  assert.match(bundle, /\[data-sidebar-collapsed\]:has\(\[data-sidebar-right-panel="fullscreen"\]\[data-sidebar-right-open\]\) > div:first-of-type \{\s*-webkit-app-region: no-drag;/)
+  assert.match(bundle, /\[data-rightbar-fullscreen\] header:has\(\[data-conversation-header-corner\]\) \{\s*-webkit-app-region: no-drag;/)
   assert.match(bundle, /-webkit-app-region: no-drag/)
 })
 
 test('slots: official sidebar and conversation own their seats', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // ui-sidebar declares settings, the footer and the workspace browser.
-  // DeepBuddy must not declare them again.
+  // Dude must not declare them again.
   assert.doesNotMatch(bundle, /"sidebar\.settings"\s*:\s*\{ kind: "single", scope: "root" \}/)
   assert.doesNotMatch(bundle, /"conversation\.input\.attachments"/)
   assert.doesNotMatch(bundle, /"conversation\.input\.plan"/)
@@ -119,34 +125,34 @@ test('slots: no second sidebar and no hand-rolled new-task button', async () => 
   assert.doesNotMatch(bundle, /SettingsDialog/)
   assert.doesNotMatch(bundle, /ModelsPage|ModesPage|PluginsPage/)
   assert.doesNotMatch(bundle, /\\u65B0\\u5EFA\\u4EFB\\u52A1/)
-  assert.doesNotMatch(bundle, /deepbuddy\.inspector/)
+  assert.doesNotMatch(bundle, /dude\.inspector/)
   assert.doesNotMatch(bundle, /\\u6253\\u5F00\\u68C0\\u67E5\\u5668/)
 })
 
-test('slots: DeepBuddy registers its brand into the official hero mark', async () => {
+test('slots: Dude registers its brand into the official hero mark', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // The official hero brand mark seat is filled by DeepBuddy at priority -1
+  // The official hero brand mark seat is filled by Dude at priority -1
   // (the ui-brand-official fish registers at 0). The mark carries the
-  // DeepBuddy name. The official hero's brand cell is a fixed 34px grid
+  // Dude name. The official hero's brand cell is a fixed 34px grid
   // column and its headline/preview texts are a single-occupant locale NS
-  // (ui-conversation owns it), so the DeepBuddy slogan cannot replace the
+  // (ui-conversation owns it), so the Dude slogan cannot replace the
   // official headline without breaking ui-conversation — the name is the
   // achievable override.
   assert.match(bundle, /name: "conversation\.hero\.brand\.mark"/)
   assert.match(bundle, /priority: -1/)
-  assert.match(bundle, /DeepBuddy/)
-  // DeepBuddy no longer renders the composer chrome (the official apply does).
+  assert.match(bundle, /Dude/)
+  // Dude no longer renders the composer chrome (the official apply does).
   assert.doesNotMatch(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
   assert.doesNotMatch(bundle, /ModelChip/)
 })
 
 test('the removed inspector features and their host half are gone', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // Terminal, Browser and Files left with DeepBuddy's own right column; the
+  // Terminal, Browser and Files left with Dude's own right column; the
   // official right sidebar is the only one.
   assert.doesNotMatch(bundle, /xterm/i)
   assert.doesNotMatch(bundle, /deepbuddyFiles/)
-  assert.doesNotMatch(bundle, /\/deepbuddy\/terminal/)
+  assert.doesNotMatch(bundle, /\/dude\/terminal/)
   assert.match(bundle, /inject = \["slots"\]/)
   const host = await readFile(join(root, 'lib/index.js'), 'utf8')
   assert.doesNotMatch(host, /node-pty|WebSocketServer|typert/)

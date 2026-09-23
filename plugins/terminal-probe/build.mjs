@@ -1,8 +1,8 @@
 /**
  * Build for the terminal-probe plugin's two halves — byte-identical contract
- * to the deepbuddy plugin's build (and to workspace-shell's before it), which
+ * to the dude plugin's build (and to workspace-shell's before it), which
  * is part of what the probe demonstrates: an ordinary out-of-tree plugin needs
- * nothing special to enter the DeepBuddy frame. The host half builds as
+ * nothing special to enter the Dude frame. The host half builds as
  * ordinary Node ESM, the browser half as the CJS factory bundle the dsh client
  * module loader registers. The four loader rules (only platform modules
  * external; everything else inlines; no cross-plugin value imports;

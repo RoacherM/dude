@@ -1,9 +1,9 @@
 {
-  "name": "deepbuddy",
+  "name": "dude",
   "private": true,
-  "description": "DeepBuddy — a desktop distribution of the DeepSeek Harness: the official dsh core and web UI plugins at locked versions, fronted by DeepBuddy's own UI plugin and shipped in an Electron shell.",
+  "description": "Dude — a desktop distribution of the DeepSeek Harness: the official dsh core and web UI plugins at locked versions, fronted by Dude's own UI plugin and shipped in an Electron shell.",
   "bin": {
-    "deepbuddy": "scripts/deepbuddy"
+    "dude": "scripts/dude"
   },
   "scripts": {
     "build": "pnpm -r --filter './plugins/*' build",

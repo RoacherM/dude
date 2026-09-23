@@ -1,5 +1,5 @@
 /**
- * The rules DeepBuddy adds to the official app: window drag surfaces for the
+ * The rules Dude adds to the official app: window drag surfaces for the
  * hidden-inset title bar, and the hero mark's hover motion.
  *
  * `-webkit-app-region: drag` makes an element move the window, and it
@@ -41,11 +41,13 @@ button, a, input, textarea, select,
    buttons it does not contain would swallow their clicks. The official frame
    is found through its data-rightbar-col child, not its hashed class. */
 
-/* Official sidebar column. 36px clears the macOS traffic lights. */
+/* Official sidebar column. 36px clears the macOS traffic lights. It is also
+   the anchor the fullscreen right sidebar starts from. */
 :has(> [data-rightbar-col]) > div:first-of-type {
   -webkit-app-region: drag;
   padding-top: 36px;
   box-sizing: border-box;
+  anchor-name: --db-sidebar;
 }
 
 /* Home screen: no conversation header is shown, so the empty hero page moves
@@ -57,14 +59,32 @@ button, a, input, textarea, select,
    icons in it are buttons and opt out. */
 [data-rightbar-col] [data-dockkit-strip] { -webkit-app-region: drag; }
 
-/* Right sidebar fullscreen is a fixed panel over the whole window, so its
-   first strip shares the top row with the traffic lights. Every strip rises
-   to the lights' height (their centre sits 18px down), and the top-left
-   pane's strip starts right of them. The top-left pane is the one with no
-   later split cell above it. */
-[data-rightbar-fullscreen] [data-dockkit-strip] { padding-top: 4px; }
-[data-rightbar-fullscreen] [data-dockkit-pane]:not([data-dockkit-cell]:not(:first-child) *) [data-dockkit-strip] {
+/* Right sidebar fullscreen. With the sidebar open, the panel covers the
+   conversation but not the sidebar: the official panel is fixed over the
+   whole window, and its left edge moves to the sidebar's right edge,
+   following it as it is resized. The panel's inline width stays 100%, so
+   max-width trims it to the room left. The official rule sets inset from a
+   class plus this attribute, so the selector needs more parts to win in
+   either stylesheet order.
+   With the sidebar collapsed, the panel keeps the official whole-window
+   cover: the traffic lights (about 66px wide) do not fit the 56px rail, so
+   they sit on the panel's tab strip instead, and the top-left pane's strip
+   starts right of them. The top-left pane is the one with no later split
+   cell above it. Both rules key on the panel's own attribute, which is set
+   before it slides in, so nothing jumps when the slide ends.
+   The strips keep their official height, which shares the traffic lights'
+   row, so the icons do not move when the panel changes mode. */
+:not([data-sidebar-collapsed]) > [data-rightbar-col] [data-sidebar-right-panel][data-sidebar-right-panel="fullscreen"] {
+  left: anchor(--db-sidebar right);
+  max-width: calc(100vw - anchor-size(--db-sidebar width));
+}
+[data-sidebar-collapsed] [data-sidebar-right-panel="fullscreen"] [data-dockkit-pane]:not([data-dockkit-cell]:not(:first-child) *) [data-dockkit-strip] {
   padding-left: 80px;
+}
+/* Electron collects drag regions regardless of what is painted on top, so
+   the collapsed rail stops dragging while the open panel covers it. */
+[data-sidebar-collapsed]:has([data-sidebar-right-panel="fullscreen"][data-sidebar-right-open]) > div:first-of-type {
+  -webkit-app-region: no-drag;
 }
 
 /* Conversation title bar. The title and the icons are buttons inside this
@@ -73,6 +93,11 @@ button, a, input, textarea, select,
    would not be descendants, and the click would drag instead. */
 header:has([data-conversation-header-corner]) {
   -webkit-app-region: drag;
+}
+/* Electron collects drag regions regardless of what is painted on top, so
+   the header must stop dragging while the fullscreen panel covers it. */
+[data-rightbar-fullscreen] header:has([data-conversation-header-corner]) {
+  -webkit-app-region: no-drag;
 }
 `
 
@@ -83,7 +108,7 @@ header:has([data-conversation-header-corner]) {
  */
 export function installStyles(extra = ''): () => void {
   const el = document.createElement('style')
-  el.dataset['owner'] = 'dsh-plugin-deepbuddy'
+  el.dataset['owner'] = 'dsh-plugin-dude'
   el.textContent = CSS + extra
   document.head.append(el)
   return () => { el.remove() }

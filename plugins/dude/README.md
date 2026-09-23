@@ -1,7 +1,7 @@
-# dsh-plugin-deepbuddy
+# dsh-plugin-dude
 
-DeepBuddy 发行版的界面层。官方 `ui-layout` 画窗口，官方侧栏画左列，官方会话画中列，
-官方 dockkit 画右栏（含 Files 页）。DeepBuddy 不再有自己的右栏或检查器，只叠加两样
+Dude 发行版的界面层。官方 `ui-layout` 画窗口，官方侧栏画左列，官方会话画中列，
+官方 dockkit 画右栏（含 Files 页）。Dude 不再有自己的右栏或检查器，只叠加两样
 官方没有的东西：窗口拖拽区域和 Hero 品牌标记。卸载插件即回到纯官方界面。
 
 ```text
@@ -25,11 +25,11 @@ src/
 - **只有两个客户端模块**：`dsh/adapter.ts` 是唯一理解 DSH ABI（`ctx.slots.inject` /
   `.register`）的文件，做两件独立的事，各自一个 `ctx.effect`：
   1. 安装样式表（`installStyles(FONT_CSS)`）；
-  2. 把 `DeepBuddyBrandMark` 注册进官方 Hero 的 `conversation.hero.brand.mark` 槽，
+  2. 把 `DudeBrandMark` 注册进官方 Hero 的 `conversation.hero.brand.mark` 槽，
      优先级 -1（低于官方 `FishLogo` 的优先级 0，单 occupant 槽渲染较低优先级的）。
 - **官方 frame 保持启用**：`cordis.patch.yml` 不禁用 `ui-layout` / `ui-sidebar`，只
   显式保留 `ui-conversation`（它注入 `layout`，由官方 `ui-layout` 提供）并 insert
-  `deepbuddy` 这一行。DeepBuddy 不注册 `root`，不提供第二份 `layout`。
+  `dude` 这一行。Dude 不注册 `root`，不提供第二份 `layout`。
 - **窗口拖拽区域**（`ui/styles.ts`）：通过官方组件暴露的 `data-*` 属性定位，不依赖
   hash 化的 class 名：
   - 官方左侧栏顶部 36px（`:has(> [data-rightbar-col]) > div:first-of-type`）避让
@@ -52,26 +52,26 @@ src/
 
 ## 已知边界
 
-- 没有 DeepBuddy 自己的 Terminal / Browser / Files 预览；这些能力现在完全由官方
+- 没有 Dude 自己的 Terminal / Browser / Files 预览；这些能力现在完全由官方
   dockkit 右栏提供。
 - 没有 host 侧业务逻辑；`src/host.js` 只声明 `name` 和一个空 `apply`。
 
 ## 安装
 
 ```sh
-cd /path/to/deepbuddy
-dsh plugin --profile deepbuddy add ./plugins/deepbuddy
-dsh --profile deepbuddy web --port 3081
+cd /path/to/dude
+dsh plugin --profile dude add ./plugins/dude
+dsh --profile dude web --port 3081
 ```
 
-源码 checkout 用 `pnpm dsh ...`。卸载：`dsh plugin --profile deepbuddy remove dsh-plugin-deepbuddy`（官方 shell 立即还原）。
+源码 checkout 用 `pnpm dsh ...`。卸载：`dsh plugin --profile dude remove dsh-plugin-dude`（官方 shell 立即还原）。
 
 ## 开发
 
 ```sh
-pnpm --filter dsh-plugin-deepbuddy build       # lib/index.js + lib/client.js
-pnpm --filter dsh-plugin-deepbuddy test        # 构建 + bundle 契约测试（12 条，tests/plugin.test.mjs）
-pnpm --filter dsh-plugin-deepbuddy typecheck
+pnpm --filter dsh-plugin-dude build       # lib/index.js + lib/client.js
+pnpm --filter dsh-plugin-dude test        # 构建 + bundle 契约测试（12 条，tests/plugin.test.mjs）
+pnpm --filter dsh-plugin-dude typecheck
 ```
 
 契约测试把构建产物当 artifact 检查：自注册、依赖表只剩平台外部模块、官方 frame 未被

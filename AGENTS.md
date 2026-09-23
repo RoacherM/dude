@@ -1,6 +1,6 @@
-# AGENTS.md — DeepBuddy 开发约束
+# AGENTS.md — Dude 开发约束
 
-在修改 DeepBuddy 前，按顺序阅读：
+在修改 Dude 前，按顺序阅读：
 
 1. `design/ARCHITECTURE.md`
 2. `design/DESIGN_INTENT.md`
@@ -21,10 +21,10 @@ explain constraints, compatibility, migration, or important trade-offs.
 
 ## 项目定位
 
-DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端（执行“官方优先、最小侵入”的 Thin Shell 策略）。
+Dude 是 DeepSeek Harness 的精选 Electron 客户端（执行“官方优先、最小侵入”的 Thin Shell 策略）。
 
 - DSH 负责领域能力、数据、官方应用布局（AppFrame）、侧边栏导航与核心会话交互。
-- DeepBuddy 负责桌面原生集成、Inspector 增强（Terminal / Browser 等多 Tab 资源工具）与主题 Token 优化。
+- Dude 负责桌面原生集成、Inspector 增强（Terminal / Browser 等多 Tab 资源工具）与主题 Token 优化。
 - 坚持“官方能做的优先用官方”，避免重复实现侧边栏、标题栏与布局外壳造成冗余割裂。
 - 当前是模块化单体桌面应用，不是公共 UI 插件平台。
 - 不实现动态 UI 插件、Placement DSL、`when` DSL 或 Manifest。
