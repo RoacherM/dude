@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-deepbuddy",
   "version": "0.1.0",
-  "description": "The DeepBuddy distribution: a three-pane desktop frame (nav sidebar / conversation / dock) mounted as the resident shell of a dsh web profile, wired to the live session/workspace services, with its own session-fenced file endpoints on the host.",
+  "description": "The DeepBuddy distribution: the official dsh web app with DeepBuddy's typeface, macOS window drag surfaces and hero brand mark.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -21,13 +21,6 @@
     "dsh",
     "dsh-plugin"
   ],
-  "dependencies": {
-    "@deepseek-ai/schemastery": "3.18.2",
-    "@xterm/addon-fit": "0.11.0",
-    "@xterm/xterm": "6.0.0",
-    "node-pty": "1.2.0-beta.15",
-    "ws": "8.21.3"
-  },
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -42,16 +35,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-api-remotes": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-api-session-controller": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-api-workspace-controller": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-connection": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-theme": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-workspace": "0.1.2-rc.1",
-    "@deepseek-ai/dsh-fs-local": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.2",
     "@types/react": "^18.3.12",
     "react": "^18.3.1",
     "typescript": "^5.9.2"
@@ -69,14 +54,7 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
-      "platform": "web",
-      "inject": [
-        "@deepseek-ai/dsh-api-session-controller",
-        "@deepseek-ai/dsh-api-workspace-controller",
-        "@deepseek-ai/dsh-client-ui-workspace",
-        "@deepseek-ai/dsh-api-remotes",
-        "@deepseek-ai/dsh-client-connection"
-      ]
+      "platform": "web"
     }
   }
 }

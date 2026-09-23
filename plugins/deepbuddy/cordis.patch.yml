@@ -1,40 +1,18 @@
 # dsh-plugin-deepbuddy bundle layer.
 # `dsh plugin add` activates this patch automatically because package.json
 # declares dsh.bundle.patch. The row loads the (empty) host half; the browser
-# half — the DeepBuddy frame, which is this distribution's shell — rides the
+# half — the stylesheet and the hero brand mark — rides the
 # same row through dsh.client.
 #
-# This layer applies after @deepseek-ai/dsh-web-app's, so the disables below
-# land on the roster rows that bundle inserted. Removing this plugin from the
-# profile restores the official frame: no official package is forked or
-# edited (deepbuddy-design-current/ARCHITECTURE.md §4).
+# This layer applies after @deepseek-ai/dsh-web-app's. Official ui-layout
+# owns the frame and ctx.layout. Official ui-sidebar owns the left column.
+# DeepBuddy does not disable either row: a second declarer of `root` is
+# rejected by ui-slots, and a second `layout` provider deadlocks boot.
+# Removing this plugin from the profile removes only the typeface, the window
+# drag surfaces and the hero mark.
 
-# The official layout plugin owns the 'root' slot and DECLARES the four frame
-# child slots ('sidebar' / 'conversation' / 'details' / 'shell.overlay').
-# ui-slots admits exactly one declarer per slot, so deepbuddy-frame can only
-# take over that contract with the official row out of the graph — this is
-# not a preference, it is the mechanism (R2「影子继承合同」): the frame's
-# declared slots are inherited because the declarer is disabled, and
-# deepbuddy re-declares all four and renders them, so every seat the
-# official frame offered stays open.
-- id: ui-layout
-  disabled: true
-
-# ui-sidebar injects the `layout` service, which the disabled ui-layout row
-# used to provide. DeepBuddy renders the sidebar column itself, so ui-sidebar
-# stays disabled (removing the boot-time "pending" noise and dropping it from
-# the client manifest). The other official UI plugins that list this package
-# as a module dependency (dsh.client.inject) only use it for load ordering; an
-# absent row is a no-op there.
-- id: ui-sidebar
-  disabled: true
-
-# ui-conversation is ENABLED (wave 8): its row injects `layout`, which
-# DeepBuddy now provides as a stub (dsh/adapter.ts `mountOfficialServices`), so
-# the official apply activates and registers the chat-fold definitions (the
-# cold-session transcript fix) plus the official conversation column. ui-layout
-# stays disabled, so DeepBuddy's stub is the only `layout` face; the official
-# frame's slot occupants are replaced by DeepBuddy's sidebar / main column.
+# ui-conversation stays enabled. It injects `layout`, which the official
+# ui-layout row provides.
 - id: ui-conversation
   name: '@deepseek-ai/dsh-client-ui-conversation'
 

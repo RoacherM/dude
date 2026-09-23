@@ -239,7 +239,14 @@ function readUpstream() {
   if (versions.code !== 0) throw new Error(`npm view ${ANCHOR} failed:\n${tail(versions.out)}`)
   const list = JSON.parse(versions.out)
   const all = Array.isArray(list) ? list : [list]
-  const latest = all.slice().sort(compareVersions).at(-1)
+  // The release line is what `latest` / `next` point at. `alpha` builds are
+  // published to the same registry but are not something a distribution
+  // tracks, so the newest *tagged* release wins over the highest semver.
+  const anchorTags = run('npm', ['view', ANCHOR, 'dist-tags', '--json'])
+  if (anchorTags.code !== 0) throw new Error(`npm view ${ANCHOR} dist-tags failed:\n${tail(anchorTags.out)}`)
+  const tagged = JSON.parse(anchorTags.out)
+  const latest = [tagged.latest, tagged.next].filter(v => typeof v === 'string').sort(compareVersions).at(-1)
+  if (latest === undefined) throw new Error(`${ANCHOR} has neither a latest nor a next dist-tag`)
 
   // The CLI ships separately and is reported, not gated: its upgrade is manual.
   const tags = run('npm', ['view', '@deepseek-ai/dsh', 'dist-tags', '--json'])
@@ -260,7 +267,7 @@ function survey(report) {
   report.add('| | 版本 |')
   report.add('|---|---|')
   report.add(`| repo 锁定（${ANCHOR}） | \`${locked.version}\` |`)
-  report.add(`| npm 最新 | \`${upstream.latest}\` |`)
+  report.add(`| npm 最新（latest/next 中较新者；${upstream.all.length} 个已发布版本） | \`${upstream.latest}\` |`)
   report.add(`| dsh CLI dist-tags | \`${JSON.stringify(upstream.distTags)}\` |`)
   report.add('')
   report.add(`锁定的包（${locked.names.length}）：${locked.names.map(n => `\`${n}\``).join('、')}`)

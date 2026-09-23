@@ -1,32 +1,20 @@
 # DeepBuddy 开发约束
 
-> 目标：让 v1 快速可用，同时保持未来可重构。  
+> 目标：让代码保持官方优先、最小侵入，同时保持未来可重构。
 > 默认策略：**直接实现，晚点抽象。**
 
 ---
 
 ## 1. Rule of Three
 
-同一类问题出现第三个真实实例之前，不建立公共框架。
-
-允许：
-
-- 两处相似代码；
-- 两个页面有少量不同 Props；
-- 第一版使用简单 `switch`；
-- 静态数组；
-- 局部特例并配清楚注释。
-
-第三次出现时再问：
-
-- 重复的是数据形状，还是生命周期？
-- 三个样本真正相同的部分是什么？
-- 抽出后是否能删除代码，而不只是移动代码？
+同一类问题出现第三个真实实例之前，不建立公共框架。当前插件只有两个客户端模块
+（`dsh/adapter.ts` 安装样式表、注册 Hero 品牌标记），远未触发任何抽象信号。
 
 禁止为“未来也许会有”提前建立：
 
 - Registry Service；
 - Manifest；
+- Feature 目录 / 静态 Catalog；
 - DSL；
 - Slot Catalog；
 - Placement Map；
@@ -34,325 +22,99 @@
 
 ---
 
-## 2. 新增普通页面的标准动作
+## 2. 官方优先与最小侵入原则（Official-First & Minimal-Invasiveness）
 
-```text
-1. 在 features/ 下建目录
-2. 导出薄 Definition
-3. 加入静态 Catalog
-4. 接入 Adapter 数据
-5. 补 Loading / Empty / Error
-6. 写测试和截图
-```
-
-推荐 Definition：
-
-```ts
-export interface WorkbenchAppDefinition {
-  id: string
-  title: string
-  icon?: IconName
-  Component: React.ComponentType
-}
-
-export interface InspectorViewTypeDefinition {
-  id: string
-  title: string
-  icon?: IconName
-  createInitialState(): unknown
-  Component: React.ComponentType<{ viewId: string }>
-}
-```
-
-保持 Definition 薄。不要提前加入权限、版本、`when`、Provider、激活事件等字段。
+1. **不重复造轮子**：能用 DSH 官方组件与能力（官方侧边栏、会话交互流、设置弹窗、
+   dockkit 右栏及其 Files 页），绝不自造第二套平行实现。
+2. **避免脆弱的 CSS 隐藏**：绝不通过 `div[class*="_hash"] > span` 暴力隐藏或改写官方
+   组件；拖拽区域这类必须定位官方元素的规则，用官方暴露的 `data-*` 属性，不用 hash
+   化的 CSS 类名。
+3. **通过标准扩展槽接入**：DeepBuddy 唯一使用的扩展点是 `conversation.hero.brand.mark`
+   槽。新增接入点前先确认官方是否已提供等价能力。
+4. **不覆写内部私有 ABI**：不模拟或依赖官方未公开的内部方法，保障上游快速升级零破损。
+5. **保障上游零阻力升级**：任何改动必须保证在 DSH 核心包 `pnpm update` 时不发生布局
+   断裂或服务成环死锁——`cordis.patch.yml` 不禁用 `ui-layout` / `ui-sidebar`，不重复
+   声明 `root` 或第二份 `layout`。
 
 ---
 
-## 3. Feature 边界
+## 3. DSH ABI 约束
 
-每个 Feature 只从 `index.ts` 导出公共内容。
-
-允许：
-
-```ts
-import { TerminalViewDefinition } from '@/features/terminal'
-```
-
-禁止：
-
-```ts
-import { internalSessionCache } from '@/features/sessions/internal/cache'
-```
-
-跨 Feature 共享内容优先放：
-
-- `dsh/`：DSH 数据和命令；
-- `ui/`：纯视觉元件；
-- `shared/`：真正领域无关的工具；
-- 明确 Service：只有多个独立 Consumer 时。
-
-不要建立一个无限增长的 `utils/` 垃圾桶。
+`dsh/adapter.ts` 是唯一理解 DSH slot 注册 ABI 的文件。新增或修改与官方 slot、Cordis
+Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inject` 声明 + 调用
+`mountOfficialServices`），`ui/` 下的模块（`styles.ts` / `fonts.ts`）是纯字符串常量，
+不感知 DSH ABI。
 
 ---
 
-## 4. Shell 约束
+## 4. Cordis / DSH Effect
 
-Shell 代码只能出现：
-
-- 布局；
-- Catalog；
-- 当前 Selection；
-- Column Chrome；
-- View 实例生命周期；
-- 窗口级 Overlay。
-
-Shell 中不应出现：
-
-```ts
-if (view.type === 'terminal') { ... }
-if (app.id === 'conversation') { ... }
-```
-
-允许的例外必须是视觉或结构差异，不得包含业务逻辑。
-
-Feature 不能直接写 Layout Store。列开关只通过 Shell 暴露的用户动作修改。
+- 所有注册（样式表安装、slot 注册）必须包在 `ctx.effect(...)` 里，插件卸载时自动撤销；
+- 不依赖偶然的加载顺序；
+- 依赖通过 `inject` 显式声明（当前只有 `['slots']`）；
+- 仅在官方已有真实扩展点时直接使用 Slot，不为了 DeepBuddy 的普通样式或品牌需求另建
+  平行 Slot 系统。
 
 ---
 
-## 5. DSH Adapter 约束
+## 5. UI 与 CSS
 
-Feature 不直接解析 DSH 底层事件流。
-
-Adapter 负责：
-
-- 将官方对象转成稳定前端 Snapshot；
-- 统一错误与 Loading 状态；
-- 包装 Host 命令；
-- 隔离上游版本变化；
-- 提供测试 Fake。
-
-Adapter 不负责：
-
-- 视觉状态；
-- 某个页面的展开 / 折叠；
-- 业务组件布局；
-- 复制第二份 Session 日志。
-
-Adapter API 应面向业务事实，而不是机械转发所有官方字段。
+- 样式表通过 `installStyles()` 一次性挂一个 `<style>` 元素，卸载时整体移除；不逐条
+  注入、不散落在多个文件。
+- 选择器优先定位官方组件暴露的 `data-*` 属性或语义 HTML（`header:has(...)`），不写
+  死官方组件的 hash 化 class 名。
+- 不覆盖官方组件自身的样式（拖拽区域规则只加 `-webkit-app-region`，不改动布局、颜色
+  或间距）。
+- 没有 DeepBuddy 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §4。
 
 ---
 
-## 6. 状态规则
-
-### 领域状态
-
-放 DSH 或对应 Provider：
-
-- Session；
-- Agent；
-- Tool Call；
-- 文件；
-- Terminal Process。
-
-### Shell 状态
-
-放 Shell Store：
-
-- 列显隐与宽度；
-- 当前 App；
-- Inspector View 实例与 Active ID。
-
-### Feature UI 状态
-
-留在 Feature：
-
-- 表单草稿；
-- 展开项；
-- 局部搜索词；
-- 滚动位置。
-
-不要用 Effect 同步两个 State 副本。优先删除副本或计算派生值。
-
----
-
-## 7. 动作与 Command
-
-默认使用普通组件事件：
-
-```tsx
-<button onClick={() => setExpanded(v => !v)} />
-```
-
-只有满足任一条件时，才升级为内部 Command：
-
-- 需要快捷键；
-- 需要从另一个 Feature 调用；
-- 同一动作有两个以上呈现入口；
-- 需要菜单 / Command Palette；
-- 需要统一 enablement 与审计。
-
-v1 建议全局 Command：
-
-- `session.new`；
-- `settings.open`；
-- `agent.stop`；
-- `layout.toggleSidebar`；
-- `layout.toggleInspector`；
-- `inspector.closeActiveView`；
-- `file.open`。
-
-不必全局命令化：
-
-- 展开文件夹；
-- 复制单条消息；
-- 展开详情；
-- 切换页面内部 Tab；
-- 表单字段更新；
-- Popover 内确认。
-
----
-
-## 8. Resource 模块
-
-只有真实拥有独立资源的 Feature 才需要 Resource Manager。
-
-Terminal 最小接口：
-
-```ts
-interface TerminalResourceManager {
-  create(options: CreateTerminalOptions): Promise<TerminalId>
-  attach(id: TerminalId): TerminalSnapshot
-  write(id: TerminalId, data: string): Promise<void>
-  resize(id: TerminalId, cols: number, rows: number): Promise<void>
-  kill(id: TerminalId): Promise<void>
-  dispose(): Promise<void>
-}
-```
-
-明确区分：
-
-- `collapse inspector`：仅隐藏；
-- `switch tab`：仅隐藏；
-- `close view`：结束 View；
-- `kill terminal`：结束 Resource；
-- `unload feature / app exit`：清理归属资源。
-
-不要为了 Settings 或静态文件预览复用这套复杂生命周期。
-
----
-
-## 9. Cordis / DSH Effect
-
-第一方模块若使用 Cordis：
-
-- 所有监听器和注册必须有 disposer；
-- 不依赖偶然加载顺序；
-- 依赖通过公开 Context 声明；
-- 仅在 DSH 已有真实扩展点时直接使用 Slot；
-- 不为了 DeepBuddy 普通面板另建平行 Slot 系统。
-
-使用 DSH 原生 Conversation Node / Tool Renderer 时，遵守官方 Owner 边界，不在 UI 里重新配对 Tool Call 和 Result。
-
----
-
-## 10. UI 与 CSS
-
-- 所有普通 UI 使用 KIT。
-- 颜色、圆角、字号、间距和动画来自 Token。
-- Feature 不注入全局 CSS。
-- Feature 不覆盖其他 Feature 的选择器。
-- CSS Module / scoped style 只用于专业渲染器或 KIT 尚未覆盖的局部结构。
-- 新增标准控件前先检查 KIT；第三次出现再加入 KIT。
-
-专业渲染器：
-
-- Monaco / CodeMirror；
-- xterm.js；
-- Canvas；
-- 图表；
-- 视频。
-
-其外层 Header、Toolbar、Empty、Error 仍由 KIT 负责。
-
----
-
-## 11. Electron 与 IPC
+## 6. Electron 与 IPC
 
 - Renderer 不直接 import Electron 主进程 API。
 - Preload 暴露窄、类型化、按能力划分的方法。
-- IPC 参数必须校验。
-- 文件路径、进程和外链操作在 Main / Host 侧执行。
+- Host 半部（`src/host.js`）当前是空实现；若未来需要新增 host 侧能力，先确认官方
+  Host 服务是否已提供等价端点，不重建会话围栏或文件端点这类官方已有能力。
 - DSH Approval 与 Sandbox 继续作为真正权限边界。
-- 不把 Client 模块边界误当安全沙箱。
 
 ---
 
-## 12. 测试最低要求
+## 7. 测试最低要求
 
-### Shell
+`tests/plugin.test.mjs` 把构建产物（`lib/client.js` / `lib/index.js` /
+`cordis.patch.yml` / `package.json`）当作契约来检查：
 
-- 四种布局状态；
-- 拖拽 clamp；
-- 响应式右先左后；
-- 手动关闭不自动重开；
-- 主列始终可用。
+- bundle 自注册、依赖表只包含平台外部模块；
+- `cordis.patch.yml` 不禁用官方 `ui-layout` / `ui-sidebar`，`ui-conversation` 保持启用；
+- bundle 不重新声明 `root` / `sidebar` / `main` / 第二份 `layout` / 第二套主题；
+- 拖拽区域规则和 Hero 品牌标记存在于 bundle 中；
+- 已删除的功能（Terminal、`deepbuddyFiles`、`/deepbuddy/terminal` 等）不出现在
+  bundle 或 host 半部里；
+- `package.json` 没有运行时 `dependencies`（`node-pty` / `ws` 等已随 Inspector 一起
+  移除）。
 
-### Adapter
-
-- 官方 Snapshot 到前端模型的映射；
-- 无数据 / 错误 / 重连；
-- 使用 Fake 时 Feature 能独立测试。
-
-### Feature
-
-- Loading / Empty / Error；
-- 不依赖其他 Feature 内部实现；
-- 卸载后 Listener 和 Timer 清理。
-
-### Terminal
-
-- 切 Tab 不终止；
-- 收起 Inspector 不终止；
-- Kill 明确结束；
-- App 退出清理。
-
-### 视觉
-
-- 长标题；
-- 0 / 1 / 多 Inspector Views；
-- Focus；
-- 减少动态效果；
-- 当前配图对比。
+新增代码修改这份契约前，先确认是在扩大官方优先的边界，还是在悄悄重建一套平行实现。
 
 ---
 
-## 13. Code Review 检查表
+## 8. Code Review 检查表
 
-- [ ] 这是第三个真实实例，还是在猜未来？
-- [ ] 新增的是普通模块、资源模块，还是已有真实消费者的领域 Host？
-- [ ] 状态唯一 Owner 是谁？
-- [ ] 是否复制了 DSH 数据？
-- [ ] 是否让 Shell 知道了业务细节？
-- [ ] 是否深度导入另一个 Feature？
-- [ ] 是否能用普通函数 / Props，而不是新 Service？
-- [ ] 这个点击动作真的需要全局 Command 吗？
-- [ ] 所有 Listener、Timer、IPC 订阅是否清理？
-- [ ] 是否使用 KIT 和 Token？
-- [ ] 是否补齐 Loading / Empty / Error？
-- [ ] 删除此 Feature 后，其他 Feature 是否仍能编译？
+- [ ] 这是官方已有能力，还是真的官方没有？
+- [ ] 是否新增了对官方内部私有 ABI 的依赖？
+- [ ] `cordis.patch.yml` 是否仍然只 insert 一行，不 disable 任何官方行？
+- [ ] Effect 是否清理（卸载插件后官方界面完整可用）？
+- [ ] 是否为“未来也许需要”预先建立了 Catalog / Registry / Feature 目录？
+- [ ] 拖拽区域规则是否只加在官方元素的空白处，没有覆盖官方控件？
 
 ---
 
-## 14. 明确反模式
+## 9. 明确反模式
 
 ```text
-为两个页面建立动态 Registry
-为单个按钮建立 Placement 系统
-为普通 Settings 页面建立 Resource 生命周期
-Shell 按 Feature ID 写业务分支
-Feature 各自解析 DSH Session 日志
-组件 A 通过 Ref 操作组件 B
-用 Effect 来回同步两份状态
+自造第二套侧栏或右栏
+覆写官方内部私有 ABI 或 hash 化 class 名
+为单个样式改动建立 Feature 目录 / Catalog / Registry
+Host 半部重新实现官方已有的文件或终端端点
 为了“未来插件市场”冻结当前内部接口
 ```
 

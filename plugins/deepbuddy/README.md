@@ -1,88 +1,60 @@
 # dsh-plugin-deepbuddy
 
-DeepBuddy 发行版的界面层。一个三栏桌面应用（侧栏 / 主列 / 检查器），以纯插件方式
-**接管**官方 Web UI 的 frame 合同——自有 bundle patch 里禁掉官方 `ui-layout` 行，
-本插件占用内建 `root` slot 并同名重声明它的四个子槽，零底座 diff，卸载即还原官方界面。
-
-界面按「模块化单体 + 静态组合」组织（`design/ARCHITECTURE.md` §11
-映射到本插件 `src/client/` 内部；`main/`、`preload/` 由 `apps/desktop` 承担）：
+DeepBuddy 发行版的界面层。官方 `ui-layout` 画窗口，官方侧栏画左列，官方会话画中列，
+官方 dockkit 画右栏（含 Files 页）。DeepBuddy 不再有自己的右栏或检查器，只叠加两样
+官方没有的东西：窗口拖拽区域和 Hero 品牌标记。卸载插件即回到纯官方界面。
 
 ```text
-src/client/
-├── app/            # 装配（App.tsx）+ 静态目录（catalog.ts）+ 每 fiber 依赖上下文（context.tsx）
-│   └── catalog.ts  # WORKBENCH_APPS / SIDEBAR_SECTIONS / INSPECTOR_VIEW_TYPES 三个静态数组
-├── shell/          # ThreeColumnFrame（root 占用者 + 三列容器）/ ColumnFrame（52px 状态栏 + 功能区）
-│   ├── layout-store.ts   # 列显隐与宽度、当前 App、Inspector 实例与 Active ID、拖拽与快捷键
-│   └── geometry.ts       # 纯布局算术（拖拽 clamp / 响应式收起），可脱离 DOM 测试
-├── dsh/            # 唯一理解 DSH ABI 的层：adapter（wire 束 + 官方 root/frame 槽接管）
-│   ├── files.ts    # deepbuddyFiles/* 端点客户端线
-│   ├── presets.ts  # agent-presets api 面 + 共享 PresetPlane（roster / staged / busy）
-│   ├── theme-presenter.ts
-│   └── hooks.ts    # useSnapshot / useStore
-├── features/       # 每 Feature 只从 index.ts 导出薄 Definition
-│   ├── conversation/  # 对话视图 + 侧栏入口行（新建任务）
-│   ├── sessions/      # 会话列表 section（任务 / 空间）
-│   ├── settings/      # 设置 App（模式页 + 插件页，rail 内部分页）
-│   └── files/         # 检查器文件树视图（多文件 Tab 实例）
-└── ui/             # kit（Object.freeze(KIT)）/ tokens（设计令牌与样式）/ icons
+src/
+├── client/
+│   ├── app/App.tsx     # 入口：inject = ['slots']，调用 mountOfficialServices
+│   ├── dsh/adapter.ts  # 唯一理解 DSH slot ABI 的层：装样式表 + 注册 Hero 品牌标记
+│   └── ui/
+│       ├── styles.ts   # 拖拽区域 CSS（-webkit-app-region）+ Hero 悬停动效
+│       └── fonts.ts    # Archivo 字体 @font-face + --dsw-font-family 覆写
+└── host.js              # Host 半部，空实现（name + 空 apply）
 ```
 
-```text
-┌───────────┬──────────────────────────┬───────────────────────┐
-│ 🔴🟡🟢     │ 会话标题        ┌──┐      │ 文件 │ tab │ tab │ × │
-│ DeepBuddy │ 对话   [+ 新建]  │ 打开  │  ├────────┬──────────┤
-│ 对话       │  用户消息 ▐      │ 停靠栏 │  │ 文件树   │ 文件内容  │
-│ 任务 (N)  │  ▌工具调用块      │ └──┘  │  │         │          │
-│ 空间 (M)  ├──────────────────┤       │  │         │          │
-│ 设置       │  输入区 [工作空间][模式][↑] │  │         │          │
-└───────────┴──────────────────────────┴────────────┴──────────┘
-```
+没有 `features/`、没有静态 Catalog、没有 Layout Store、没有 KIT 或设计令牌。之前存在
+的三列布局壳、Inspector（Terminal / Browser / Files 预览）已整体删除，由官方 dockkit
+右栏取代；host 侧的 `deepbuddyFiles/*` 端点、`/deepbuddy/media`、`/deepbuddy/terminal`
+和 `node-pty` / `ws` / `xterm` 等运行时依赖随之移除。客户端 bundle 从 643KB 降到 55KB。
 
 ## 架构要点
 
-- **静态目录组合**：新增面板 = `features/<name>/` 写组件 + 导出薄 Definition +
-  `app/catalog.ts` 加一行（`WorkbenchAppDefinition` / `SidebarSectionDefinition` /
-  `InspectorViewTypeDefinition`）。Shell 只读目录与 layout store 的 Selection 渲染，
-  不出现 `if (app.id === …)` 业务分支；删除某个 Feature 不需要改动其他 Feature。
-- **每列两区**：三列共用 `ColumnFrame`（52px 状态栏 + 功能区），状态栏内容由列 Props
-  提供，Feature 不提交任意 Header 组件。
-- **状态所有权**（ARCHITECTURE §6）：布局归 shell/layout-store；领域数据归 DSH，经
-  dsh/adapter 投影成稳定 Snapshot（会话列表、roster 共享 PresetPlane）；Feature 局部
-  状态留在 Feature。每 fiber 一份 store，经 app/context 注入各 slot 树。
-- **接管 frame 合同（P4a）**：`cordis.patch.yml` 里 `- id: ui-layout / disabled: true`，
-  `apply` 里把 DeepBuddy 的 chrome 注册进 `root` 并**同名重声明**官方的四个子槽
-  （`sidebar` / `conversation` / `details` / `shell.overlay`），四个都真渲染。
-  ui-slots 只认一个声明者，所以这是全有或全无：接管合同就得把座位全开着。
-  官方 ui-layout 一禁用，`ctx.layout` 与 theme presenter 也一并由本插件提供。
-- **官方 ui-sidebar / ui-conversation 行保持启用**：它们照常注册进 `sidebar` /
-  `conversation`（priority 0），DeepBuddy 的占用者以 `priority: -1` 压在下面渲染
-  （single slot 最低者渲染）——官方表面不渲染但服务全部存活。
-- **开放面已点亮**：`shell.overlay` 里的生态插件（工作区抽屉等）在 DeepBuddy 界面里
-  正常出现并可用；`details` 列常闭但子树保持挂载，宽度由
-  `ctx.layout.openDetails/closeDetails` 驱动。
-- 卸载插件即释放全部注册与那条 disable，官方页面与其全部插件表面恢复。
-- 样式全部圈在 `.dbdy` 根类下（自有 `--db-*` tokens）；落在开放面里的生态内容消费
-  官方 `--dsw-alias-*`，两套 token 并存。
-- Electron 内（UA 含 Electron）模拟红绿灯替换为等宽占位，由壳的 hiddenInset 原生
-  控件补位；每列状态栏为窗口拖拽区，控件用 `NO_DRAG` 退出。
-
-## 数据面
-
-- 直接注入 `ctx.sessions` / `ctx.workspaces`（0.1.2 起由
-  `dsh-api-session-controller` / `dsh-api-workspace-controller` 提供），类型从
-  那些服务面派生（`src/client/dsh/adapter.ts`），抗 harness 版本漂移。
-- 文件树/文件读取走本插件 host 半部自持的 `deepbuddyFiles/listDirectory|readFile`
-  Typert Remote 端点（host：`src/host.js`，session 围栏 + sessionPersistence 回退；
-  client 线：`src/client/dsh/files.ts`，含 session 水合重试）。
-- Agent 预设（模式）走 apiproxy 的 `agentPresets` 面 + 设置字段；roster 的投影与
-  写保护（busy / staged / error）在共享 `PresetPlane`（`src/client/dsh/presets.ts`）。
-- `prompt` 非乐观更新：消息经事件回放落进快照；运行中发送即 steer 插话。
+- **只有两个客户端模块**：`dsh/adapter.ts` 是唯一理解 DSH ABI（`ctx.slots.inject` /
+  `.register`）的文件，做两件独立的事，各自一个 `ctx.effect`：
+  1. 安装样式表（`installStyles(FONT_CSS)`）；
+  2. 把 `DeepBuddyBrandMark` 注册进官方 Hero 的 `conversation.hero.brand.mark` 槽，
+     优先级 -1（低于官方 `FishLogo` 的优先级 0，单 occupant 槽渲染较低优先级的）。
+- **官方 frame 保持启用**：`cordis.patch.yml` 不禁用 `ui-layout` / `ui-sidebar`，只
+  显式保留 `ui-conversation`（它注入 `layout`，由官方 `ui-layout` 提供）并 insert
+  `deepbuddy` 这一行。DeepBuddy 不注册 `root`，不提供第二份 `layout`。
+- **窗口拖拽区域**（`ui/styles.ts`）：通过官方组件暴露的 `data-*` 属性定位，不依赖
+  hash 化的 class 名：
+  - 官方左侧栏顶部 36px（`:has(> [data-rightbar-col]) > div:first-of-type`）避让
+    macOS 交通灯；
+  - 首页 Hero 页面（`[data-phase="hero"]`）整页可拖，Composer（`[data-composer-seat]`）
+    除外；
+  - 官方右栏 Tab 栏（`[data-rightbar-col] [data-dockkit-strip]`）空白处可拖，Tab
+    按钮自行退出；
+  - 右栏全屏模式下，每条 Tab 栏（`[data-rightbar-fullscreen] [data-dockkit-strip]`）
+    顶部加 4px 内边距与交通灯同高，左上角 pane 的栏（没有更上层 split cell 的那个
+    `[data-dockkit-pane]`）再让出 80px 给交通灯——不是一条独立的 36px 标题带；
+  - 会话标题栏空白处（`header:has([data-conversation-header-corner])`）可拖，标题和
+    图标按钮除外。
+  - 按钮、链接、输入框、`role="tab/button/menuitem/treeitem"`、`contenteditable`、
+    对话框、菜单、下拉列表全局退出拖拽（不限定作用域，因为 Electron 按视口全局收集
+    拖拽矩形，Portal 出来的菜单/对话框也要能退出）。
+- **正文字体**：`ui/fonts.ts` 内嵌 Archivo 的 latin 变量子集 woff2，覆写
+  `--dsw-font-family`；代码字体 `--ds-font-family-code` 维持系统等宽栈。
+- 卸载插件即释放两个 `ctx.effect`：样式表和 Hero 品牌标记同时消失，官方界面完整还原。
 
 ## 已知边界
 
-- 检查器当前只有文件视图；浏览器、运行概览、源代码管理为演示数据，未接入。
-- 权限三档、模型选择为 UI 占位，不影响真实会话（权限真面随 approvals 工作接入）。
-- 窗口 resize 不重钳制手动拖出的面板宽度（与设计原型行为一致）。
+- 没有 DeepBuddy 自己的 Terminal / Browser / Files 预览；这些能力现在完全由官方
+  dockkit 右栏提供。
+- 没有 host 侧业务逻辑；`src/host.js` 只声明 `name` 和一个空 `apply`。
 
 ## 安装
 
@@ -98,8 +70,13 @@ dsh --profile deepbuddy web --port 3081
 
 ```sh
 pnpm --filter dsh-plugin-deepbuddy build       # lib/index.js + lib/client.js
-pnpm --filter dsh-plugin-deepbuddy test        # 构建 + 契约/几何测试
+pnpm --filter dsh-plugin-deepbuddy test        # 构建 + bundle 契约测试（12 条，tests/plugin.test.mjs）
 pnpm --filter dsh-plugin-deepbuddy typecheck
 ```
+
+契约测试把构建产物当 artifact 检查：自注册、依赖表只剩平台外部模块、官方 frame 未被
+重新声明、拖拽区域和 Hero 品牌标记存在、已删除功能（xterm、`deepbuddyFiles`、
+`/deepbuddy/terminal` 等）不出现在 bundle 或 host 半部里、`package.json` 没有运行时
+`dependencies`。
 
 桌面壳见 `apps/desktop/`（Electron，加载本地 `dsh web`）。

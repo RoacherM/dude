@@ -33,12 +33,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGING="$REPO_ROOT/apps/desktop/staging"
 RUNTIME="$STAGING/runtime"
 PLUGIN="$STAGING/plugin"
-LOCKED_DSH='@deepseek-ai/dsh@0.1.2-rc.1'
-# Host dependencies imported by the built DeepBuddy plugin. They are staged
-# explicitly instead of relying on dsh's current transitive graph; node-pty's
-# prebuilt native binary then lives in extraResources, outside app.asar.
-LOCKED_NODE_PTY='node-pty@1.2.0-beta.15'
-LOCKED_WS='ws@8.21.3'
+LOCKED_DSH='@deepseek-ai/dsh@0.1.5-rc.2'
 # A cache dir outside the pnpm workspace, so pnpm treats it as a standalone
 # project instead of a workspace member.
 BUILD_DIR="$(mktemp -d)"
@@ -64,8 +59,8 @@ EOF
 cat > "$BUILD_DIR/runtime/.npmrc" <<'EOF'
 node-linker=hoisted
 EOF
-echo "stage-runtime: pnpm install $LOCKED_DSH + DeepBuddy host deps (hoisted, prod) in isolated cache..." >&2
-(cd "$BUILD_DIR/runtime" && pnpm install "$LOCKED_DSH" "$LOCKED_NODE_PTY" "$LOCKED_WS" --prod --ignore-scripts)
+echo "stage-runtime: pnpm install $LOCKED_DSH (hoisted, prod) in isolated cache..." >&2
+(cd "$BUILD_DIR/runtime" && pnpm install "$LOCKED_DSH" --prod --ignore-scripts)
 # pnpm 11 still materializes packages under node_modules/.pnpm even with
 # node-linker=hoisted; the top-level names are relative symlinks into that
 # store. Deleting .pnpm leaves a 600K husk and the packaged app cannot boot.
@@ -79,5 +74,10 @@ echo "stage-runtime: copying dsh-plugin-deepbuddy lib..." >&2
 cp -R "$REPO_ROOT/plugins/deepbuddy/lib" "$PLUGIN/lib"
 cp "$REPO_ROOT/plugins/deepbuddy/package.json" "$PLUGIN/package.json"
 cp "$REPO_ROOT/plugins/deepbuddy/cordis.patch.yml" "$PLUGIN/cordis.patch.yml"
+# Since dsh 0.1.5 the plugin loader imports a bundle by bare name from its own
+# location inside the runtime, not from the profile directory — so the same
+# built plugin must also sit at the runtime's node_modules top level. The
+# profile copy stays: it is what the profile manifest points at.
+cp -R "$PLUGIN" "$RUNTIME/node_modules/dsh-plugin-deepbuddy"
 
 echo "stage-runtime: complete — $(du -sh "$RUNTIME" | cut -f1) runtime, plugin staged at $STAGING." >&2

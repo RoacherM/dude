@@ -1,133 +1,83 @@
 # DeepBuddy 架构
 
-> 状态：现行  
-> 架构形态：**模块化单体 Electron Client**  
-> 核心原则：**能力属于 DSH，界面属于 DeepBuddy；实现保持可重构，不提前承诺可插拔。**
+> 状态：现行
+> 架构形态：**官方优先的轻量增强客户端（Option A: Official-First Thin Client）**
+> 核心原则：**官方优先，最小侵入；桌面增强，标准扩展。**
 
 ---
 
 ## 1. 产品定位
 
-DeepBuddy 是 DeepSeek Harness 的桌面发行版，不是另一套 Agent Core，也不是通用 UI 插件平台。
+DeepBuddy 是 DeepSeek Harness 的桌面发行版，执行“最小可侵入性”的套壳与增强策略，而非重写一套平行的 UI 框架。
 
-DeepBuddy 直接复用 DSH 的领域能力：
+DeepBuddy 直接复用 DSH 的全部官方能力与交互：
 
-- Session 与 Workspace；
-- Agent 与 Agent Loop；
-- 模型、Preset 与凭据；
-- Tool 调用与结果；
-- 文件系统、终端、沙箱与审批；
-- 持久日志、恢复、Fork 与运行状态。
+- 官方应用布局（`ui-layout`）、官方左侧栏（`ui-sidebar`）与官方右侧栏（dockkit，含 Files 页）；
+- 官方会话交互（Conversation 流、Agent Loop、Hero、输入框、模型与 Preset 选择）；
+- Tool 调用与结果、权限审批流；
+- 持久日志、恢复、Fork 与运行状态；
+- 底层文件系统、沙箱与环境能力。
 
-DeepBuddy 自己负责：
+DeepBuddy 只贡献官方没有的两样东西：
 
-- Electron 窗口与桌面集成；
-- 三列两区布局；
-- 第一方功能模块；
-- 统一设计语言；
-- 将 DSH 数据投影为清晰的桌面体验。
+- **桌面窗口集成**：一段全局样式表，负责 macOS 交通灯的拖拽避让区和正文字体；
+- **品牌**：把 DeepBuddy 的鱼形标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽。
 
-承诺的单位是**能力语义**，不是 DSH 官方 UI 的组件结构或 Slot 名称。
+没有第二套侧栏、没有自绘布局、没有自己的检查器（Inspector）。之前存在的 Terminal /
+Browser / Files 预览、三列布局壳、KIT、设计令牌、Preset Plane、Session 围栏、host 侧
+`deepbuddyFiles/*` 端点，随官方右栏（dockkit，自带 Files 页）落地而整体删除：这些能力
+DSH 官方已经原生提供，继续维护一份平行实现违反官方优先原则。
 
 ---
 
-## 2. 当前架构图
+## 2. 现行架构图
 
 ```text
 Electron Main
-├── 窗口生命周期
+├── 窗口生命周期与原生菜单
 ├── DSH Host 启停
-├── 原生菜单 / 通知 / 更新
 └── 受控 IPC
 
 Preload
 └── 极窄的 Desktop Bridge
 
 Renderer
-├── DSH Adapter
-│   ├── sessions
-│   ├── agents
-│   ├── models / presets
-│   ├── tools / approvals
-│   ├── files
-│   └── terminals
-│
-├── ThreeColumnFrame
-│   ├── SidebarColumn
-│   ├── (主列 = 官方 ConversationRoot，`conversation` 槽)
-│   └── InspectorColumn (Dock)
-│
-├── Feature Modules
-│   ├── sessions
-│   ├── conversation
-│   ├── settings
-│   ├── files
-│   └── terminal
-│
-└── UI Foundation
-    ├── KIT
-    ├── tokens
-    ├── icons
-    └── dialogs / toast
+└── DSH Upstream Core & UI（官方全量复用，未做二次包装）
+    ├── AppFrame（官方 ui-layout）
+    ├── Official Sidebar（工作区 / 会话列表 / 设置入口）
+    ├── Official Conversation（会话流 / Agent Loop / Hero / 输入框）
+    ├── Official Rightbar（dockkit：Files 等官方页面）
+    └── DeepBuddy Plugin（唯一自研代码，两个 Effect）
+        ├── 样式表：字体 + 窗口拖拽区域 + Hero 悬停动效
+        └── Hero 品牌标记：注册进 conversation.hero.brand.mark
 ```
 
 ---
 
-## 3. 组合方式：静态目录，而不是动态注册表
+## 3. 插件结构
 
-v1 的第一方 UI 使用普通 TypeScript 目录组合：
-
-```ts
-// app/catalog.ts
-export const SIDEBAR_SECTIONS = [
-  SessionListDefinition,
-] as const
-
-export const INSPECTOR_VIEW_TYPES = [
-  FilesViewDefinition,
-  TerminalViewDefinition,
-] as const
-```
-
-主列（`conversation` 槽）由官方 `ui-conversation` 的 `ConversationRoot` 接管
-（wave 8），不再走 DeepBuddy 的 workbench-app 目录；`WORKBENCH_APPS` 随之移除。
-DeepBuddy 保留侧栏 / inspector 两个静态目录。
-
-新增第一方功能的默认流程是：
+插件只有两个客户端模块，没有 Feature 目录、没有静态 Catalog、没有 Shell：
 
 ```text
-写一个模块
-→ 导出一个薄 Definition
-→ 加入一个静态数组
-→ 类型检查、测试、重启
+src/client/
+├── app/App.tsx        # 入口：inject = ['slots']，调用 mountOfficialServices
+├── dsh/adapter.ts      # 唯一理解 DSH ABI 的层：安装样式表 + 注册 Hero 品牌标记
+└── ui/
+    ├── styles.ts       # 拖拽区域 CSS + Hero 悬停动效
+    └── fonts.ts        # Archivo 字体 @font-face + 字体变量覆写
+src/host.js              # Host 半部，空实现（只声明 name + 空 apply）
 ```
 
-当前不需要：
-
-- 动态安装；
-- Manifest；
-- API Version；
-- 冲突仲裁；
-- 公共 Placement；
-- 全局 `when` DSL；
-- 运行时 UI 热插拔。
-
-静态数组未来可以替换为 Registry，只要 Definition 保持薄，功能模块无需重写。
+新增能力前先确认：官方是否已经原生提供。DeepBuddy 不为了“可能有用”预先搭 Feature
+目录、Catalog 或 Registry —— 当前没有第二个、第三个自研 UI 模块，抽象没有意义。
 
 ---
 
 ## 4. DSH 插件与 UI 插件不是同一件事
 
-DSH 的“一切皆插件”继续成立于能力层和运行时层。
-
-DeepBuddy 的第一方 UI 模块可以为了复用以下能力而实现为 Cordis 插件：
-
-- 显式服务依赖；
-- 生命周期与 Effect 清理；
-- Profile / Bundle 组合；
-- 现有 Conversation Node、Tool Renderer 等扩展点。
-
-但必须区分：
+DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugin-deepbuddy` 以 Cordis 插件
+形式挂载，是为了拿到生命周期 Effect（挂载即安装、卸载即撤销），不代表 DeepBuddy 对外
+承诺一套公开 UI 插件协议。
 
 ```text
 实现上通过 Cordis 挂载
@@ -135,237 +85,85 @@ DeepBuddy 的第一方 UI 模块可以为了复用以下能力而实现为 Cordi
 产品上承诺公开 UI 插件协议
 ```
 
-第一方模块可随仓库重构；在出现外部消费者之前，不为它们冻结兼容接口。
-
 ---
 
-## 5. 模块边界
+## 5. DSH ABI 边界
 
-### 5.1 Shell
+`dsh/adapter.ts` 是唯一理解 DSH slot 注册 ABI（`ctx.slots.inject` / `.register`）的
+文件。它做两件事，各自一个独立 `ctx.effect`，卸载互不影响：
 
-Shell 只负责：
+- 安装样式表（`ui/styles.ts` 的拖拽区域规则 + `ui/fonts.ts` 的字体覆写）；
+- 把 `DeepBuddyBrandMark` 注册进官方 `conversation.hero.brand.mark` 槽（优先级 -1，
+  低于官方 fish logo 的优先级 0，因此单一 occupant 的槽渲染 DeepBuddy 的版本）。
 
-- 三列几何；
-- 左右列开关；
-- 拖拽与响应式；
-- 当前 Workbench 页面；
-- Inspector View 实例集合；
-- 窗口级对话框与 Toast。
-
-Shell 不处理：
-
-- Session 日志推导；
-- Tool Call 配对；
-- Terminal 进程；
-- 文件读取；
-- Settings 业务逻辑。
-
-### 5.2 DSH Adapter
-
-`dsh-adapter` 是 Renderer 唯一理解 DSH 具体 ABI 的位置。
-
-Feature 应依赖稳定 Hook 或 Service：
-
-```ts
-useSessions()
-useCurrentSession()
-useAgentStatus(sessionId)
-useModelOptions()
-useApprovals(sessionId)
-useWorkspaceFiles(workspaceId)
-```
-
-禁止每个 Feature 自己解析官方事件或自行维护第二份 Session 状态。
-
-Adapter 还承担 **layout 服务 stub**：ui-layout 行被禁用后，`ctx.layout` 原本没有
-消费方（wave6 据此删除 provide）；`ui-conversation` 启用后（wave 8）注入
-`layout`，Adapter 重新 `ctx.reflect.provide('layout', layoutFace())`。stub 的边界：
-只实作官方 `ILayout` 的三个动词（`toggleSidebar` / `openDetails` /
-`closeDetails`）并转发到 DeepBuddy 的 LayoutStore；不接管官方 layout 内部
-的面板几何，也不把 DeepBuddy 的 dock 与官方 `details` 槽混为一谈。
-
-### 5.3 Feature Module
-
-每个 Feature：
-
-- 有独立目录；
-- 只从自己的公共入口导出；
-- 不深度导入另一个 Feature 的内部文件；
-- 拥有自己的局部 UI 状态；
-- 通过 Adapter 或明确 Service 获取领域数据；
-- 可以被整体删除或替换。
-
-推荐目录：
-
-```text
-features/terminal/
-├── index.ts
-├── TerminalView.tsx
-├── terminal-resource-manager.ts
-├── types.ts
-└── tests/
-```
+不覆写内部私有 ABI，不注入破坏性 CSS 隐藏官方组件；拖拽区域规则通过官方组件暴露的
+`data-*` 属性（`data-rightbar-col` / `data-phase` / `data-dockkit-strip` /
+`data-rightbar-fullscreen` / `data-dockkit-pane` / `data-conversation-header-corner`）
+定位，不依赖 hash 化的 CSS 类名。
 
 ---
 
 ## 6. 状态所有权
 
-每份可变状态只有一个 Owner。
+DeepBuddy 不持有任何领域状态或布局状态：
 
 | 状态 | Owner |
 |---|---|
-| 当前 Session / Session 日志 | DSH Session Service |
-| Agent 运行状态 | DSH Agent Service |
-| 模型与 Preset | DSH / Settings Service |
-| 左右列显隐和宽度 | Layout Store |
-| 当前 Workbench App | Shell Store |
-| Inspector View 实例 | Inspector Store |
-| 文件内容与目录 | Files Provider / Cache |
-| Terminal 进程 | Terminal Resource Manager |
-| Composer 草稿 | Conversation Feature |
+| Session / Agent / Model / Preset / 文件 / 布局显隐宽度 | DSH 官方（Session Service /
+  Agent Service / ui-layout / dockkit） |
+| 样式表是否安装 | `ctx.effect`（插件挂载期间恒为已安装） |
+| Hero 品牌标记是否注册 | `ctx.effect`（插件挂载期间恒为已注册） |
 
-组件不直接通知其他组件。数据流应是：
-
-```text
-用户动作
-  → 调用 Owner
-  → Owner 更新 Snapshot
-  → 订阅该 Snapshot 的 UI 重绘
-```
+没有 Layout Store、没有 Inspector Store、没有 Terminal Resource Manager。这些之前存在
+的 Owner 随对应功能一起删除。
 
 ---
 
-## 7. 普通模块、资源模块、领域 Host
+## 7. 何时抽象
 
-这不是公开插件等级，只是内部实现分类。
-
-### 普通模块
-
-Settings、About、静态预览、普通表单：
-
-```text
-挂载组件
-→ 使用数据
-→ 卸载组件
-```
-
-不需要额外资源协议。
-
-### 资源模块
-
-Terminal、Browser、Editor、播放器：
-
-```text
-View 生命周期
-≠
-Resource 生命周期
-```
-
-资源管理逻辑留在对应 Feature 内，不推广成所有页面的公共框架。
-
-### 领域 Host
-
-只有需要让多个独立贡献者继续扩展的区域才成为 Host，例如：
-
-- Conversation Node；
-- Tool Call Renderer；
-- 未来已有三个真实消费者的 Settings 子页；
-- 未来 Plugin Studio。
-
-领域 Host 优先复用 DSH 已有 Slot 和 Renderer 契约，不在 DeepBuddy 再造平行系统。
+采用 Rule of Three：同一类问题出现第三个真实实例之前，不建立公共框架。当前插件只有
+两个客户端模块，远未触发任何抽象信号。若未来新增第二个官方没有的增强能力，先直接实现，
+不预先搭 Catalog / Registry / Definition 协议。
 
 ---
 
-## 8. 何时抽象
-
-采用 Rule of Three。
-
-只有出现以下信号之一，才建立新的公共抽象：
-
-1. 第三次为同类功能修改 Shell；
-2. 同一种代码结构已在三个独立模块中重复；
-3. 出现第一个非核心作者；
-4. 功能需要独立安装、卸载或版本升级；
-5. 同一能力出现多个 Provider 和多个 Consumer；
-6. 当前直接组合已经造成真实测试或维护问题。
-
-在这些信号出现前，允许少量复制和局部特例。它们是设计样本，不是失败。
-
----
-
-## 9. Electron 边界
+## 8. Electron 边界
 
 - Main 负责主机能力和窗口生命周期。
 - Preload 只暴露窄接口。
 - Renderer 不直接获得 `fs`、`child_process` 或裸 `ipcRenderer`。
-- 文件、终端、通知等原生能力通过 Adapter / Provider 使用。
-- Client 模块边界用于维护产品秩序，不替代 Host 侧权限和 DSH 审批。
-- **配置隔离（wave 9）**：发行版一律以 `DSH_HOME=~/.deepbuddy` 运行（启动器
-  `scripts/deepbuddy`），用户数据（settings / credentials / sessions / storages /
-  profiles/deepbuddy）全部落在 `~/.deepbuddy`，与官方 `~/.dsh` 自首次迁移时刻起
-  分叉、互不可见。首次运行从 `~/.dsh` **复制**（非移动，官方目录只读），
-  `profiles/deepbuddy` 用 `cp -RP` 保留指向本仓库的符号链接。
-
-具体安全实现另随代码落地，但不得以“当前都是自己写的代码”为由打开完整 Node 权限。
+- 插件不再自带任何 host 侧业务端点（`deepbuddyFiles/*`、`/deepbuddy/media`、
+  `/deepbuddy/terminal` 均已删除）；`src/host.js` 是空实现，文件与终端能力完全由官方
+  dockkit 提供。
+- **配置隔离**：发行版一律以 `DSH_HOME=~/.deepbuddy` 运行（启动器 `scripts/deepbuddy`），
+  用户数据（settings / credentials / sessions / storages / profiles/deepbuddy）全部落在
+  `~/.deepbuddy`，与官方 `~/.dsh` 自首次迁移时刻起分叉、互不可见。首次运行从 `~/.dsh`
+  **复制**（非移动，官方目录只读），`profiles/deepbuddy` 用 `cp -RP` 保留指向本仓库的
+  符号链接。
 
 ---
 
-## 10. 当前非目标
+## 9. 当前非目标
 
 - 面向第三方的 UI 插件 SDK；
 - 插件市场；
 - 运行时安装任意面板；
 - 公共 `declare / register / surface` 协议；
-- 全局 Placement 与 `when` DSL；
+- 自绘的第二套侧栏、右栏或检查器；
 - 任意 Webview 和自由浮窗；
 - 多主题生态；
-- 将每一个点击动作命令化；
 - 为尚不存在的消费者维护兼容层。
 
 ---
 
-## 11. 推荐源码结构
-
-```text
-src/
-├── main/
-├── preload/
-└── renderer/
-    ├── app/
-    │   ├── App.tsx
-    │   ├── catalog.ts
-    │   └── stores/
-    ├── shell/
-    │   ├── ThreeColumnFrame.tsx
-    │   ├── ColumnFrame.tsx
-    │   └── layout-store.ts
-    ├── dsh/
-    │   ├── adapter.ts
-    │   ├── hooks.ts
-    │   ├── commands.ts
-    │   └── types.ts
-    ├── features/
-    │   ├── sessions/
-    │   ├── conversation/
-    │   ├── settings/
-    │   ├── files/
-    │   └── terminal/
-    └── ui/
-        ├── kit/
-        ├── tokens.ts
-        └── icons.tsx
-```
-
----
-
-## 12. 架构验收
+## 10. 架构验收
 
 当前架构被正确实现时，应满足：
 
-- 删除某个 Feature 不需要改动其他 Feature 内部代码；
-- Shell 不包含 Session、File 或 Terminal 业务分支；
-- DSH ABI 变化主要收敛在 Adapter；
-- Settings、Files 等普通页面没有虚构的插件 Manifest；
-- Terminal 的进程不会因为切换 Tab 或收起右列而意外死亡；
-- 没有外部消费者时，不为内部接口承诺兼容；
-- 新增普通面板的主要工作仍是组件 + 一行静态目录配置。
+- 官方 `ui-layout` / `ui-sidebar` / `ui-conversation` 全部保持启用，`cordis.patch.yml`
+  不出现禁用它们的行；
+- `client.js` bundle 不重新声明 `root`、`sidebar`、`main` 或第二份 `layout`；
+- 插件卸载后官方界面完整可用，不留下任何遗留状态；
+- 两个 Effect（样式表、Hero 品牌标记）各自独立清理；
+- 客户端 bundle 里不出现已删除功能的痕迹（xterm、`deepbuddyFiles`、
+  `/deepbuddy/terminal` 等）。

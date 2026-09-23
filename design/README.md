@@ -1,15 +1,14 @@
 # DeepBuddy 当前设计文档
 
-> 版本：**0.1.0**（首个整合版本）  
-> 状态：**现行，可直接据此开发**  
-> 更新：2026-08-25
+> 状态：**现行，可直接据此开发**
+> 更新：2026-09-23
 
 DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 
-- DSH 负责 Agent、Session、Tool、模型、文件系统、审批和沙箱等能力。
-- DeepBuddy 负责三列两区的桌面界面与第一方功能体验。
-- 当前采用**模块化单体 + 静态组合**，不建设公开的 UI 插件平台。
-- 第一方模块可以在实现上使用 Cordis/DSH 生命周期，但这不等于向外承诺动态 UI 插件 API。
+- DSH 负责 Agent、Session、Tool、模型、文件系统、审批和沙箱等能力，以及应用布局
+  （官方 `ui-layout`）、左右两侧栏（官方 `ui-sidebar` / dockkit）与会话核心交互。
+- DeepBuddy 只贡献桌面窗口的拖拽区域和 Hero 品牌标记，其余界面一字不改地复用官方实现。
+- 当前是模块化单体客户端，不建设公开的 UI 插件平台。
 
 ## 文档效力
 
@@ -19,55 +18,41 @@ DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。
 |---|---|---|
 | [`../AGENTS.md`](../AGENTS.md) | Coding Agent 开工约束与提交检查（在仓库根） | 执行入口 |
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 系统边界、模块关系、DSH 集成方式 | 最高 |
-| [`DESIGN_INTENT.md`](./DESIGN_INTENT.md) | 三列两区、交互与视觉基线 | 高 |
+| [`DESIGN_INTENT.md`](./DESIGN_INTENT.md) | 拖拽区域与 Hero 品牌标记的交互与视觉约束 | 高 |
 | [`DEVELOPMENT_RULES.md`](./DEVELOPMENT_RULES.md) | 开发时必须遵守的工程约束与检查表 | 高 |
 | [`prototype/`](./prototype/README.md) | 高保真可交互原型；**UI/交互改动先在此迭代再落实现** | UI 基线 |
-| [`FEATURE_MAP.md`](./FEATURE_MAP.md) | v1 功能落点、状态 Owner、开发顺序 | 当前计划 |
-| [`notes/UI_EXTENSION_TRIGGERS.md`](./notes/UI_EXTENSION_TRIGGERS.md) | 未来何时才抽取 UI 扩展协议 | 决策备忘 |
+| [`FEATURE_MAP.md`](./FEATURE_MAP.md) | 当前功能落点、状态 Owner | 当前状态 |
 
 发生冲突时，以靠前文件为准。
 
 ## 当前一句话
 
-> **三列两区保持严格，具体功能默认直接组合；重复三次或出现外部作者后，再从真实代码中抽取扩展协议。**
+> **官方能做的一律用官方；DeepBuddy 只在官方没有的两处（窗口拖拽、Hero 品牌）落自己的代码。**
 
 ## 当前不做
 
-下面这些不是 v1 的基础设施：
-
+- 自绘的第二套侧栏、右栏或检查器；
 - 动态安装和卸载 UI 插件；
 - 面向第三方的 `register / declare / surface` 公共协议；
 - Placement、`when`、Context Key 等全局 UI DSL；
 - 任意面板、自由浮窗、任意 Webview；
 - 插件市场和运行时 UI 热插拔；
 - 为每个局部点击动作建立全局 Command；
-- 为每个普通页面建立 View / Resource / Plugin 三重生命周期。
+- 独立的 KIT 组件库或设计令牌体系。
 
-它们并非永远禁止，只是必须等真实需求出现后再提炼。
+它们并非永远禁止，只是必须等真实需求出现后再评估。
 
-## 0.1.0 状态
+## 现行状态
 
-以下已在 `plugins/deepbuddy/` 落地并与原型对齐：
+`plugins/deepbuddy/` 只有两个客户端模块和一个空 host 半部：
 
-1. `ThreeColumnFrame` / `ColumnFrame` 三列两区壳，四态布局与拖拽把手；
-2. `dsh-adapter` 投影官方数据；
-3. Session List + Conversation（对话 / 轨迹）；
-4. Settings 覆盖式弹层（800×800 四 tab，对齐原型）；
-5. 停靠栏三视图：Files / Terminal / Browser，资源保活与多 tab；
-6. `prototype/` 高保真交互原型确立为 UI 基线。
+1. `src/client/app/App.tsx`：入口，装配 `dsh/adapter.ts`；
+2. `src/client/dsh/adapter.ts`：安装样式表（`ui/styles.ts` 拖拽区域 + `ui/fonts.ts`
+   字体）、把 DeepBuddy 鱼形标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽；
+3. `src/host.js`：空实现。
 
-后续改动按 `prototype/README.md` 的「先原型后实现」流程迭代；
-第三个同类需求出现前不抽象扩展协议（见 `notes/UI_EXTENSION_TRIGGERS.md`）。
+之前的三列布局壳、Inspector（Terminal / Browser / Files 预览）、KIT、设计令牌、Preset
+Plane、Session 围栏与 host 侧文件/终端端点已整体删除，由官方 `ui-layout` 与官方
+dockkit 右栏（自带 Files 页）取代。客户端 bundle 从 643KB 降到 55KB。
 
-## 视觉 v2（2026-08-25）· 待落实现
-
-按 `deepbuddy_redesign/` 交付包升级了视觉语言，**只落在 `prototype/`**，
-`plugins/deepbuddy/` 尚未跟进：
-
-- 三列改浮岛：窗口底 `#0b0b0c`，10px 缝，面板 20px 圆角 + 1px 白 5% 描边；
-- 正文字体 Departure Mono → Archivo（+ 中文回退），像素字只留品牌字标；
-- 红 `#ec3013` 定为品牌色（字标点 / 选中左条），蓝 `#679efe` 降为纯行动色；
-- 会话行加运行/等待/空闲状态点；视图 Tab 收进主列状态栏，省掉独立一行。
-
-细则见 [`DESIGN_INTENT.md §2 / §10`](./DESIGN_INTENT.md)，
-落地进度见 `.agents/handoffs/2026-08-25-visual-v2.md`。
+细则见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) 与 [`DESIGN_INTENT.md`](./DESIGN_INTENT.md)。

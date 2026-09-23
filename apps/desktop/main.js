@@ -12,10 +12,10 @@
  * first run migrates from ~/.dsh (canonical semantics live in scripts/deepbuddy
  * — this JS mirrors them).
  *
- * The app runs an APP-EXCLUSIVE profile: `desktop` (not the dev `deepbuddy`
+ * The app runs an APP-EXCLUSIVE profile: `deepbuddy-app` (not the dev `deepbuddy`
  * profile, whose plugin node_modules links back into this repo and would fight
- * dev hot-reload). The desktop profile is generated idempotently in
- * ~/.deepbuddy/profiles/desktop and points its node_modules/dsh-plugin-deepbuddy
+ * dev hot-reload). The app profile is generated idempotently in
+ * ~/.deepbuddy/profiles/deepbuddy-app and points its node_modules/dsh-plugin-deepbuddy
  * at the packaged plugin in resources.
  *
  * Dev mode (`electron .` from the repo, no packaged resources) keeps the old
@@ -38,8 +38,10 @@ const DEEP_BUDDY_HOME = path.join(os.homedir(), '.deepbuddy')
 const OFFICIAL_HOME = path.join(os.homedir(), '.dsh')
 const PROFILES_DIR = path.join(DEEP_BUDDY_HOME, 'profiles')
 
-/** App-exclusive profile name — never the dev `deepbuddy` profile. */
-const APP_PROFILE = 'desktop'
+/** App-exclusive profile name — never the dev `deepbuddy` profile, and not
+ * `desktop` either: since dsh 0.1.5 the launcher reserves that name for the
+ * official Electron app and refuses it on the command line. */
+const APP_PROFILE = 'deepbuddy-app'
 
 // ── free port (net listen 0) ────────────────────────────────────────────────
 
@@ -59,7 +61,7 @@ function findFreePort() {
 //
 // Canonical semantics live in scripts/deepbuddy. This copy-run-migrate mirrors
 // it: copy (never move) the isolation set from ~/.dsh into ~/.deepbuddy, with
-// cp -RP-equivalent symlink preservation (the desktop profile's plugin link is
+// cp -RP-equivalent symlink preservation (the app profile's plugin link is
 // NOT copied here — the app generates that profile itself). Only runs when
 // ~/.deepbuddy does not exist. ~/.dsh is read-only.
 function ensureDeepBuddyHome() {
@@ -81,14 +83,14 @@ function ensureDeepBuddyHome() {
     const src = path.join(OFFICIAL_HOME, d)
     if (fs.existsSync(src)) copyPreservingSymlinks(src, path.join(DEEP_BUDDY_HOME, d))
   }
-  // The dev deepbuddy profile is NOT migrated (the app uses the desktop
+  // The dev deepbuddy profile is NOT migrated (the app uses its own
   // profile). The official home's profiles are left untouched.
 }
 
-// ── app-exclusive desktop profile ───────────────────────────────────────────
+// ── app-exclusive app profile ───────────────────────────────────────────────
 
 /**
- * Generate ~/.deepbuddy/profiles/desktop idempotently. Its manifest mirrors
+ * Generate ~/.deepbuddy/profiles/deepbuddy-app idempotently. Its manifest mirrors
  * the dev profile (dsh-base + dsh-web-app bundles from the staged runtime;
  * dsh-plugin-deepbuddy from the bundled resources). The plugin is COPIED into
  * the profile's node_modules so it never links back to a source repo.
@@ -110,7 +112,7 @@ function ensureDesktopProfile(resourcesDir) {
   fs.cpSync(pluginSrc, pluginDest, { recursive: true, force: true })
 
   const manifest = {
-    name: 'dsh-profile-desktop',
+    name: 'dsh-profile-deepbuddy-app',
     private: true,
     dependencies: {
       'dsh-plugin-deepbuddy': 'file:node_modules/dsh-plugin-deepbuddy',
@@ -118,6 +120,10 @@ function ensureDesktopProfile(resourcesDir) {
     dsh: {
       profile: {
         bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', 'dsh-plugin-deepbuddy'],
+        // `startup`, like the official shipped templates: `live` (the
+        // default) loads the HMR plugin to watch patch files, which needs
+        // --expose-internals and has nothing to watch in a packaged app.
+        patchReload: 'startup',
       },
     },
   }
@@ -235,11 +241,10 @@ function createWindow(url) {
     minWidth: 860,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
-    // Centered on the shell's single 52px header line (12px lights →
-    // y 20..32): every column draws that one line, so the lights, the
-    // sidebar toggle beside them and the dock toggle at the far right all
-    // share a centerline (ThreeColumnFrame/ColumnFrame).
-    trafficLightPosition: { x: 14, y: 20 },
+    // The official sidebar's first 36px is a safe band (tokens.ts). Lights
+    // are about 14px tall, so y 12 puts them inside that band and clear of
+    // the logo row that starts at 36px.
+    trafficLightPosition: { x: 14, y: 12 },
     // The compositor shows this during fast drag/resize before the web
     // content repaints — it must match the UI's ground (--dsw-alias-bg-base
     // per scheme; the theme presenter follows the system by default), or the

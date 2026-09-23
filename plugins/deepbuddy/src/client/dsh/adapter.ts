@@ -1,353 +1,60 @@
 /**
- * The only layer that understands the DSH ABI.
- *
- * Everything here translates the harness's client surface for the rest of the
- * distribution: the session/workspace services, the deepbuddyFiles host wire,
- * the agent-preset api face, the theme registry, and the official root/frame
- * slot contract DeepBuddy inherited from the disabled `ui-layout` row
- * (cordis.patch.yml). Features never parse DSH streams themselves — they read
- * the snapshots and wires this module hands them (deepbuddy-design-current/
- * DEVELOPMENT_RULES.md §5).
- *
- * `ctx.sessions` and `ctx.workspaces` are ordinary cordis services — the same
- * snapshot objects the stock components consume — so every type here derives
- * from those service faces instead of a vanished runtime barrel, which keeps
- * the plugin compiling across harness release drift.
+ * The only layer that understands the DSH ABI: the slot registry the hero
+ * brand mark is registered into.
  */
 import { createElement } from 'react'
 import type { ReactNode } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
-import type { ISessions, SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
-import type { IWorkspaces, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
-// Type-only: ui-layout's SlotMap merge names the four frame child slots
-// re-declared below. Its Context merge (`ctx.layout`) is no longer consumed by
-// any live row, so only the SlotMap merge is pulled in here. Erased at build
-// time — cross-plugin VALUE imports are a bundle-purity error.
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
-import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
-import type { LayoutStore } from '../shell/layout-store.ts'
-import brandMarkUrl from '../assets/brand-mark.png'
-import { createFilesWire } from './files.ts'
-import type { WorkspaceFilesWire } from './files.ts'
-import { createPluginsWire, createPresetsWire } from './presets.ts'
-import type { PluginsWire, PresetsWire } from './presets.ts'
-import { installStyles } from '../ui/tokens.ts'
+import { installStyles } from '../ui/styles.ts'
 import { FONT_CSS } from '../ui/fonts.ts'
-import { ThemePresenter } from './theme-presenter.ts'
-
-// ── service faces, derived from the 0.1.2 controller packages ───────────────
-
-export type Sessions = ISessions
-export type Workspaces = IWorkspaces
-
-export type SessionList = SessionListState
-export type SessionId = SessionList['ids'][number]
-export type { SessionSummary }
-
-export type WorkspaceList = ReturnType<Workspaces['list']['getSnapshot']>
-export type { WorkspaceView }
-export type WorkspaceId = WorkspaceView['workspaceId']
-
-/** The services every feature reaches through — one bundle per plugin fiber. */
-export interface Dsh {
-  sessions: Sessions
-  workspaces: Workspaces
-  /**
-   * Start a blank session (0.1.2: lives on `ctx.uiWorkspace`, not the
-   * workspace controller). Optional workspace inherits the current one.
-   */
-  startSession(workspaceId?: WorkspaceId): void
-  /** Workspace file endpoints (see dsh/files.ts); null when the wire is absent. */
-  files: WorkspaceFilesWire | null
-  /** Agent-preset roster and authoring (see dsh/presets.ts). */
-  presets: PresetsWire
-  /**
-   * Loader inventory. Mutable and initially null: the typed Remote namespace
-   * mounts asynchronously, and gating the frame's root registration on it
-   * would leave the distribution with no UI at all when it is absent.
-   */
-  plugins: PluginsWire | null
-  /**
-   * Subscribe to the host's `agent-presets` settings document moving — a
-   * default changed in another tab or edited on disk. Returns the disposer.
-   */
-  onRosterMoved(handler: () => void): () => void
-  /**
-   * Resolve the host account's home directory — the default workspace path
-   * (wave 4 §3). DSH-side first (`host.listDirectory` returns `home`); falls
-   * back to the host process cwd (`host.describe`) when the browse surface is
-   * absent. Never hardcodes a user path on the client.
-   * @returns the home path, or null when neither surface answers.
-   */
-  resolveHome(): Promise<string | null>
-}
-
-/** The part of the bundle only the adapter's own wiring may touch. */
-interface DshInternal extends Dsh {
-  /** Fire every `onRosterMoved` subscriber (remote `settings/document-updated`). */
-  notifyRosterMoved(): void
-}
 
 /**
- * Build the wire bundle for one fiber.
- * @param ctx - the client root context (provides the services).
- * @param connection - the browser `connection` service, reached through
- * `ctx.get` rather than a Context member: the cordis Context type carries the
- * HOST connection under that name, and the connection plugin resolves the
- * browser one the same way.
- * @returns the bundle.
+ * Official DeepSeek Harness vector whale logo path, extracted from the
+ * @deepseek-ai/dsh-client-ui-conversation HeroFish specification.
  */
-export function createDsh(ctx: Context, connection: ConnectionHandle): Dsh {
-  const rosterListeners = new Set<() => void>()
-  const dsh: DshInternal = {
-    sessions: ctx.sessions,
-    workspaces: ctx.workspaces,
-    startSession(workspaceId) {
-      ctx.uiWorkspace.startSession(workspaceId)
-    },
-    files: createFilesWire(connection.rpc),
-    presets: createPresetsWire(ctx.remote),
-    plugins: null,
-    onRosterMoved(handler) {
-      rosterListeners.add(handler)
-      return () => { rosterListeners.delete(handler) }
-    },
-    async resolveHome(): Promise<string | null> {
-      // 0.1.2: listing with no path is the host home (uiWorkspace.listDirectory).
-      // Never hardcode a user path on the client.
-      try {
-        const listing = await ctx.uiWorkspace.listDirectory() as { home?: string; path?: string }
-        const home = listing.home ?? listing.path
-        if (typeof home === 'string' && home !== '') return home
-      }
-      catch { /* browse absent — no home */ }
-      return null
-    },
-    notifyRosterMoved() {
-      for (const handler of rosterListeners) handler()
-    },
-  }
-  return dsh
-}
-
-// ── the official frame contract ─────────────────────────────────────────────
+export const FISH_LOGO_PATH =
+  'M22.9168 1.43018C22.6713 1.31018 22.5658 1.53918 22.4223 1.65519C22.3733 1.69269 22.3318 1.74169 22.2903 1.78669C21.9317 2.1697 21.5127 2.42121 20.9657 2.39121C20.1657 2.34621 19.4827 2.59771 18.8787 3.20973C18.7502 2.45521 18.3236 2.0047 17.6746 1.71569C17.3351 1.56568 16.9916 1.41518 16.7536 1.08867C16.5876 0.856163 16.5421 0.597155 16.4591 0.341647C16.4061 0.187643 16.3536 0.0301382 16.1761 0.00363739C15.9836 -0.0263635 15.9081 0.135141 15.8326 0.270145C15.5306 0.822162 15.4136 1.43018 15.4251 2.0462C15.4516 3.43174 16.0366 4.53527 17.1991 5.3203C17.3311 5.4103 17.3651 5.5003 17.3236 5.63181C17.2441 5.90231 17.1501 6.16482 17.0671 6.43533C17.0141 6.60784 16.9351 6.64584 16.7501 6.57033C16.1121 6.30383 15.5611 5.90931 15.074 5.4328C14.2475 4.63328 13.5 3.75075 12.568 3.05973C12.349 2.89822 12.13 2.74822 11.9034 2.60522C10.9524 1.68169 12.028 0.923165 12.277 0.833162C12.5375 0.739159 12.3675 0.41615 11.5259 0.42015C10.6844 0.42365 9.91439 0.705658 8.93286 1.08117C8.78935 1.13767 8.63835 1.17867 8.48384 1.21267C7.59332 1.04367 6.66829 1.00617 5.70226 1.11517C3.88321 1.31768 2.43016 2.1777 1.36213 3.64575C0.0790928 5.4103 -0.222916 7.41536 0.146595 9.50642C0.535106 11.7105 1.66014 13.535 3.38869 14.9616C5.18125 16.4406 7.24581 17.1657 9.60138 17.0266C11.0319 16.9441 12.6245 16.7526 14.421 15.2321C14.874 15.4576 15.3496 15.5476 16.1381 15.6151C16.7456 15.6716 17.3306 15.5851 17.7836 15.4911C18.4931 15.3411 18.4441 14.6841 18.1876 14.5636C16.1081 13.595 16.5646 13.9891 16.1496 13.67C17.2061 12.42 18.8202 10.1979 19.3182 7.17235C19.3672 6.83834 19.4297 6.36783 19.4222 6.09732C19.4182 5.93231 19.4562 5.86831 19.6447 5.84931C20.1657 5.78931 20.6712 5.64681 21.1357 5.3913C22.4833 4.65528 23.0268 3.44624 23.1548 1.9972C23.1738 1.77569 23.1508 1.54668 22.9168 1.43018ZM11.1749 14.4736C9.15936 12.889 8.18184 12.3675 7.77832 12.39C7.40081 12.4125 7.46881 12.8445 7.55182 13.126C7.63882 13.404 7.75182 13.5955 7.91033 13.8396C8.01983 14.0011 8.09533 14.2411 7.80083 14.4216C7.15181 14.8231 6.02327 14.2866 5.97027 14.2601C4.65673 13.4865 3.5587 12.4655 2.78467 11.069C2.03715 9.72493 1.60314 8.28289 1.53164 6.74384C1.51264 6.37233 1.62214 6.24082 1.99215 6.17332C2.47916 6.08332 2.98118 6.06432 3.46769 6.13582C5.52476 6.43633 7.27581 7.35586 8.74385 8.8129C9.58188 9.64243 10.2159 10.634 10.8689 11.6025C11.5634 12.631 12.3105 13.611 13.262 14.4146C13.598 14.6961 13.866 14.9101 14.1225 15.0681C13.349 15.1546 12.058 15.1731 11.1749 14.4746L11.1749 14.4736ZM12.141 8.25988C12.141 8.09488 12.273 7.96338 12.439 7.96338C12.4765 7.96338 12.5105 7.97088 12.541 7.98188C12.5825 7.99688 12.6205 8.01938 12.6505 8.05338C12.7035 8.10588 12.7335 8.18088 12.7335 8.25988C12.7335 8.42489 12.6015 8.55639 12.4355 8.55639C12.2695 8.55639 12.141 8.42489 12.141 8.25988ZM15.1415 9.79893C14.949 9.87793 14.7565 9.94544 14.5715 9.95294C14.2845 9.96794 13.9715 9.85143 13.8015 9.70893C13.5375 9.48742 13.3485 9.36342 13.2695 8.97691C13.2355 8.8119 13.2545 8.55639 13.2845 8.40989C13.3525 8.09438 13.277 7.89187 13.0545 7.70787C12.8735 7.55786 12.643 7.51636 12.39 7.51636C12.2955 7.51636 12.209 7.47486 12.1445 7.44136C12.039 7.38886 11.9519 7.25735 12.035 7.09585C12.0615 7.04335 12.19 6.91584 12.22 6.89334C12.5635 6.69784 12.9595 6.76184 13.326 6.90834C13.6655 7.04735 13.9225 7.30236 14.292 7.66287C14.6695 8.09838 14.7375 8.21838 14.9525 8.54539C15.1225 8.8009 15.277 9.06341 15.3831 9.36392C15.4471 9.55142 15.3641 9.70493 15.1415 9.79893Z'
 
 /**
- * The four frame child slots, re-declared verbatim from the disabled
- * `ui-layout` row (`sidebar` / `conversation` / `details` / `shell.overlay`).
- * ui-slots admits exactly one declarer per slot, so DeepBuddy can only take
- * over the frame contract with the official row out of the graph — and it
- * must re-declare all four and actually render them, or every ecosystem seat
- * the official frame offered goes dark (deepbuddy-design-current/
- * ARCHITECTURE.md §4; cordis.patch.yml).
- */
-export const FRAME_SLOT_MAP = {
-  'sidebar': { kind: 'single', scope: 'root' },
-  'conversation': { kind: 'single', scope: 'session-maybe' },
-  'details': { kind: 'single', scope: 'session' },
-  'shell.overlay': { kind: 'list', scope: 'root' },
-} as const
-
-/**
- * The child slots DeepBuddy's own column occupants declare, re-declared
- * verbatim from the disabled `ui-sidebar` / `ui-conversation` rows. The two
- * disabled rows were the declarers of these slots; with them gone, the
- * official ecosystem registrants (settings-general, model-selection,
- * attachment) park on `slots.inject` until a declarer appears — so DeepBuddy
- * must declare them and render them, exactly like the frame contract above.
+ * The DeepBuddy brand identity rendered into the official conversation hero's
+ * `conversation.hero.brand.mark` seat at priority -1.
  *
- * Declaring a slot here is the exclusive render authority for it; any seat
- * the official column used to open stays open across the takeover.
- */
-export const SIDEBAR_SLOT_MAP = {
-  'sidebar.settings': { kind: 'single', scope: 'root' },
-  // The official foot's action list, right above settings. ui-cordis rides it
-  // with the Cordis panel trigger — the ONLY surface carrying plugin-run
-  // approvals (the inline run card just reads 「待审批」), so dropping this
-  // seat silently drops the approve/decline buttons with it.
-  'sidebar.footer.action': { kind: 'list', scope: 'root' },
-  // The official workspace browser (ui-workspace's WorkspaceBrowser: search,
-  // view options, add-directory, rename/fork/archive/delete). Its registration
-  // waits on this declaration; it in turn declares
-  // `sidebar.workspaces.directoryFlow`, which the directory-picker-browse
-  // plugin's nested inject needs before it fills BOTH directoryFlow seats —
-  // so this one line also lights up 「选择其他目录」 in the hero picker.
-  'sidebar.workspaces': { kind: 'single', scope: 'root' },
-} as const
-
-
-/**
- * The runtime render-slot face DeepBuddy's column occupants receive for their
- * declared child slots. Untyped per-key (the SlotMap type-merge for the
- * revived `conversation.*` seats is not in this bundle's type graph), but the
- * owner object is whatever the official registrant's slot declares.
- */
-export type RenderSlot = (key: string, owner: Record<string, unknown>) => ReactNode
-
-/**
- * Root rank. The official frame's row is disabled, so nothing contests this
- * slot; -1 keeps DeepBuddy the winner anyway (single slots render the LOWEST
- * priority) if a deployment ever patches `ui-layout` back on.
- */
-export const ROOT_PRIORITY = -1
-
-
-/** The settings namespace whose document motion the roster follows. */
-const PRESET_SETTINGS_NS = 'agent-presets'
-
-/**
- * The DeepBuddy identity rendered in the official conversation hero's
- * `conversation.hero.brand.mark` seat. Replaces the official fish logo
- * (registered at priority 0 by ui-brand-official) at priority -1.
- *
- * The whale mark plus the animated headline: 「探索未至之境」 pops out one
- * character at a time on a loop (no 预览版 badge). The official headline and
- * badge spans are static siblings of this slot and locale-locked (single
- * occupant per NS), so tokens.ts hides them by their stable class suffixes
- * and this component renders the text instead — metrics copied from the
- * official headline (26px/500/32px, 10px row gap). Chars are aria-hidden
- * behind one labelled span so the animation never reaches screen readers.
+ * Aligned with the official DSH HeroFish specification (34px wide, vector SVG,
+ * FISH_LOGO_PATH), pairing cleanly with the official headline ("探索未至之境")
+ * and preview badge ("预览版").
  */
 function DeepBuddyBrandMark(): ReactNode {
-  const HEADLINE = '探索未至之境'
-  return createElement('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 12 } },
-    createElement('img', {
-      src: brandMarkUrl,
-      alt: 'DeepBuddy',
-      style: { display: 'block', width: 34, height: 34 },
-    }),
-    createElement('span', {
-      'aria-label': HEADLINE,
-      style: { fontSize: 26, fontWeight: 500, lineHeight: '32px', color: 'var(--db-text)', whiteSpace: 'nowrap' },
-    }, ...[...HEADLINE].map((ch, i) => createElement('span', {
-      'key': i,
-      'aria-hidden': true,
-      'className': 'dbdy-hero-char',
-      'style': { animationDelay: `${i * 0.22}s` },
-    }, ch))),
-  )
+  return createElement('svg', {
+    'viewBox': '0 0 23.16 17.04',
+    'width': 34,
+    'height': 25,
+    'fill': 'none',
+    'aria-label': 'DeepBuddy',
+    'className': 'hero-fish',
+  }, createElement('path', {
+    d: FISH_LOGO_PATH,
+    fill: 'currentColor',
+  }))
 }
 
 /**
- * Mount every DSH-facing service this distribution owns, each riding its own
- * effect at PLUGIN scope. The theme presenter and the styles are the disabled
- * ui-layout row's former duties. The `layout` service is provided here: the
- * ui-layout row that used to own it is disabled, but ui-conversation (now
- * enabled) injects it, so DeepBuddy's store face stands in. The Remote plane
- * rides sub-scopes so a deployment without api-remotes still gets a UI.
+ * Mount the stylesheet and the hero brand mark, each on its own effect so a
+ * reload withdraws both.
  * @param ctx - the client root context.
- * @param dsh - the fiber's wire bundle (its roster listeners are fired here).
  */
-export function mountOfficialServices(ctx: Context, dsh: Dsh, layout: LayoutStore): void {
-
-  // `ctx.layout` before the ui-conversation row's apply: it injects `layout`,
-  // and ui-layout (the original provider) is disabled. Provide DeepBuddy's
-  // store face, so the official apply activates (registering the chat-fold
-  // definitions) instead of parking on "waiting for service: layout".
-  // The official `layout` consumers only call toggleSidebar/openDetails/
-  // closeDetails, which layoutFace() forwards to DeepBuddy's store.
-  ctx.effect(() => {
-    const disposeService = ctx.reflect.provide('layout', layout.layoutFace())
-    return () => { void disposeService() }
-  }, 'deepbuddy: layout service')
-
-  // Theme presentation: pure DOM writes from resolved snapshots — initial
-  // state through the getter once, then event-driven only.
-  ctx.effect(() => {
-    const presenter = new ThemePresenter()
-    presenter.apply(ctx.theme.getTheme())
-    const off = ctx.on('theme/change', (snapshot) => { presenter.apply(snapshot) })
-    return () => {
-      off()
-      presenter.dispose()
-    }
-  }, 'deepbuddy: theme presenter')
-
+export function mountOfficialServices(ctx: Context): void {
   ctx.effect(() => installStyles(FONT_CSS), 'deepbuddy: styles')
 
-
-  // DeepBuddy's brand in the revived official conversation hero. The
-  // ui-brand-official row registers a `FishLogo` into
+  // The ui-brand-official row registers a `FishLogo` into
   // `conversation.hero.brand.mark` at priority 0; DeepBuddy registers at -1
-  // so the single slot renders the DeepBuddy name (lowest priority wins).
-  // The hero's headline/preview texts are ui-conversation-owned (one occupant
-  // per locale NS), so the DeepBuddy slogan is carried by the sidebar brand
-  // line rather than a locale override here.
+  // and the single slot renders the lowest priority. The hero's headline and
+  // preview badge stay the official copy.
   const slots = ctx.slots as unknown as {
     inject(key: string, cb: () => (() => void) | void): () => void
     register(options: { name: string; priority?: number }, comp: () => ReactNode): () => void
   }
-  // On the effect like every other registration here — inject() returns a
-  // disposer, and dropping it leaves a ghost registration behind a reload.
   ctx.effect(() => slots.inject('conversation.hero.brand.mark', () => slots.register({
     name: 'conversation.hero.brand.mark',
     priority: -1,
   }, DeepBuddyBrandMark)), 'deepbuddy: brand mark')
-
-
-  // Window listeners and the live subscriptions ride the fiber, not a React
-  // mount: the state outlives any single entry's tree.
-  ctx.effect(() => {
-    layout.mount()
-    return () => { layout.dispose() }
-  }, 'deepbuddy: layout store')
-
-  // The dock renders only for a started session. 0.1.2 puts `blank` on the
-  // session-list row itself, so the list snapshot is the single record —
-  // no binding poll, no per-session subscribe.
-  const syncSessionStarted = (): void => {
-    const list = ctx.sessions.list.getSnapshot()
-    const cur = list.current
-    const summary = cur === undefined ? undefined : list.byId[cur]
-    layout.setSessionBound(cur !== undefined)
-    layout.setSessionStarted(summary !== undefined && summary.blank !== true)
-  }
-  const offList = ctx.sessions.list.subscribe(syncSessionStarted)
-  syncSessionStarted()
-  ctx.effect(() => () => { offList() }, 'deepbuddy: session-started watch')
-
-  // The Remote plane rides sub-scopes, never the plugin's own `inject`: a
-  // deployment without api-remotes must still get the frame, and gating the
-  ctx.inject(['remote'], (scope) => {
-    scope.effect(() => {
-      // 0.1.2: the session list is the single record for a committed preset;
-      // DeepBuddy only listens for roster document motion.
-      const wire = dsh as DshInternal
-      const offMoved = scope.remote.$on('settings/document-updated', (ns) => {
-        if (ns !== PRESET_SETTINGS_NS) return
-        wire.notifyRosterMoved()
-      })
-      return () => { offMoved() }
-    }, 'deepbuddy: agent-preset host events')
-  })
-
-  ctx.inject(['remote', 'remote.pluginInventory'], (scope) => {
-    scope.effect(() => {
-      dsh.plugins = createPluginsWire(scope.remote)
-      return () => { dsh.plugins = null }
-    }, 'deepbuddy: plugin inventory wire')
-  })
-}
-
-// ── snapshot helpers ────────────────────────────────────────────────────────
-
-/**
- * Path tail for workspace display names, same rule the runtime's
- * workspaceTitleOf applies (last non-empty segment).
- * @param path - absolute or ~-relative path.
- * @returns final segment, or the input when it has none.
- */
-export function basename(path: string): string {
-  const seg = path.split(/[\\/]/).filter(Boolean).pop()
-  return seg ?? path
-}
-
-/** The workspace holding a session, resolved through WorkspaceView.sessionIds. */
-export function workspaceOf(ws: WorkspaceList | null, sessionId: SessionId | undefined): WorkspaceView | undefined {
-  if (!ws || sessionId === undefined) return undefined
-  return ws.items.find(w => (w.sessionIds as readonly SessionId[]).includes(sessionId))
 }

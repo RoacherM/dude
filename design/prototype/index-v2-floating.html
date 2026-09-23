@@ -359,31 +359,28 @@
       --dsw-font-xxxs-strong-11-font-size: 11px;
       --dsw-font-xxxs-strong-11-font-style: normal;
       /* ============================================================
-         DeepBuddy 视觉基线 v3 · 官方平铺对齐 + 无缝工作台
-         去除 Floating 悬浮外壳与间隙，三列平铺贴合窗口，融入 Synara 设计细节
-         三条纪律不变：分隔靠材质与细线 / 层级靠透明度 / 颜色只属于状态。
+         DeepBuddy 视觉基线 v2 · 浮岛 + Archivo
+         参照 deepbuddy_redesign/「DeepBuddy 视觉重设计.dc.html」
+         三条纪律不变：分隔靠材质 / 层级靠透明度 / 颜色只属于状态。
          ============================================================ */
 
-      /* 底与面 —— 统一平铺，侧栏与主工作区无缝咬合，由 1px 细线分隔 */
-      --db-window: #111113;        /* 窗口全局底色 */
-      --db-sidebar: #0c0c0e;       /* 侧栏底色，深沉内敛 */
-      --db-panel: #131316;         /* 主工作台底色 */
-      --db-dock: #101013;          /* 停靠栏底色 */
-      --db-raised: #1c1c20;        /* 抬升层：composer、卡片、浮层 */
-      --db-raised-hover: #222227;  /* 抬升层 hover */
-      --db-void: #09090b;          /* 嵌入式黑底：终端 / 文件预览 / 浏览器空态 */
-      --db-rail: var(--db-sidebar);
-      --db-popover: #1c1c20;
-      --db-dialog: #161619;
-      --db-gap: 0px;               /* 彻底去除悬浮间距，平铺贴合 */
+      /* 底与面 —— 窗口底最深，面板浮在其上，面板内再抬升一层 */
+      --db-window: #0b0b0c;   /* 窗口底色，也是浮岛之间的缝 */
+      --db-panel: #151517;    /* 列面板（三列同色，靠缝分隔而非靠明度） */
+      --db-raised: #1c1c1f;   /* 面板内抬升：composer */
+      --db-void: #0e0e10;     /* 嵌入式黑底：终端 / 文件预览 / 浏览器空态 */
+      --db-rail: var(--db-panel);
+      --db-popover: #1f1f23;
+      --db-dialog: #171719;
+      --db-gap: 10px;         /* 浮岛间隙 = 窗口内边距 = 拖拽把手宽度 */
 
       /* 填充：层级只靠透明度 */
-      --db-fill-1: rgba(255, 255, 255, .025);
+      --db-fill-1: rgba(255, 255, 255, .02);
       --db-fill-2: rgba(255, 255, 255, .045);
-      --db-fill-3: rgba(255, 255, 255, .07);
-      --db-fill-4: rgba(255, 255, 255, .095);
-      --db-fill-5: rgba(255, 255, 255, .13);
-      --db-fill-6: rgba(255, 255, 255, .17);
+      --db-fill-3: rgba(255, 255, 255, .06);
+      --db-fill-4: rgba(255, 255, 255, .085);
+      --db-fill-5: rgba(255, 255, 255, .12);
+      --db-fill-6: rgba(255, 255, 255, .16);
 
       /* 文字五阶 */
       --db-text: #f4f4f5;
@@ -392,28 +389,28 @@
       --db-text-4: #6f6f78;
       --db-text-5: #4a4a52;
 
-      /* 线：精细 1px 分割线，对齐 Synara seam-line */
-      --db-line-seam: rgba(255, 255, 255, .08);   /* 列与列之间的无缝垂直裁切线 */
-      --db-line: rgba(255, 255, 255, .065);       /* 状态栏横向水平分割线 */
+      /* 线：只有结构缝留线，其余靠材质 */
+      --db-line-panel: rgba(255, 255, 255, .05);  /* 浮岛外框 */
+      --db-line: rgba(255, 255, 255, .06);        /* 列内状态栏缝 */
       --db-line-card: rgba(255, 255, 255, .08);
       --db-line-container: rgba(255, 255, 255, .08);
-      --db-line-input: rgba(255, 255, 255, .11);
-      --db-line-input-2: rgba(255, 255, 255, .15);
-      --db-line-emphasis: rgba(255, 255, 255, .15);
-      --db-line-focus: rgba(255, 255, 255, .28);
-      --db-line-hover: rgba(255, 255, 255, .22);
+      --db-line-input: rgba(255, 255, 255, .09);
+      --db-line-input-2: rgba(255, 255, 255, .14);
+      --db-line-emphasis: rgba(255, 255, 255, .14);
+      --db-line-focus: rgba(255, 255, 255, .22);
+      --db-line-hover: rgba(255, 255, 255, .28);
       --db-line-dashed: rgba(255, 255, 255, .14);
 
       /* 颜色只属于状态 —— 红=品牌，蓝=行动，绿=运行，橙=等待 */
       --db-brand: #ec3013;
       --db-brand-wash: color-mix(in srgb, #ec3013 14%, transparent);
-      --db-primary: #3b82f6;
-      --db-primary-hover: #60a5fa;
-      --db-run: #22c55e;
-      --db-run-soft: color-mix(in srgb, #22c55e 80%, #f4f4f5);
-      --db-run-wash: color-mix(in srgb, #22c55e 14%, transparent);
-      --db-await: #f59e0b;
-      --db-await-wash: color-mix(in srgb, #f59e0b 13%, transparent);
+      --db-primary: #679efe;
+      --db-primary-hover: #8ab4ff;
+      --db-run: #3ecf8e;
+      --db-run-soft: color-mix(in srgb, #3ecf8e 80%, #f4f4f5);
+      --db-run-wash: color-mix(in srgb, #3ecf8e 14%, transparent);
+      --db-await: #e9a23b;
+      --db-await-wash: color-mix(in srgb, #e9a23b 13%, transparent);
       --db-offline: #55555e;
 
       /* 字体：正文 Archivo + 中文回退；Departure Mono 只做品牌字标；代码走系统 mono */
@@ -421,26 +418,26 @@
       --db-brandfont: "Departure Mono", "Fusion Pixel", ui-monospace, Menlo, monospace;
       --db-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-      /* 圆角：外框归零，内构保持精致微圆角 */
-      --db-r-panel: 0px;      /* 面板无圆角，平铺充满视口 */
-      --db-r-dialog: 16px;
-      --db-r-popover: 12px;
-      --db-r-input: 14px;
-      --db-r-card: 10px;
-      --db-r-control: 8px;
-      --db-r-row: 6px;
-      --db-r-badge: 6px;
-      --db-r-chip: 6px;
-      --db-r-swatch: 8px;
-      --db-r-surface: 10px;
-      --db-r-editor: 8px;
+      /* 圆角：面板 20 / 弹层 14 / 对话框 24 / 输入 16 / 卡片 12 / 控件 9 / 行 10 */
+      --db-r-panel: 20px;
+      --db-r-dialog: 24px;
+      --db-r-popover: 14px;
+      --db-r-input: 16px;
+      --db-r-card: 12px;
+      --db-r-control: 9px;
+      --db-r-row: 10px;
+      --db-r-badge: 8px;
+      --db-r-chip: 8px;
+      --db-r-swatch: 10px;
+      --db-r-surface: 12px;
+      --db-r-editor: 12px;
 
       --db-in: .1s cubic-bezier(.4, 0, .2, 1);
       --db-size: 0.2s cubic-bezier(.4, 0, .2, 1);
       --db-tint: .1s cubic-bezier(.4, 0, .2, 1);
       --db-shadow-popover: 0 16px 40px rgba(0, 0, 0, .5);
       --db-shadow-menu: 0 16px 40px rgba(0, 0, 0, .5);
-      --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .65);
+      --db-shadow-dialog: 0 32px 80px rgba(0, 0, 0, .6);
       --proto-sidebar-width: 268px;
       --proto-dock-width: 30vw;
     }
@@ -474,13 +471,13 @@
     ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .22); }
     ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
 
-    /* 工作台外壳：满屏平铺无悬浮外框，三列咬合，由 1px 细线缝隙分隔 */
+    /* 浮岛外壳：窗口底露出 --db-gap 的缝，三列各是一张圆角面板 */
     .app {
       position: relative;
       display: flex;
       width: 100%;
       height: 100%;
-      padding: 0;
+      padding: var(--db-gap);
       overflow: hidden;
       background: var(--db-window);
     }
@@ -488,35 +485,27 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      border-radius: 0;
-      border: none;
+      background: var(--db-panel);
+      border: 1px solid var(--db-line-panel);
+      border-radius: var(--db-r-panel);
       overflow: hidden;
     }
     .sidebar {
       width: var(--proto-sidebar-width);
       flex: 0 0 var(--proto-sidebar-width);
-      background: var(--db-sidebar);
-      border-right: 1px solid var(--db-line-seam);
     }
-    .main {
-      position: relative;
-      flex: 1 1 0;
-      background: var(--db-panel);
-    }
+    .main { position: relative; flex: 1 1 0; }
     .dock {
       width: var(--proto-dock-width);
       flex: 0 0 var(--proto-dock-width);
-      background: var(--db-dock);
-      border-left: 1px solid var(--db-line-seam);
     }
     .app.sidebar-off .sidebar, .app.sidebar-off .side-handle { display: none; }
     .app:not(.dock-open) .dock, .app:not(.dock-open) .dock-handle { display: none; }
     .app.dock-max .dock {
       position: absolute;
-      inset: 0;
+      inset: var(--db-gap);
       z-index: 30;
-      width: 100%;
-      height: 100%;
+      width: auto;
       flex-basis: auto;
     }
     .app.dock-max .dock-handle { display: none; }
@@ -563,32 +552,28 @@
     .icon { width: 16px; height: 16px; display: block; }
     .icon.small { width: 13px; height: 13px; }
 
-    /* 列间拖拽缝：1px 细线缝隙（对齐 Synara seam divider），9px 交互抓取热区 */
+    /* 把手正好占满浮岛之间的那条缝 */
     .resize-handle {
       position: relative;
-      width: 1px;
-      flex: 0 0 1px;
-      z-index: 20;
+      width: var(--db-gap);
+      flex: 0 0 var(--db-gap);
+      z-index: 10;
       cursor: col-resize;
       touch-action: none;
-      background: var(--db-line-seam);
-    }
-    .resize-handle::before {
-      content: "";
-      position: absolute;
-      inset: 0 -4px;
-      z-index: 1;
+      background: transparent;
     }
     .resize-handle::after {
       content: "";
       position: absolute;
-      inset: 0;
-      background: var(--db-primary);
-      opacity: 0;
+      inset: 22px auto 22px 50%;
+      width: 2px;
+      border-radius: 2px;
+      transform: translateX(-1px);
+      background: transparent;
       pointer-events: none;
-      transition: opacity var(--db-tint);
+      transition: background var(--db-tint);
     }
-    .resize-handle:hover::after, .resize-handle.dragging::after { opacity: 1; }
+    .resize-handle:hover::after, .resize-handle.dragging::after { background: var(--db-primary); }
 
     /* Modernist：宽按钮的标签靠左，图标压到右缘 */
     .new-task {
@@ -652,13 +637,7 @@
     .more:hover { color: var(--db-text-3); background: var(--db-fill-2); }
     .workspace.collapsed > :not(.workspace-title) { display: none !important; }
     .workspace.collapsed .workspace-title .icon { transform: rotate(-8deg); opacity: .72; }
-    .extra-sessions {
-      display: none;
-      position: relative;
-      margin-left: 15px;
-      padding-left: 2px;
-      border-left: 1px solid var(--db-line-seam);
-    }
+    .extra-sessions { display: none; }
     .workspace.expanded .extra-sessions { display: block; }
     .sidebar-search { display: none; align-items: center; gap: 7px; height: 32px; margin: 12px 12px 2px; padding: 0 10px; border: 1px solid var(--db-line-card); border-radius: var(--db-r-row); background: var(--db-fill-2); }
     .sidebar-search.open { display: flex; }
@@ -727,69 +706,11 @@
     .main-body { flex: 1 1 0; min-height: 0; position: relative; overflow: hidden; }
     .hero { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 4vh; }
     .hero-card { width: min(660px, calc(100% - 64px)); transform: translateY(-2vh); }
-    /* Hero：对齐 DeepSeek Harness 官方最新设计规范，纯净矢量鲸鱼标识 (HeroFish) + 探索未至之境标题 + 预览版徽标 */
-    .hero-mark {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 24px;
-      user-select: none;
-    }
-    .hero-fish-hitbox {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      line-height: 0;
-    }
-    .hero-fish {
-      width: 34px;
-      height: 25px;
-      transform-origin: 50% 60%;
-      color: var(--db-text);
-      display: block;
-      overflow: visible;
-      transition: color 0.15s ease, transform 0.2s ease;
-    }
-    .hero-fish-hitbox:hover .hero-fish {
-      color: var(--db-primary);
-      animation: 1.6s ease-in-out infinite hero-fish-swim;
-    }
-    @keyframes hero-fish-swim {
-      0%, 100% { transform: none; }
-      35% { transform: rotate(-4deg) translate(-.4px, -.9px); }
-      70% { transform: rotate(1.6deg) translate(.3px, .2px); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .hero-fish-hitbox:hover .hero-fish { animation: none; }
-    }
-    .hero-title-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .hero-title {
-      margin: 0;
-      font-size: 26px;
-      font-weight: 500;
-      line-height: 32px;
-      letter-spacing: -0.01em;
-      color: var(--db-text);
-      font-family: var(--db-font);
-    }
-    .hero-preview-badge {
-      border: 0.5px solid var(--db-line-2);
-      background: var(--db-fill-2);
-      color: var(--db-primary);
-      font-family: var(--db-mono);
-      white-space: nowrap;
-      border-radius: 24px;
-      padding: 1px 7px;
-      font-size: 11px;
-      font-weight: 500;
-      line-height: 18px;
-    }
+    /* Hero：品牌红方块 + Departure Mono 字标 + slogan */
+    .hero-mark { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; }
+    .hero-logo-img { width: 46px; height: 46px; margin-bottom: 18px; display: block; }
+    .hero-wordmark { font-family: var(--db-brandfont); font-size: 26px; letter-spacing: .02em; color: var(--db-text); }
+    .hero-slogan { margin-top: 12px; color: var(--db-text-4); font-size: 13.5px; }
     .hero-chips { display: flex; gap: 6px; margin: 0 0 12px; color: var(--db-text-3); font-size: 12.5px; }
     .hero-chip { height: 28px; border: 0; border-radius: var(--db-r-control); padding: 0 9px; background: var(--db-fill-2); color: var(--db-text-3); display: inline-flex; align-items: center; gap: 6px; font-family: inherit; cursor: pointer; }
     .hero-chip:hover { background: var(--db-fill-4); color: var(--db-text); }
@@ -859,199 +780,32 @@
     .conversation-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 26px 0 10px; }
     .chat-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
     .app:not(.dock-open) .chat-column { width: min(880px, calc(100% - 48px)); }
-    .message-block { padding: 0 0 24px; user-select: text; }
-
-    /* 用户消息：微圆角现代气泡，平贴底色，告别不对称卡通边角与悬浮外框 */
-    .user-turn { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 14px; }
-    .user-bubble {
-      max-width: 82%;
-      padding: 9px 14px;
-      border-radius: 12px;
-      background: var(--db-fill-3);
-      border: 1px solid var(--db-line);
-      color: var(--db-text);
-      font-size: 13.5px;
-      line-height: 1.625;
-      word-break: break-word;
-    }
-    .user-meta {
+    .message-block { padding: 0 0 22px; user-select: text; }
+    .user-line { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+    /* 用户气泡：右下角切平，指向自己 */
+    .user-bubble { max-width: 78%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: var(--db-fill-4); color: var(--db-text); font-size: 14px; line-height: 1.65; }
+    .copy-user { display: flex; justify-content: flex-end; margin: 0 2px 18px; }
+    /* 工具 / 上下文行：1px 描边卡，不用底色堆叠 */
+    .context-row, .think-row {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 3px;
-      padding-right: 2px;
-      font-size: 11px;
-      color: var(--db-text-5);
-      opacity: 0;
-      transition: opacity var(--db-tint);
-    }
-    .user-turn:hover .user-meta { opacity: 1; }
-    .user-meta .icon-button { width: 22px; height: 22px; flex: 0 0 22px; border-radius: 5px; color: var(--db-text-4); }
-    .user-meta .icon-button:hover { color: var(--db-text); background: var(--db-fill-3); }
-    .user-meta .icon-button .icon { width: 12px; height: 12px; }
-
-    /* ============================================================
-       竖线工作流系统 (Vertical Timeline) · 彻底消除浮动边框卡片
-       对齐 Synara 与现代顶级 AI 客户端设计：垂直贯穿指引线承载推理与执行
-       ============================================================ */
-    .work-section {
-      margin: 6px 0 14px;
-      position: relative;
-    }
-    .work-summary-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 6px 3px 2px;
-      border: 0;
-      border-radius: var(--db-r-row);
-      background: transparent;
-      color: var(--db-text-4);
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: color var(--db-tint), background var(--db-tint);
-    }
-    .work-summary-btn:hover {
-      color: var(--db-text-2);
-      background: var(--db-fill-2);
-    }
-    .work-summary-btn .work-icon {
-      width: 14px;
-      height: 14px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .work-summary-btn .work-icon .icon {
-      width: 13px;
-      height: 13px;
-    }
-    .work-chevron {
-      width: 11px;
-      height: 11px;
-      color: var(--db-text-4);
-      transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .work-section.collapsed .work-chevron {
-      transform: rotate(-90deg);
-    }
-    .work-section.collapsed .work-timeline {
-      display: none;
-    }
-
-    /* 贯穿步骤与思考的 1.5px 优雅细垂直线 */
-    .work-timeline {
-      position: relative;
-      margin-left: 9px;
-      padding-left: 18px;
-      margin-top: 6px;
-      border-left: 1.5px solid var(--db-line-seam);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .work-step {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      padding: 3px 0;
+      gap: 10px;
+      min-height: 38px;
+      margin-bottom: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--db-line-card);
+      border-radius: var(--db-r-card);
+      background: var(--db-fill-1);
+      color: var(--db-text-3);
       font-size: 12.5px;
-      color: var(--db-text-3);
-      transition: color var(--db-tint);
     }
-    .work-step:hover {
-      color: var(--db-text);
-    }
-    /* 钉在竖线上的节圆 */
-    .step-line-node {
-      position: absolute;
-      left: -22px;
-      top: 9px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--db-text-5);
-      box-shadow: 0 0 0 3px var(--db-panel);
-      transition: background var(--db-tint);
-    }
-    .work-step:hover .step-line-node {
-      background: var(--db-text-3);
-    }
-    .work-step.running .step-line-node {
-      background: var(--db-run);
-      box-shadow: 0 0 0 3px var(--db-panel), 0 0 8px var(--db-run);
-      animation: pulse 1.6s ease-in-out infinite;
-    }
-    .step-header {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      min-height: 20px;
-    }
-    .step-icon {
-      font-size: 12px;
-      color: var(--db-text-4);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 14px;
-      height: 14px;
-    }
-    .work-step:hover .step-icon {
-      color: var(--db-text-2);
-    }
-    .step-svg {
-      width: 13px;
-      height: 13px;
-      color: var(--db-text-4);
-    }
-    .work-step:hover .step-svg {
-      color: var(--db-text-2);
-    }
-    .step-text {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .step-text .mono {
-      color: var(--db-text-2);
-    }
-    .step-detail {
-      padding: 4px 10px;
-      margin: 3px 0 2px 21px;
-      font-size: 12px;
-      line-height: 1.6;
-      color: var(--db-text-4);
-      border-left: 1px solid var(--db-line-card);
-    }
-    .work-step:hover .step-detail {
-      color: var(--db-text-3);
-    }
-    .step-output {
-      margin: 4px 0 3px 21px;
-      padding: 6px 10px;
-      border-radius: var(--db-r-row);
-      background: var(--db-void);
-      border: 1px solid var(--db-line);
-      color: var(--db-text-3);
-      font: 11.5px/1.6 var(--db-mono);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .assistant-copy {
-      margin-top: 8px;
-      color: var(--db-text-2);
-      font-size: 14px;
-      line-height: 1.75;
-      text-wrap: pretty;
-    }
-    .assistant-copy p { margin: 0 0 12px; }
+    .context-row .mono, .think-row .mono { color: var(--db-text-2); font-size: 12px; }
+    .think-row { margin-top: 0; }
+    .assistant-copy { margin-top: 14px; color: var(--db-text-2); font-size: 14px; line-height: 1.8; text-wrap: pretty; }
+    .assistant-copy p { margin: 0 0 14px; }
     .inline-code { padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, .07); font-size: 12.5px; }
-    .message-actions { display: flex; gap: 4px; margin-top: 10px; }
-    .message-actions .icon-button { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 6px; }
+    .message-actions { display: flex; gap: 4px; margin-top: 14px; }
+    .message-actions .icon-button { width: 28px; height: 28px; flex: 0 0 28px; }
     .message-actions .icon-button.selected { color: var(--db-primary); background: color-mix(in srgb, var(--db-primary) 16%, transparent); }
     .composer-wrap { flex: 0 0 auto; padding: 0 0 12px; }
     .composer-column { width: min(720px, calc(100% - 48px)); margin: 0 auto; }
@@ -1166,13 +920,7 @@
     .file-tree { flex: 1 1 auto; min-width: 0; padding: 10px 4px 16px; overflow: auto; }
     .files-body.split .file-tree { width: 232px; flex: 0 0 232px; border-right: 1px solid var(--db-line); }
     .file-root { padding: 0 10px 6px; font: 11px var(--db-mono); color: var(--db-text-4); }
-    .tree-children {
-      display: none;
-      position: relative;
-      margin-left: 17px;
-      padding-left: 2px;
-      border-left: 1px solid var(--db-line-seam);
-    }
+    .tree-children { display: none; }
     .tree-folder.open + .tree-children { display: block; }
     .tree-row { height: 28px; padding-left: calc(10px + var(--depth, 0) * 14px); color: var(--db-text-2); font-family: var(--db-mono); font-size: 12.5px; border-radius: var(--db-r-control); }
     .tree-row .icon { color: var(--db-text-4); width: 14px; height: 14px; }
@@ -1352,13 +1100,14 @@
     <symbol id="i-set-plugin" viewBox="0 0 16 16"><path transform="translate(1.292 1.3)" d="M10.3232 9.18164C11.2868 9.18164 12.0985 9.82833 12.3506 10.7109L13.415 10.7109L13.415 11.8711L12.3496 11.8711C12.0971 12.7532 11.2864 13.3994 10.3232 13.3994C9.36031 13.3992 8.55012 12.7531 8.29785 11.8711L0 11.8711L0 10.7109L8.29688 10.7109C8.54876 9.82845 9.35988 9.18186 10.3232 9.18164ZM10.3232 10.3418C9.7999 10.3421 9.37534 10.7667 9.375 11.29C9.375 11.8137 9.79969 12.239 10.3232 12.2393C10.847 12.2393 11.2725 11.8138 11.2725 11.29C11.2721 10.7666 10.8468 10.3418 10.3232 10.3418ZM3.08301 4.59082C4.04605 4.59095 4.85696 5.23717 5.10938 6.11914L13.415 6.11914L13.415 7.2793L5.11035 7.2793C4.85833 8.16202 4.04648 8.80846 3.08301 8.80859C2.11972 8.80843 1.30963 8.16179 1.05762 7.2793L0 7.2793L0 6.11914L1.05762 6.11914C1.30994 5.23728 2.12006 4.59098 3.08301 4.59082ZM3.08301 5.75098C2.55962 5.75117 2.13512 6.17587 2.13477 6.69922C2.13477 7.22287 2.5594 7.64824 3.08301 7.64844C3.60665 7.64828 4.03223 7.2229 4.03223 6.69922C4.03187 6.17585 3.60643 5.75113 3.08301 5.75098ZM10.3232 0C11.2869 0 12.0986 0.646596 12.3506 1.5293L13.415 1.5293L13.415 2.68945L12.3496 2.68945C12.0977 3.57146 11.2867 4.21777 10.3232 4.21777C9.36037 4.21756 8.55018 3.57139 8.29785 2.68945L0 2.68945L0 1.5293L8.29688 1.5293C8.5487 0.646717 9.35981 0.00021854 10.3232 0ZM10.3232 1.16016C9.79984 1.16042 9.37524 1.58499 9.375 2.1084C9.375 2.63201 9.79969 3.05735 10.3232 3.05762C10.847 3.05762 11.2725 2.63217 11.2725 2.1084C11.2722 1.58483 10.8469 1.16016 10.3232 1.16016Z" fill="currentColor"></path></symbol>
     <symbol id="i-theme-light" viewBox="0 0 16 16"><path d="M11.3496 8C11.3496 6.14985 9.85015 4.65039 8 4.65039C6.14985 4.65039 4.65039 6.14985 4.65039 8C4.65039 9.85015 6.14985 11.3496 8 11.3496C9.85015 11.3496 11.3496 9.85015 11.3496 8ZM12.6504 8C12.6504 10.5681 10.5681 12.6504 8 12.6504C5.43188 12.6504 3.34961 10.5681 3.34961 8C3.34961 5.43188 5.43188 3.34961 8 3.34961C10.5681 3.34961 12.6504 5.43188 12.6504 8Z" fill="currentColor"></path><path d="M8.65039 0.5V2.5H7.34961V0.5H8.65039Z" fill="currentColor"></path><path d="M8.65039 13.5V15.5H7.34961V13.5H8.65039Z" fill="currentColor"></path><path d="M3.15808 2.24035L4.57229 3.65456L3.6525 4.57435L2.23829 3.16014L3.15808 2.24035Z" fill="currentColor"></path><path d="M12.3505 11.4327L13.7647 12.8469L12.8449 13.7667L11.4307 12.3525L12.3505 11.4327Z" fill="currentColor"></path><path d="M2.24537 12.8469L3.65958 11.4327L4.57937 12.3525L3.16516 13.7667L2.24537 12.8469Z" fill="currentColor"></path><path d="M11.4377 3.65455L12.852 2.24033L13.7718 3.16012L12.3575 4.57434L11.4377 3.65455Z" fill="currentColor"></path><path d="M0.5 7.35461H2.5V8.6554H0.5L0.5 7.35461Z" fill="currentColor"></path><path d="M13.5 7.35461H15.5V8.6554H13.5V7.35461Z" fill="currentColor"></path></symbol>
     <symbol id="i-theme-dark" viewBox="0 0 16 16"><path d="M13.2764 9.52324C12.5607 9.97754 11.7177 10.242 10.7812 10.242C8.11386 10.2419 5.95042 8.07997 5.9502 5.41289C5.9502 4.48128 6.21453 3.61071 6.67188 2.87285C4.30332 3.4658 2.54992 5.60845 2.5498 8.16093C2.5498 11.1712 4.99103 13.6102 8 13.6102C10.5383 13.6102 12.6709 11.8724 13.2764 9.52324ZM7.05078 5.41289C7.051 7.47224 8.72116 9.1423 10.7812 9.14238C11.9248 9.14238 12.887 8.63397 13.5781 7.8084C13.7266 7.63106 13.9701 7.56547 14.1875 7.64433C14.4049 7.72329 14.5497 7.9297 14.5498 8.16093C14.5498 11.7766 11.6161 14.7098 8 14.7098C4.38402 14.7098 1.4502 11.7792 1.4502 8.16093C1.45033 4.54322 4.3812 1.61015 8 1.61015C8.23027 1.61015 8.43585 1.75352 8.51562 1.96953C8.59536 2.18554 8.53241 2.42829 8.35742 2.57793C7.55573 3.26311 7.05078 4.27876 7.05078 5.41289Z" fill="currentColor"></path></symbol>
-    <symbol id="i-app-logo" viewBox="0 0 23.16 17.04"><path d="M22.9168 1.43018C22.6713 1.31018 22.5658 1.53918 22.4223 1.65519C22.3733 1.69269 22.3318 1.74169 22.2903 1.78669C21.9317 2.1697 21.5127 2.42121 20.9657 2.39121C20.1657 2.34621 19.4827 2.59771 18.8787 3.20973C18.7502 2.45521 18.3236 2.0047 17.6746 1.71569C17.3351 1.56568 16.9916 1.41518 16.7536 1.08867C16.5876 0.856163 16.5421 0.597155 16.4591 0.341647C16.4061 0.187643 16.3536 0.0301382 16.1761 0.00363739C15.9836 -0.0263635 15.9081 0.135141 15.8326 0.270145C15.5306 0.822162 15.4136 1.43018 15.4251 2.0462C15.4516 3.43174 16.0366 4.53527 17.1991 5.3203C17.3311 5.4103 17.3651 5.5003 17.3236 5.63181C17.2441 5.90231 17.1501 6.16482 17.0671 6.43533C17.0141 6.60784 16.9351 6.64584 16.7501 6.57033C16.1121 6.30383 15.5611 5.90931 15.074 5.4328C14.2475 4.63328 13.5 3.75075 12.568 3.05973C12.349 2.89822 12.13 2.74822 11.9034 2.60522C10.9524 1.68169 12.028 0.923165 12.277 0.833162C12.5375 0.739159 12.3675 0.41615 11.5259 0.42015C10.6844 0.42365 9.91439 0.705658 8.93286 1.08117C8.78935 1.13767 8.63835 1.17867 8.48384 1.21267C7.59332 1.04367 6.66829 1.00617 5.70226 1.11517C3.88321 1.31768 2.43016 2.1777 1.36213 3.64575C0.0790928 5.4103 -0.222916 7.41536 0.146595 9.50642C0.535106 11.7105 1.66014 13.535 3.38869 14.9616C5.18125 16.4406 7.24581 17.1657 9.60138 17.0266C11.0319 16.9441 12.6245 16.7526 14.421 15.2321C14.874 15.4576 15.3496 15.5476 16.1381 15.6151C16.7456 15.6716 17.3306 15.5851 17.7836 15.4911C18.4931 15.3411 18.4441 14.6841 18.1876 14.5636C16.1081 13.595 16.5646 13.9891 16.1496 13.67C17.2061 12.42 18.8202 10.1979 19.3182 7.17235C19.3672 6.83834 19.4297 6.36783 19.4222 6.09732C19.4182 5.93231 19.4562 5.86831 19.6447 5.84931C20.1657 5.78931 20.6712 5.64681 21.1357 5.3913C22.4833 4.65528 23.0268 3.44624 23.1548 1.9972C23.1738 1.77569 23.1508 1.54668 22.9168 1.43018ZM11.1749 14.4736C9.15936 12.889 8.18184 12.3675 7.77832 12.39C7.40081 12.4125 7.46881 12.8445 7.55182 13.126C7.63882 13.404 7.75182 13.5955 7.91033 13.8396C8.01983 14.0011 8.09533 14.2411 7.80083 14.4216C7.15181 14.8231 6.02327 14.2866 5.97027 14.2601C4.65673 13.4865 3.5587 12.4655 2.78467 11.069C2.03715 9.72493 1.60314 8.28289 1.53164 6.74384C1.51264 6.37233 1.62214 6.24082 1.99215 6.17332C2.47916 6.08332 2.98118 6.06432 3.46769 6.13582C5.52476 6.43633 7.27581 7.35586 8.74385 8.8129C9.58188 9.64243 10.2159 10.634 10.8689 11.6025C11.5634 12.631 12.3105 13.611 13.262 14.4146C13.598 14.6961 13.866 14.9101 14.1225 15.0681C13.349 15.1546 12.058 15.1731 11.1749 14.4746L11.1749 14.4736ZM12.141 8.25988C12.141 8.09488 12.273 7.96338 12.439 7.96338C12.4765 7.96338 12.5105 7.97088 12.541 7.98188C12.5825 7.99688 12.6205 8.01938 12.6505 8.05338C12.7035 8.10588 12.7335 8.18088 12.7335 8.25988C12.7335 8.42489 12.6015 8.55639 12.4355 8.55639C12.2695 8.55639 12.141 8.42489 12.141 8.25988ZM15.1415 9.79893C14.949 9.87793 14.7565 9.94544 14.5715 9.95294C14.2845 9.96794 13.9715 9.85143 13.8015 9.70893C13.5375 9.48742 13.3485 9.36342 13.2695 8.97691C13.2355 8.8119 13.2545 8.55639 13.2845 8.40989C13.3525 8.09438 13.277 7.89187 13.0545 7.70787C12.8735 7.55786 12.643 7.51636 12.39 7.51636C12.2955 7.51636 12.209 7.47486 12.1445 7.44136C12.039 7.38886 11.9519 7.25735 12.035 7.09585C12.0615 7.04335 12.19 6.91584 12.22 6.89334C12.5635 6.69784 12.9595 6.76184 13.326 6.90834C13.6655 7.04735 13.9225 7.30236 14.292 7.66287C14.6695 8.09838 14.7375 8.21838 14.9525 8.54539C15.1225 8.8009 15.277 9.06341 15.3831 9.36392C15.4471 9.55142 15.3641 9.70493 15.1415 9.79893Z" fill="currentColor"></path></symbol>
+    <symbol id="i-theme-system" viewBox="0 0 16 16"><path d="M12.1665 13.5811V14.7803H3.66651V13.5811H12.1665Z" fill="currentColor"></path><path d="M13.4453 7.02379C13.4453 6.04702 13.4452 5.3616 13.3887 4.83434C13.3333 4.31828 13.2302 4.02378 13.0723 3.80309C12.9446 3.62475 12.7877 3.46883 12.6094 3.34117C12.3887 3.18328 12.0942 3.08007 11.5781 3.02477C11.0508 2.96829 10.3655 2.96715 9.38867 2.96715H6.61035C5.63359 2.96715 4.94816 2.96827 4.4209 3.02477C3.90486 3.0801 3.61034 3.18321 3.38965 3.34117C3.21143 3.46878 3.05534 3.62487 2.92774 3.80309C2.76977 4.02377 2.66667 4.3183 2.61133 4.83434C2.55483 5.3616 2.55371 6.04702 2.55371 7.02379C2.55371 8.0006 2.55485 8.68596 2.61133 9.21324C2.66663 9.72936 2.76983 10.0238 2.92774 10.2445C3.0554 10.4228 3.21131 10.5797 3.38965 10.7074C3.61034 10.8654 3.90484 10.9685 4.4209 11.0238C4.94816 11.0803 5.63359 11.0804 6.61035 11.0804H9.38867C10.3654 11.0804 11.0508 11.0803 11.5781 11.0238C12.0941 10.9685 12.3887 10.8652 12.6094 10.7074C12.7877 10.5797 12.9446 10.4229 13.0723 10.2445C13.2301 10.0238 13.3334 9.72927 13.3887 9.21324C13.4452 8.68596 13.4453 8.00058 13.4453 7.02379ZM14.6455 7.02379C14.6455 7.97428 14.646 8.73509 14.5811 9.34117C14.5149 9.95828 14.3756 10.4858 14.0479 10.9437C13.8436 11.229 13.5938 11.4788 13.3086 11.683C12.8507 12.0108 12.3232 12.15 11.7061 12.2162C11.1 12.2811 10.3391 12.2806 9.38867 12.2806H6.61035C5.66018 12.2806 4.89991 12.2811 4.29395 12.2162C3.67684 12.15 3.14935 12.0108 2.69141 11.683C2.40613 11.4788 2.15639 11.229 1.95215 10.9437C1.62436 10.4858 1.4841 9.95828 1.41797 9.34117C1.35305 8.73511 1.35449 7.97424 1.35449 7.02379C1.35449 6.07366 1.35308 5.31333 1.41797 4.70738C1.4841 4.09028 1.62436 3.56279 1.95215 3.10485C2.15638 2.81956 2.40613 2.56982 2.69141 2.36559C3.14935 2.03779 3.67684 1.89753 4.29395 1.83141C4.8999 1.76652 5.66022 1.76793 6.61035 1.76793H9.38867C10.3391 1.76793 11.1 1.76649 11.7061 1.83141C12.3232 1.89753 12.8507 2.03779 13.3086 2.36559C13.5939 2.56982 13.8436 2.81957 14.0479 3.10485C14.3756 3.56279 14.5149 4.09028 14.5811 4.70738C14.646 5.31335 14.6455 6.07362 14.6455 7.02379Z" fill="currentColor"></path></symbol>
   </svg>
 
   <main id="app" class="app hero-mode">
     <aside id="sidebar" class="sidebar column">
-      <header class="topbar sidebar-topbar">
+      <header class="topbar">
         <div class="traffic" aria-label="窗口控制"><i class="red"></i><i class="amber"></i><i class="green"></i></div>
+        <strong class="brand">DeepBuddy</strong>
         <span class="grow"></span>
         <button id="collapseSidebar" class="icon-button" title="收起侧边栏"><svg class="icon"><use href="#i-panel"></use></svg></button>
       </header>
@@ -1436,15 +1185,7 @@
       <div class="main-body">
         <section id="hero" class="hero">
           <div class="hero-card">
-            <div class="hero-mark">
-              <span class="hero-fish-hitbox" id="heroFishHitbox" title="DeepSeek Harness">
-                <svg class="hero-logo-svg hero-fish" aria-label="DeepSeek Harness"><use href="#i-app-logo"></use></svg>
-              </span>
-              <div class="hero-title-group">
-                <h1 class="hero-title">探索未至之境</h1>
-                <span class="hero-preview-badge">预览版</span>
-              </div>
-            </div>
+            <div class="hero-mark"><img class="hero-logo-img" alt="DeepBuddy" src="data:image/png;base64,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"><div class="hero-wordmark">DeepBuddy</div><div class="hero-slogan">桌面上的 Agent 工作台 · 想到什么，直接开始</div></div>
             <div class="hero-chips"><button id="heroWorkspace" class="hero-chip"><svg class="icon small"><use href="#i-folder-real"></use></svg><span>film-studio</span><svg class="icon" style="width:12px;height:12px"><use href="#i-chevron-real"></use></svg></button><button id="heroMode" class="hero-chip"><svg class="icon small"><use href="#i-mode"></use></svg><span>创造模式</span><svg class="icon" style="width:12px;height:12px"><use href="#i-chevron-real"></use></svg></button></div>
             <div class="composer hero-composer">
               <textarea id="heroInput" placeholder="描述你想要构建的内容"></textarea>
@@ -1463,58 +1204,17 @@
           <div id="chatPanel" class="conversation-scroll">
             <div id="chatMessages" class="chat-column">
               <div class="message-block">
-                <div class="user-turn">
-                  <div class="user-bubble">hi hi hi</div>
-                  <div class="user-meta">
-                    <span class="mono">刚刚</span>
-                    <button class="icon-button copy-action" data-copy-source="user" title="复制消息"><svg class="icon"><use href="#i-copy"></use></svg></button>
-                  </div>
-                </div>
-
-                <div class="work-section">
-                  <button class="work-summary-btn" type="button" aria-expanded="true" title="展开/收起执行步骤">
-                    <span class="work-icon"><svg class="icon" style="color:var(--db-run)"><use href="#i-check-real"></use></svg></span>
-                    <span class="work-summary-label">已执行操作 · 3 步 (1.8s)</span>
-                    <svg class="icon work-chevron"><use href="#i-chevron-real"></use></svg>
-                  </button>
-                  <div class="work-timeline">
-                    <div class="work-step">
-                      <div class="step-line-node"></div>
-                      <div class="step-content">
-                        <div class="step-header">
-                          <span class="step-icon">▣</span>
-                          <span class="step-text">上下文注入 · <span class="mono">@deepseek-ai/dsh-system-prompt</span></span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="work-step">
-                      <div class="step-line-node"></div>
-                      <div class="step-content">
-                        <div class="step-header">
-                          <span class="step-icon">▣</span>
-                          <span class="step-text">上下文注入 · <span class="mono">skill-catalog</span></span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="work-step">
-                      <div class="step-line-node"></div>
-                      <div class="step-content">
-                        <div class="step-header">
-                          <span class="step-icon">⌘</span>
-                          <span class="step-text">思考 · Casual greeting, acknowledge directly</span>
-                        </div>
-                        <div class="step-detail">The user just said "hi hi hi" - a casual greeting. Acknowledge and offer assistance directly within film-studio workspace.</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
+                <div class="user-line"><div class="user-bubble">hi hi hi</div></div>
+                <div class="copy-user"><button class="icon-button copy-action" title="复制"><svg class="icon"><use href="#i-copy"></use></svg></button></div>
+                <div class="context-row"><span>▣</span><span>上下文注入 · <span class="mono">@deepseek-ai/dsh-system-prompt</span></span></div>
+                <div class="context-row"><span>▣</span><span>上下文注入 · <span class="mono">skill-catalog</span></span></div>
+                <div class="think-row"><span>⌘</span><span>Think · The user just said "hi hi hi" - a casual greeting. There's no task here. …</span></div>
                 <div class="assistant-copy">
                   <p>Hey! 👋 What can I help you with today?</p>
                   <p>Looks like you're in the <span class="inline-code mono">film-studio</span> working directory — happy to dig<br>into code there, build something new, or just chat. What's on your mind?</p>
                 </div>
                 <div class="message-actions">
-                  <button class="icon-button copy-action" data-copy-source="assistant" title="复制回复"><svg class="icon"><use href="#i-copy"></use></svg></button>
+                  <button class="icon-button copy-action" title="复制"><svg class="icon"><use href="#i-copy"></use></svg></button>
                   <button class="icon-button feedback-action" data-feedback="like" title="赞"><svg class="icon"><use href="#i-like"></use></svg></button>
                   <button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon"><use href="#i-dislike"></use></svg></button>
                   <button class="icon-button message-more" title="分叉与更多"><svg class="icon"><use href="#i-fork"></use></svg></button>
@@ -2013,13 +1713,13 @@
     }));
 
     // Layout and pointer-captured resize gestures.
-    // Layout and pointer-captured resize gestures.
-    // 连续工作台几何：平铺无悬浮外边距与缝隙（GAP = 0），三列贴合咬合。
-    const GAP = 0;
-    function sideContribution() { return state.sidebar ? state.sidebarWidth : 0; }
-    function dockContribution() { return state.dock && !state.dockMax && state.mainMode === "conversation" ? state.dockWidth : 0; }
-    // 拖拽不变量：某侧列的天花板 = 窗口 − 另一列 − 主列 460 保底。
-    function dragCeiling(other) { return window.innerWidth - other - 460; }
+    // 浮岛几何：比例按窗口宽算，预算项吃掉窗口内边距（2×GAP）与列间缝（各 GAP）。
+    const GAP = 10;
+    function sideContribution() { return state.sidebar ? state.sidebarWidth + GAP : 0; }
+    function dockContribution() { return state.dock && !state.dockMax && state.mainMode === "conversation" ? state.dockWidth + GAP : 0; }
+    // 唯一的拖拽不变量：某侧列的天花板 = 窗口 − 内边距 − 另一列及其缝 − 自己的缝 − 主列 460 保底。
+    // 两个 clamp 都从这里取上限、只加各自的口径区间——拖 A 永远不欠 B 在放手时来还的债。
+    function dragCeiling(other) { return window.innerWidth - 2 * GAP - other - GAP - 460; }
     // 三列口径：左 232px–1/4 窗口，右 416px–1/2 窗口，中间吃剩余、460 保底。
     function clampSidebar(width) {
       const max = Math.max(232, Math.min(window.innerWidth / 4, dragCeiling(dockContribution())));
@@ -2138,103 +1838,26 @@
     });
 
     // Conversation, hero, composer controls, and fake replies.
-    function workStreamMarkup(steps, timeLabel) {
-      timeLabel = timeLabel || "1.8s";
-      const stepCount = steps ? steps.length : 3;
-      let stepsHtml = "";
-      if (steps && steps.length > 0) {
-        stepsHtml = steps.map(step => {
-          let extra = "";
-          if (step.detail) extra += '<div class="step-detail">' + escapeHtml(step.detail) + '</div>';
-          if (step.output) extra += '<div class="step-output mono">' + escapeHtml(step.output) + '</div>';
-          const icon = step.svg ? svg(step.svg, "small step-svg") : '<span class="step-icon">' + escapeHtml(step.icon || "•") + '</span>';
-          return '<div class="work-step' + (step.running ? ' running' : '') + '">' +
-            '<div class="step-line-node"></div>' +
-            '<div class="step-content">' +
-              '<div class="step-header">' + icon + '<span class="step-text">' + step.text + '</span></div>' +
-              extra +
-            '</div></div>';
-        }).join("");
-      } else {
-        stepsHtml =
-          '<div class="work-step"><div class="step-line-node"></div><div class="step-content"><div class="step-header"><span class="step-icon">▣</span><span class="step-text">上下文注入 · <span class="mono">@deepseek-ai/dsh-system-prompt</span></span></div></div></div>' +
-          '<div class="work-step"><div class="step-line-node"></div><div class="step-content"><div class="step-header"><span class="step-icon">▣</span><span class="step-text">上下文注入 · <span class="mono">skill-catalog</span></span></div></div></div>' +
-          '<div class="work-step"><div class="step-line-node"></div><div class="step-content"><div class="step-header"><span class="step-icon">⌘</span><span class="step-text">思考 · 根据上下文规划执行步骤</span></div><div class="step-detail">分析用户请求结构与可用工具，准备安全回复。</div></div></div>';
-      }
-
-      return '<div class="work-section">' +
-        '<button class="work-summary-btn" type="button" aria-expanded="true" title="展开/收起执行步骤">' +
-          '<span class="work-icon"><svg class="icon" style="color:var(--db-run)"><use href="#i-check-real"></use></svg></span>' +
-          '<span class="work-summary-label">已执行操作 · ' + stepCount + ' 步 (' + timeLabel + ')</span>' +
-          '<svg class="icon work-chevron"><use href="#i-chevron-real"></use></svg>' +
-        '</button>' +
-        '<div class="work-timeline">' + stepsHtml + '</div>' +
-      '</div>';
-    }
-
-    function messageMarkup(user, assistant, steps, timeLabel) {
+    function messageMarkup(user, assistant) {
       return '<div class="message-block">' +
-        '<div class="user-turn">' +
-          '<div class="user-bubble">' + escapeHtml(user) + '</div>' +
-          '<div class="user-meta"><span class="mono">刚刚</span><button class="icon-button copy-action" data-copy-source="user" title="复制消息">' + svg("i-copy") + '</button></div>' +
-        '</div>' +
-        workStreamMarkup(steps, timeLabel) +
+        '<div class="user-line"><div class="user-bubble">' + escapeHtml(user) + '</div></div>' +
+        '<div class="copy-user"><button class="icon-button copy-action" data-copy-source="user" title="复制用户消息">' + svg("i-copy") + '</button></div>' +
+        '<div class="think-row"><span>⌘</span><span>Think · 根据当前上下文整理请求并生成可执行回复。</span></div>' +
         '<div class="assistant-copy"><p>' + escapeHtml(assistant) + '</p></div>' +
-        '<div class="message-actions">' +
-          '<button class="icon-button copy-action" data-copy-source="assistant" title="复制回复">' + svg("i-copy") + '</button>' +
-          '<button class="icon-button feedback-action" data-feedback="like" title="赞">' + svg("i-like") + '</button>' +
-          '<button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon"><use href="#i-dislike"></use></svg></button>' +
-          '<button class="icon-button message-more" title="分叉与更多"><svg class="icon"><use href="#i-fork"></use></svg></button>' +
-        '</div></div>';
+        '<div class="message-actions"><button class="icon-button copy-action" data-copy-source="assistant" title="复制回复">' + svg("i-copy") + '</button>' +
+        '<button class="icon-button feedback-action" data-feedback="like" title="赞">' + svg("i-like") + '</button>' +
+        '<button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon"><use href="#i-dislike"></use></svg></button>' +
+        '<button class="icon-button message-more" title="分叉与更多"><svg class="icon"><use href="#i-fork"></use></svg></button></div></div>';
     }
-
     function sessionTemplate(title) {
       const samples = {
-        "Hi Hi Hi Greeting...": {
-          user: "哈哈哈哈",
-          assistant: "哈哈，有什么可以帮你的吗？如果想写代码、检查项目或聊聊想法，直接说就行。",
-          steps: [
-            { icon: "▣", text: '上下文注入 · <span class="mono">@deepseek-ai/dsh-system-prompt</span>' },
-            { icon: "⌘", text: '思考 · 用户输入欢快短句，以友好轻松基调回应' }
-          ],
-          time: "0.8s"
-        },
-        "Simple Greetings": {
-          user: "你好，介绍一下这个项目",
-          assistant: "DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端。界面保持三列两区，告别悬浮框设计，统一采用平贴表面与竖线指引，并提供文件、终端和浏览器检查器。",
-          steps: [
-            { icon: "▣", text: '上下文注入 · <span class="mono">README.md</span>' },
-            { icon: "▣", text: '上下文注入 · <span class="mono">design/ARCHITECTURE.md</span>' },
-            { icon: "⌘", text: '思考 · 提取 DeepBuddy 的三列两区架构与无缝设计要点' }
-          ],
-          time: "1.4s"
-        },
-        "用 bash 运行 echo": {
-          user: "用 bash 运行 echo deepbuddy",
-          assistant: "已在终端中执行命令：echo deepbuddy，返回结果为 deepbuddy。",
-          steps: [
-            { icon: "⌘", text: '思考 · 校验安全白名单，调用内置 bash runner' },
-            { svg: "i-terminal", text: '终端运行 · <span class="mono">echo "deepbuddy"</span>', output: 'deepbuddy' }
-          ],
-          time: "0.6s"
-        },
-        "AI助手自我介绍": {
-          user: "你是谁？",
-          assistant: "我是 DeepBuddy 客户端中由 DeepSeek 驱动的编程智能体，支持工具调用、终端交互与上下文感知。",
-          steps: [
-            { icon: "▣", text: '系统角色注入 · <span class="mono">agent-profile</span>' },
-            { icon: "⌘", text: '思考 · 确认模型身份与预设边界' }
-          ],
-          time: "0.9s"
-        }
+        "Hi Hi Hi Greeting...": ["哈哈哈哈", "哈哈，有什么可以帮你的吗？如果想写代码、检查项目或聊聊想法，直接说就行。"],
+        "Simple Greetings": ["你好，介绍一下这个项目", "DeepBuddy 是 DeepSeek Harness 的精选 Electron 客户端，界面保持三列两区，并提供文件、终端和浏览器检查器。"],
+        "用 bash 运行 echo": ["用 bash 运行 echo deepbuddy", "已在终端中执行假命令：echo deepbuddy，输出为 deepbuddy。"],
+        "AI助手自我介绍": ["你是谁？", "我是 DeepBuddy 原型里的假智能体，用来验证会话、工具轨迹和 dock 的交互关系。"]
       };
-      const sample = samples[title] || {
-        user: title,
-        assistant: "这是「" + title + "」会话的独立假内容。切换会话会保留各自的消息状态。",
-        steps: null,
-        time: "1.2s"
-      };
-      return messageMarkup(sample.user, sample.assistant, sample.steps, sample.time);
+      const sample = samples[title] || [title, "这是「" + title + "」会话的独立假内容。切换会话会保留各自的消息状态。"];
+      return messageMarkup(sample[0], sample[1]);
     }
     function showHero() {
       if (state.currentSession) state.sessionHtml[state.currentSession] = $("#chatMessages").innerHTML;
@@ -2298,22 +1921,15 @@
       const block = document.createElement("div");
       block.className = "message-block";
       block.innerHTML =
-        '<div class="user-turn">' +
-          '<div class="user-bubble">' + escapeHtml(value) + '</div>' +
-          '<div class="user-meta"><span class="mono">刚刚</span><button class="icon-button copy-action" data-copy-source="user" title="复制消息">' + svg("i-copy") + '</button></div>' +
-        '</div>';
+        '<div class="user-line"><div class="user-bubble">' + escapeHtml(value) + '</div></div>' +
+        '<div class="copy-user"><button class="icon-button copy-action" data-copy-source="user" title="复制用户消息">' + svg("i-copy") + '</button></div>';
       $("#chatMessages").append(block);
       input.value = "";
       updateSendState(input);
       scrollChat();
       state.sessionHtml[targetSession] = $("#chatMessages").innerHTML;
       setTimeout(() => {
-        const steps = [
-          { icon: "▣", text: '上下文注入 · <span class="mono">当前工作区状态</span>' },
-          { icon: "⌘", text: '思考 · 解析指令意图与执行上下文', detail: '识别指令：「' + value + '」，已对齐当前权限模式与预设。' }
-        ];
-        const replyMarkup =
-          workStreamMarkup(steps, "1.1s") +
+        const replyMarkup = '<div class="think-row"><span>⌘</span><span>Think · 根据当前上下文整理请求并生成可执行回复。</span></div>' +
           '<div class="assistant-copy"><p>收到。我会沿用当前工作区与权限设置继续处理：<span class="inline-code mono">' + escapeHtml(value) + '</span></p><p>这是原型中的假回复，消息状态会保留在当前会话。</p></div>' +
           '<div class="message-actions"><button class="icon-button copy-action" data-copy-source="assistant" title="复制回复">' + svg("i-copy") + '</button><button class="icon-button feedback-action" data-feedback="like" title="赞">' + svg("i-like") + '</button><button class="icon-button feedback-action" data-feedback="dislike" title="踩"><svg class="icon"><use href="#i-dislike"></use></svg></button><button class="icon-button message-more" title="分叉与更多"><svg class="icon"><use href="#i-fork"></use></svg></button></div>';
         if (block.isConnected && state.currentSession === targetSession) {
@@ -2355,20 +1971,10 @@
       }
     }
     $("#chatMessages").addEventListener("click", event => {
-      const summaryBtn = event.target.closest(".work-summary-btn");
-      if (summaryBtn) {
-        const section = summaryBtn.closest(".work-section");
-        if (section) {
-          section.classList.toggle("collapsed");
-          summaryBtn.setAttribute("aria-expanded", !section.classList.contains("collapsed"));
-          state.sessionHtml[state.currentSession] = $("#chatMessages").innerHTML;
-        }
-        return;
-      }
       const block = event.target.closest(".message-block");
       const copy = event.target.closest(".copy-action");
       if (copy && block) {
-        const source = copy.dataset.copySource || (copy.closest(".user-meta") ? "user" : "assistant");
+        const source = copy.dataset.copySource || (copy.closest(".copy-user") ? "user" : "assistant");
         const text = source === "user" ? $(".user-bubble", block)?.textContent : $(".assistant-copy", block)?.textContent;
         writeClipboard((text || "").trim());
         return;
@@ -2754,17 +2360,7 @@
     state.sessionHtml["Hello Greeting"] = $("#chatMessages").innerHTML;
     state.dockWidth = dockDefault();
     applyLayout();
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("session") || params.get("mode") === "conversation") {
-      showConversation(params.get("session") || "Hello Greeting");
-      if (params.get("dock") === "1" || params.get("dock") === "true") {
-        state.dock = true;
-        if (!state.dockTabs.length) openDockTab("files");
-        applyLayout();
-      }
-    } else {
-      showHero();
-    }
+    showHero();
     renderDock();
     renderFileTabs();
     renderFilePreview();
