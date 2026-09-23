@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-dude",
   "version": "0.1.0",
-  "description": "The Dude distribution: the official dsh web app with Dude's typeface, macOS window drag surfaces and hero brand mark.",
+  "description": "The Dude distribution: the official dsh web app with macOS window drag surfaces and Dude's hero brand mark.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -35,8 +35,8 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.3",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.3",
     "@types/react": "^18.3.12",
     "react": "^18.3.1",
     "typescript": "^5.9.2"

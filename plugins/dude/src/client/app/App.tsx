@@ -1,7 +1,7 @@
 /**
  * The plugin entry. The official ui-layout row owns the window, and the
  * official sidebars own both columns. Dude adds only its stylesheet
- * (typeface and window drag surfaces) and its brand in the hero.
+ * (window drag surfaces and traffic-light clearance) and its brand in the hero.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'

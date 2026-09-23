@@ -7,6 +7,17 @@
  * `no-drag`. Browsers ignore both; only Electron reads them.
  */
 
+/**
+ * Prefix for every drag surface: they all stand down while a modal dialog is
+ * open. The official Settings overlay renders inside the sidebar column,
+ * which is a drag surface, so the overlay itself would move the window. The
+ * hero and the conversation header are also drag surfaces. They come later in
+ * the DOM, and Electron lets a later drag rect win over an earlier no-drag
+ * one, so they would take clicks inside the dialog. `:where` adds no
+ * specificity, so the no-drag rules below still override the drag rules.
+ */
+const IDLE = ':where(html:not(:has([aria-modal="true"])))'
+
 const CSS = `
 /* Every interactive element opts out of dragging. Unscoped on purpose:
    Electron collects app-region rects viewport-globally, so a menu or dialog
@@ -44,20 +55,20 @@ button, a, input, textarea, select,
 /* Official sidebar column. 36px clears the macOS traffic lights. It is also
    the anchor the fullscreen right sidebar starts from. */
 :has(> [data-rightbar-col]) > div:first-of-type {
-  -webkit-app-region: drag;
   padding-top: 36px;
   box-sizing: border-box;
   anchor-name: --db-sidebar;
 }
+${IDLE} :has(> [data-rightbar-col]) > div:first-of-type { -webkit-app-region: drag; }
 
 /* Home screen: no conversation header is shown, so the empty hero page moves
    the window. The composer does not. */
-[data-phase="hero"] { -webkit-app-region: drag; }
+${IDLE} [data-phase="hero"] { -webkit-app-region: drag; }
 [data-phase="hero"] [data-composer-seat] { -webkit-app-region: no-drag; }
 
 /* Right sidebar tab strip: its empty stretch moves the window; the tabs and
    icons in it are buttons and opt out. */
-[data-rightbar-col] [data-dockkit-strip] { -webkit-app-region: drag; }
+${IDLE} [data-rightbar-col] [data-dockkit-strip] { -webkit-app-region: drag; }
 
 /* Right sidebar fullscreen. With the sidebar open, the panel covers the
    conversation but not the sidebar: the official panel is fixed over the
@@ -91,7 +102,7 @@ button, a, input, textarea, select,
    header, so they stay clickable. The empty stretch of the bar moves the
    window. A drag overlay on top of the header cannot do this: those buttons
    would not be descendants, and the click would drag instead. */
-header:has([data-conversation-header-corner]) {
+${IDLE} header:has([data-conversation-header-corner]) {
   -webkit-app-region: drag;
 }
 /* Electron collects drag regions regardless of what is painted on top, so
@@ -103,13 +114,12 @@ header:has([data-conversation-header-corner]) {
 
 /**
  * Install the stylesheet.
- * @param extra - CSS appended after these rules (the font faces, ui/fonts.ts).
  * @returns disposer removing the style element.
  */
-export function installStyles(extra = ''): () => void {
+export function installStyles(): () => void {
   const el = document.createElement('style')
   el.dataset['owner'] = 'dsh-plugin-dude'
-  el.textContent = CSS + extra
+  el.textContent = CSS
   document.head.append(el)
   return () => { el.remove() }
 }

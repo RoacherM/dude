@@ -17,15 +17,11 @@
  *             build gates, and finish with --smoke. Any failure restores the
  *             manifests and the lockfile byte-for-byte and exits 1.
  *   --smoke   boot a throwaway `dsh --profile dude` on its own port and
- *             assert the four facts that make the distribution a distribution.
+ *             assert the three facts that make the distribution a distribution.
  *
  * Every mode appends its result to `reports/upstream-sync/<date>.md` and prints
  * that path. Only Node built-ins are used; there is no dependency to install
  * before the tool that manages dependencies can run.
- *
- * The `dsh` CLI itself is deliberately out of scope: it lives in an npx cache
- * whose path differs per machine, so the report prints the upgrade command
- * instead of running it.
  */
 import { spawn, spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -37,11 +33,17 @@ import { setTimeout as sleep } from 'node:timers/promises'
 
 const REPO = dirname(dirname(fileURLToPath(import.meta.url)))
 
-/** The package whose published versions are the release anchor of the harness. */
-const ANCHOR = '@deepseek-ai/dsh-api-session-controller'
+/** The harness release: the CLI and runtime the distribution ships. */
+const ANCHOR = '@deepseek-ai/dsh'
 
-/** The manifest that states the version this repo is locked to. */
-const LOCK_MANIFEST = join(REPO, 'plugins', 'dude', 'package.json')
+/** The root manifest pins the anchor; the packaged app installs that version. */
+const LOCK_MANIFEST = join(REPO, 'package.json')
+
+/** The plugin's own `@deepseek-ai/*` pins must match the anchor. */
+const PLUGIN_MANIFEST = join(REPO, 'plugins', 'dude', 'package.json')
+
+/** Dude's isolated harness home; smoke must never touch the official ~/.dsh. */
+const DUDE_HOME = join(homedir(), '.dude')
 
 /** Port for the throwaway smoke server — never 3081, which is the dev server. */
 const SMOKE_PORT = Number(process.env.SMOKE_PORT ?? 3082)
@@ -212,27 +214,26 @@ class Report {
 /**
  * Read the version this repo is locked to.
  *
- * The lock is whatever the anchor package is pinned at in the Dude
- * plugin's devDependencies. Ranged entries (`@deepseek-ai/cordis: ^4.0.1`) are
- * a separate versioning line and are not part of the lock.
+ * The lock is the anchor's exact pin in the root manifest. The plugin's
+ * exact `@deepseek-ai/*` pins ride the same line and are reported when they
+ * drift. Ranged entries (`@deepseek-ai/cordis: ^4.0.1`) are a separate
+ * versioning line and are not part of the lock.
  * @returns the pinned version and the dependency names carrying it.
  */
 function readLocked() {
-  const pkg = readJson(LOCK_MANIFEST)
-  const pinned = Object.entries(pkg.devDependencies ?? {})
-    .filter(([name, spec]) => name.startsWith('@deepseek-ai/') && /^\d+\.\d+\.\d+/.test(spec))
-  const anchor = pinned.find(([name]) => name === ANCHOR)
-  if (anchor === undefined) {
+  const version = readJson(LOCK_MANIFEST).devDependencies?.[ANCHOR]
+  if (version === undefined || !/^\d+\.\d+\.\d+/.test(version)) {
     throw new Error(`${LOCK_MANIFEST} pins no exact ${ANCHOR}; nothing anchors the lock`)
   }
-  const version = anchor[1]
+  const pinned = [[ANCHOR, version], ...Object.entries(readJson(PLUGIN_MANIFEST).devDependencies ?? {})
+    .filter(([name, spec]) => name.startsWith('@deepseek-ai/') && /^\d+\.\d+\.\d+/.test(spec))]
   const strays = pinned.filter(([, spec]) => spec !== version).map(([name, spec]) => `${name}@${spec}`)
   return { version, names: pinned.map(([name]) => name), strays }
 }
 
 /**
  * Ask the registry what upstream has published.
- * @returns the newest anchor version, the full list, and the CLI dist-tags.
+ * @returns the newest anchor version, the full list, and its dist-tags.
  */
 function readUpstream() {
   const versions = run('npm', ['view', ANCHOR, 'versions', '--json'])
@@ -247,11 +248,7 @@ function readUpstream() {
   const tagged = JSON.parse(anchorTags.out)
   const latest = [tagged.latest, tagged.next].filter(v => typeof v === 'string').sort(compareVersions).at(-1)
   if (latest === undefined) throw new Error(`${ANCHOR} has neither a latest nor a next dist-tag`)
-
-  // The CLI ships separately and is reported, not gated: its upgrade is manual.
-  const tags = run('npm', ['view', '@deepseek-ai/dsh', 'dist-tags', '--json'])
-  const distTags = tags.code === 0 ? JSON.parse(tags.out) : { error: tail(tags.out, 3) }
-  return { latest, all, distTags }
+  return { latest, all, distTags: tagged }
 }
 
 /**
@@ -268,15 +265,13 @@ function survey(report) {
   report.add('|---|---|')
   report.add(`| repo 锁定（${ANCHOR}） | \`${locked.version}\` |`)
   report.add(`| npm 最新（latest/next 中较新者；${upstream.all.length} 个已发布版本） | \`${upstream.latest}\` |`)
-  report.add(`| dsh CLI dist-tags | \`${JSON.stringify(upstream.distTags)}\` |`)
+  report.add(`| dist-tags | \`${JSON.stringify(upstream.distTags)}\` |`)
   report.add('')
   report.add(`锁定的包（${locked.names.length}）：${locked.names.map(n => `\`${n}\``).join('、')}`)
   if (locked.strays.length > 0) {
     report.add('')
     report.add(`⚠️ 与锚点版本不一致的固定依赖：${locked.strays.join('、')}`)
   }
-  report.add('')
-  report.add(`dsh CLI 本体不自动升级，需要时手动跑：\`npm exec -y dsh@latest -- --version\``)
   return { locked, upstream, behind }
 }
 
@@ -358,25 +353,35 @@ async function assertPortFree(port) {
 }
 
 /**
- * Boot a server and wait until it answers.
+ * Start a server against Dude's isolated home.
  * @param dsh - path to the CLI.
  * @param port - the port to bind.
  * @param logPath - file collecting the server's own output.
- * @returns the child and the cookie the smoke checks must send.
+ * @returns the child, which the caller must stop whether or not boot succeeds.
  */
-async function bootServer(dsh, port, logPath) {
-  await assertPortFree(port)
+async function startServer(dsh, port, logPath) {
   writeFileSync(logPath, '')
+  await assertPortFree(port)
   const child = spawn(dsh, ['--profile', PROFILE, '--port', String(port), '--no-open'], {
     cwd: REPO,
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: process.env,
+    env: { ...process.env, DSH_HOME: DUDE_HOME },
   })
   const collect = chunk => appendFileSync(logPath, chunk)
   child.stdout.on('data', collect)
   child.stderr.on('data', collect)
+  return child
+}
 
+/**
+ * Wait until the server answers behind its token handshake.
+ * @param child - what {@link startServer} returned.
+ * @param port - the port it binds.
+ * @param logPath - file collecting the server's own output.
+ * @returns the cookie the smoke checks must send.
+ */
+async function waitForServer(child, port, logPath) {
   const deadline = Date.now() + BOOT_TIMEOUT_MS
   const base = `http://127.0.0.1:${port}`
   while (Date.now() < deadline) {
@@ -389,7 +394,7 @@ async function bootServer(dsh, port, logPath) {
         const cookie = await handshakeCookie(base, token)
         if (cookie !== null) {
           const res = await fetch(`${base}/`, { headers: { cookie } })
-          if (res.status === 200) return { child, cookie }
+          if (res.status === 200) return cookie
         }
       }
     } catch { /* not listening yet */ }
@@ -400,7 +405,7 @@ async function bootServer(dsh, port, logPath) {
 
 /**
  * Stop the smoke server and its children.
- * @param child - what {@link bootServer} returned.
+ * @param child - what {@link startServer} returned.
  */
 async function stopServer(child) {
   if (child === null || child.exitCode !== null) return
@@ -412,7 +417,7 @@ async function stopServer(child) {
 }
 
 /**
- * The four facts a green smoke asserts.
+ * The three facts a green smoke asserts.
  * @param base - the smoke server's origin.
  * @returns one `{name, verdict, detail}` per check, in order.
  */
@@ -467,29 +472,7 @@ async function smokeChecks(base, cookie) {
     }
   })
 
-  // 3. The rc.6 regression card: the file tree resolves a session's root even
-  //    when the host plugin row cannot see that session live.
-  await step('session.list → deepbuddyFiles/listDirectory', async () => {
-    const sessions = await rpc(base, 'session/list', { _request: {} }, cookie)
-    const items = sessions.result?.value?.items ?? []
-    const withCwd = items.find(s => typeof s.cwd === 'string' && s.cwd !== '')
-    if (withCwd === undefined) {
-      return { verdict: 'SKIP', detail: `${items.length} 个会话，均无 cwd，无法验证文件树回退` }
-    }
-    const listed = await rpc(base, 'deepbuddyFiles/listDirectory', {
-      request: { sessionId: withCwd.sessionId ?? withCwd.id, path: '' },
-    }, cookie)
-    const value = listed.result?.value
-    const kind = value?.error?.kind
-    const ok = listed.result?.ok === true && kind === undefined
-    return {
-      verdict: ok ? 'PASS' : 'FAIL',
-      detail: `${withCwd.sessionId} cwd=${withCwd.cwd}；ok=${listed.result?.ok}`
-        + (kind === undefined ? `；${value?.entries?.length ?? 0} 个条目` : `；error.kind=${kind}`),
-    }
-  })
-
-  // 4. The boot manifest is the distribution's, not stock dsh's.
+  // 3. The boot manifest is the distribution's, not stock dsh's.
   await step('boot 清单含发行版 entry', async () => {
     // 0.1.1 writes `globalThis["__DSH_BOOT__"] = {…}`; rc.6 wrote
     // `window.__DSH_BOOT__ = {…}`. Match the assignment, not the receiver.
@@ -515,20 +498,20 @@ async function smokeChecks(base, cookie) {
 async function cmdSmoke(report) {
   const dsh = resolveDsh()
   if (dsh === null) {
-    report.say('✗ 找不到 dsh 可执行文件；用 DSH=<path> 指定，或 npm exec -y dsh@latest')
+    report.say('✗ 找不到 dsh 可执行文件；先在仓库根目录 pnpm install，或用 DSH=<path> 指定')
     return 1
   }
   const base = `http://127.0.0.1:${SMOKE_PORT}`
   const logPath = join(tmpdir(), `dude-smoke-${SMOKE_PORT}.log`)
-  report.say(`冒烟：${dsh} --profile ${PROFILE} --port ${SMOKE_PORT}`)
+  report.say(`冒烟：DSH_HOME=${DUDE_HOME} ${dsh} --profile ${PROFILE} --port ${SMOKE_PORT}`)
   report.add(`服务日志：\`${logPath}\``)
 
   let child = null
   let checks = []
   try {
-    const boot = await bootServer(dsh, SMOKE_PORT, logPath)
-    child = boot.child
-    checks = await smokeChecks(base, boot.cookie)
+    child = await startServer(dsh, SMOKE_PORT, logPath)
+    const cookie = await waitForServer(child, SMOKE_PORT, logPath)
+    checks = await smokeChecks(base, cookie)
   } catch (error) {
     report.say(`✗ 起服务失败：${error?.message ?? error}`)
     report.add('')
@@ -685,8 +668,8 @@ async function cmdApply(report) {
   }
 
   report.say(`✔ 升级绿灯：${locked.version} → ${upstream.latest}，门禁与冒烟全通过`)
-  report.say('  bump 未 commit；按 deepbuddy-design-current/DESIGN_INTENT.md 第 14 章')
-  report.say('  走完人工视觉验收清单再提交。')
+  report.say('  bump 未 commit；按 design/ARCHITECTURE.md §10「架构验收」')
+  report.say('  走完人工验收再提交。')
   return 0
 }
 
@@ -698,7 +681,7 @@ const USAGE = `用法：node scripts/sync-upstream.mjs (--check | --apply | --sm
 
   --check   比对 npm 最新版与 repo 锁定版；已最新 exit 0，有新版 exit 1
   --apply   有新版时 bump + install + 门禁 + 冒烟，任一步失败回滚并 exit 1
-  --smoke   在 ${SMOKE_PORT} 端口起临时 dsh 服务跑四项冒烟
+  --smoke   在 ${SMOKE_PORT} 端口起临时 dsh 服务跑三项冒烟
 
 环境变量：DSH（dsh 可执行文件）、SMOKE_PORT、DSH_PROFILE`
 

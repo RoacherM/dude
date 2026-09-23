@@ -34,28 +34,23 @@ test('client bundle keeps only platform modules external', async () => {
   }
 })
 
-test('the bundle patch leaves official layout and sidebar enabled', async () => {
+test('the bundle patch only inserts the dude row', async () => {
   const patch = await readFile(join(root, 'cordis.patch.yml'), 'utf8')
-  // Official ui-layout is the only declarer of root. Disabling it and
-  // re-declaring the slots is the old takeover, and it is what made every
-  // upstream layout change a stub rewrite.
-  assert.doesNotMatch(patch, /^- id: ui-layout\n {2}disabled: true$/m)
-  assert.doesNotMatch(patch, /^- id: ui-sidebar\n {2}disabled: true$/m)
-  // ui-conversation stays enabled so the official conversation column runs.
-  assert.match(patch, /^- id: ui-conversation\n {2}name: '@deepseek-ai\/dsh-client-ui-conversation'$/m)
-  assert.doesNotMatch(patch, /id: ui-conversation\n {2}disabled: true/)
-  assert.match(patch, /- insert:\n {4}- id: dude\n {6}name: dsh-plugin-dude/)
+  // Restating, disabling or replacing an official row would make every
+  // upstream layout change Dude's problem. The official rows stay as shipped.
+  const rows = patch.split('\n').filter(line => line.trim() !== '' && !line.startsWith('#'))
+  assert.deepEqual(rows, ['- insert:', '    - id: dude', '      name: dsh-plugin-dude'])
 })
 
 test('client bundle does not redeclare the official frame', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   assert.doesNotMatch(bundle, /name: "root"/)
   assert.doesNotMatch(bundle, /DeepBuddySidebar/)
-  assert.doesNotMatch(bundle, /dude:shell/)
+  assert.doesNotMatch(bundle, /deepbuddy:shell/)
   // Terminal and browser are not a second sidebar. The official columns
   // are the only sidebars, and the title bar is what moves the window.
-  assert.doesNotMatch(bundle, /dude\.inspector/)
-  assert.doesNotMatch(bundle, /dude-inspector/)
+  assert.doesNotMatch(bundle, /deepbuddy\.inspector/)
+  assert.doesNotMatch(bundle, /deepbuddy-inspector/)
   assert.match(bundle, /padding-top: 36px/)
   assert.match(bundle, /-webkit-app-region: drag/)
 })
@@ -91,7 +86,7 @@ test('the window drag surface does not cover official controls', async () => {
   const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
   // Drag lives on the sidebar column and the conversation header. Buttons
   // inside those elements opt out. There is no full-window drag overlay.
-  assert.match(bundle, /header:has\(\[data-conversation-header-corner\]\) \{\s*-webkit-app-region: drag;/)
+  assert.match(bundle, /\$\{IDLE\} header:has\(\[data-conversation-header-corner\]\) \{\s*-webkit-app-region: drag;/)
   assert.match(bundle, /-webkit-app-region: drag;/)
   assert.doesNotMatch(bundle, /WebkitAppRegion: "drag"/)
   assert.match(bundle, /\[role="treeitem"\]/)
@@ -107,6 +102,24 @@ test('the window drag surface does not cover official controls', async () => {
   assert.match(bundle, /\[data-sidebar-collapsed\]:has\(\[data-sidebar-right-panel="fullscreen"\]\[data-sidebar-right-open\]\) > div:first-of-type \{\s*-webkit-app-region: no-drag;/)
   assert.match(bundle, /\[data-rightbar-fullscreen\] header:has\(\[data-conversation-header-corner\]\) \{\s*-webkit-app-region: no-drag;/)
   assert.match(bundle, /-webkit-app-region: no-drag/)
+})
+
+test('every drag surface stands down while a modal dialog is open', async () => {
+  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
+  // The official Settings overlay sits inside the sidebar column, and later
+  // drag rects win over its no-drag in Electron. A drag rule without the
+  // guard makes Settings unclickable.
+  assert.match(bundle, /var IDLE = ':where\(html:not\(:has\(\[aria-modal="true"\]\)\)\)'/)
+  const css = /var CSS = `([\s\S]*?)`/.exec(bundle)[1]
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replaceAll('${IDLE}', 'IDLE')
+  const dragSelectors = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, , body]) => /-webkit-app-region:\s*drag\b/.test(body))
+    .map(([, selector]) => selector.trim())
+  assert.equal(dragSelectors.length, 4)
+  for (const selector of dragSelectors) {
+    assert.ok(selector.startsWith('IDLE ') && !selector.includes(','), `unguarded drag surface: ${selector}`)
+  }
 })
 
 test('slots: official sidebar and conversation own their seats', async () => {
@@ -125,7 +138,7 @@ test('slots: no second sidebar and no hand-rolled new-task button', async () => 
   assert.doesNotMatch(bundle, /SettingsDialog/)
   assert.doesNotMatch(bundle, /ModelsPage|ModesPage|PluginsPage/)
   assert.doesNotMatch(bundle, /\\u65B0\\u5EFA\\u4EFB\\u52A1/)
-  assert.doesNotMatch(bundle, /dude\.inspector/)
+  assert.doesNotMatch(bundle, /deepbuddy\.inspector/)
   assert.doesNotMatch(bundle, /\\u6253\\u5F00\\u68C0\\u67E5\\u5668/)
 })
 
@@ -140,7 +153,9 @@ test('slots: Dude registers its brand into the official hero mark', async () => 
   // achievable override.
   assert.match(bundle, /name: "conversation\.hero\.brand\.mark"/)
   assert.match(bundle, /priority: -1/)
-  assert.match(bundle, /Dude/)
+  assert.match(bundle, /"aria-label": "Dude"/)
+  // The mark is Dude's own fish, not the official whale path.
+  assert.doesNotMatch(bundle, /M22\.9168 1\.43018/)
   // Dude no longer renders the composer chrome (the official apply does).
   assert.doesNotMatch(bundle, /renderSlot\("conversation\.input\.model", \{ locked \}\)/)
   assert.doesNotMatch(bundle, /ModelChip/)
@@ -151,8 +166,10 @@ test('the removed inspector features and their host half are gone', async () => 
   // Terminal, Browser and Files left with Dude's own right column; the
   // official right sidebar is the only one.
   assert.doesNotMatch(bundle, /xterm/i)
+  // The Archivo typeface never applied over the official styles and left.
+  assert.doesNotMatch(bundle, /Archivo|font\/woff2|--dsw-font-family/)
   assert.doesNotMatch(bundle, /deepbuddyFiles/)
-  assert.doesNotMatch(bundle, /\/dude\/terminal/)
+  assert.doesNotMatch(bundle, /\/deepbuddy\/terminal/)
   assert.match(bundle, /inject = \["slots"\]/)
   const host = await readFile(join(root, 'lib/index.js'), 'utf8')
   assert.doesNotMatch(host, /node-pty|WebSocketServer|typert/)

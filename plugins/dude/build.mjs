@@ -66,7 +66,6 @@ await build({
   platform: 'browser',
   target: 'es2022',
   jsx: 'automatic',
-  loader: { '.png': 'dataurl', '.woff2': 'dataurl', '.css': 'text' },
   external: PLATFORM_MODULES,
   sourcemap: true,
   define: { 'process.env.NODE_ENV': JSON.stringify(process.env['NODE_ENV'] ?? 'production') },

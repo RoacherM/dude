@@ -33,18 +33,18 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STAGING="$REPO_ROOT/apps/desktop/staging"
 RUNTIME="$STAGING/runtime"
 PLUGIN="$STAGING/plugin"
-LOCKED_DSH='@deepseek-ai/dsh@0.1.5-rc.2'
+# The root manifest is the one place the harness version is pinned; the
+# upstream sync bumps it there.
+LOCKED_DSH="@deepseek-ai/dsh@$(node -p "require('$REPO_ROOT/package.json').devDependencies['@deepseek-ai/dsh']")"
 # A cache dir outside the pnpm workspace, so pnpm treats it as a standalone
 # project instead of a workspace member.
 BUILD_DIR="$(mktemp -d)"
 trap 'rm -rf "$BUILD_DIR"' EXIT
 
-# The plugin lib is a build artifact — build it if missing (it never edits the
-# plugin source; it only produces lib/index.js + lib/client.js).
-if [[ ! -f "$REPO_ROOT/plugins/dude/lib/client.js" ]]; then
-  echo "stage-runtime: building dsh-plugin-dude lib..." >&2
-  (cd "$REPO_ROOT" && pnpm --filter dsh-plugin-dude build)
-fi
+# Always rebuild the plugin lib: a leftover lib/client.js may predate the
+# current source, and the app would ship it.
+echo "stage-runtime: building dsh-plugin-dude lib..." >&2
+(cd "$REPO_ROOT" && pnpm --filter dsh-plugin-dude build)
 
 rm -rf "$STAGING"
 mkdir -p "$PLUGIN"

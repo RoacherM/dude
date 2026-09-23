@@ -22,7 +22,7 @@
  * behavior: it loads DSH_WEB_URL (default http://127.0.0.1:3080) without
  * spawning or migrating anything.
  */
-const { app, BrowserWindow, nativeTheme, shell } = require('electron')
+const { app, BrowserWindow, dialog, nativeTheme, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
@@ -33,6 +33,8 @@ const path = require('node:path')
 const DSH_WEB_URL = process.env.DSH_WEB_URL ?? 'http://127.0.0.1:3080'
 /** Retry cadence while the profile's web server is still coming up. */
 const RETRY_MS = 1200
+/** How long dsh may take to print its listen URL, and then to answer it. */
+const BOOT_TIMEOUT_MS = 60000
 /** Dude's isolated harness home (config isolation, wave 9). */
 const DUDE_HOME = path.join(os.homedir(), '.dude')
 const OFFICIAL_HOME = path.join(os.homedir(), '.dsh')
@@ -203,6 +205,9 @@ function spawnDsh(port) {
   child.once('exit', (code) => {
     if (!settled) settleUrl.reject(new Error(`[dude] dsh exited ${code} before printing its listen URL`))
   })
+  setTimeout(() => {
+    if (!settled) settleUrl.reject(new Error(`[dude] dsh printed no listen URL within ${BOOT_TIMEOUT_MS}ms`))
+  }, BOOT_TIMEOUT_MS).unref()
   return { child, readyUrl }
 }
 
@@ -211,7 +216,7 @@ function spawnDsh(port) {
  * that handshake is for the BrowserWindow session. 0.1.2's bare `/` is 401
  * until Chromium spends the token; 0.1.1's bare `/` is 200. Either means up.
  */
-function waitForOrigin(origin, timeoutMs = 60000) {
+function waitForOrigin(origin, timeoutMs = BOOT_TIMEOUT_MS) {
   const start = Date.now()
   const attempt = () => new Promise((resolve) => {
     fetch(origin, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(2000) })
@@ -246,16 +251,11 @@ function createWindow(url) {
     // and inside the sidebar's 36px safe band (the plugin's styles.ts).
     trafficLightPosition: { x: 14, y: 17 },
     // The compositor shows this during fast drag/resize before the web
-    // content repaints — it must match the UI's ground (--dsw-alias-bg-base
-    // per scheme; the theme presenter follows the system by default), or the
-    // window flashes the wrong shade.
-    // Matches --db-window per scheme (ui/tokens.ts): the compositor flash
-    // during fast drag/resize must show the island window ground.
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0c' : '#dcdde1',
+    // content repaints, so it must match the official ground
+    // (--dsw-alias-bg-base: #fff light, #151517 dark; the theme presenter
+    // follows the system by default), or the window flashes the wrong shade.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
     title: 'Dude',
-    webPreferences: {
-      webviewTag: true,
-    },
   })
   win.removeMenu?.()
   win.webContents.on('console-message', (_e, level, message) => {
@@ -268,7 +268,7 @@ function createWindow(url) {
     console.log('[dude] fail-load', { code, desc, validatedURL, isMainFrame })
     // 303 handshake and in-page redirects abort the first navigation (-3).
     // Retrying the token URL fights Chromium's follow and can stick on a
-    // black window (the shell's backgroundColor is already #0b0b0c).
+    // blank window.
     if (!isMainFrame || code === -3) return
     setTimeout(() => {
       if (!win.isDestroyed()) void win.loadURL(url)
@@ -307,18 +307,6 @@ function killChild(child) {
   }
 }
 
-// The dock browser's <webview> guests: without a handler, window.open and
-// target=_blank links are silently dropped (baidu-style result pages become
-// unclickable). A popup request navigates the SAME webview — the dock browser
-// is a single-document surface, and non-web schemes stay denied.
-app.on('web-contents-created', (_event, contents) => {
-  if (contents.getType() !== 'webview') return
-  contents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:/i.test(url)) void contents.loadURL(url)
-    return { action: 'deny' }
-  })
-})
-
 app.whenReady().then(async () => {
   const resourcesDir = process.resourcesPath ?? ''
   const runtimeBin = path.join(resourcesDir, 'dsh-runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
@@ -346,6 +334,7 @@ app.whenReady().then(async () => {
   }
 }).catch((e) => {
   console.error('[dude] startup failed:', e)
+  dialog.showErrorBox('Dude could not start', String(e?.message ?? e))
   app.quit()
 })
 

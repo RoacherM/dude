@@ -11,9 +11,6 @@
 #       用默认 GITHUB_TOKEN 即可；组织禁用了 Actions 建 PR 的话要换 PAT。
 #    2. 首次跑之前在本机确认 `node scripts/sync-upstream.mjs --smoke` 是绿的——
 #       CI 只是把同一个脚本换个地方跑，本机红的东西 CI 不会变绿。
-#
-# 冒烟第 3 项（sessionPersistence 回退）在 runner 上没有历史会话，脚本会记 SKIP。
-# 这是设计内的：那条回归卡真正的把关点是本机验收清单里的「冷会话文件树」。
 
 name: upstream-sync
 
@@ -59,16 +56,17 @@ jobs:
         working-directory: dude
         run: pnpm install --frozen-lockfile
 
-      # 冒烟要一个装好的 dude profile。dsh 自己不在 workspace 里，
-      # 用 npx 现装；--apply 的 bump 只动 npm 依赖，不动这个 CLI。
-      - name: 装 dsh CLI 并组装 dude profile
+      # 冒烟要一个装好的 dude profile。dsh 由根 package.json 锁定、随上一步装进
+      # node_modules/.bin，--apply 的 bump 会一起升级它。profile 装在 Dude 自己的
+      # ~/.dude 里，和冒烟脚本读的是同一个 home。
+      - name: 组装 dude profile
+        working-directory: dude
         run: |
           set -euo pipefail
-          npm exec -y dsh@latest -- --version
-          DSH="$(command -v dsh || echo 'npm exec -y dsh@latest --')"
-          echo "DSH=$DSH" >> "$GITHUB_ENV"
-          $DSH plugin --profile dude add "$PWD/dude/plugins/dude"
-          $DSH --profile dude --dump-config | grep '^# =='
+          export DSH_HOME="$HOME/.dude"
+          node_modules/.bin/dsh --profile dude --from-default-profile web --dump-config > /dev/null
+          node_modules/.bin/dsh plugin --profile dude add "$PWD/plugins/dude"
+          node_modules/.bin/dsh --profile dude --dump-config | grep '^# =='
 
       - name: check
         id: check
@@ -114,8 +112,7 @@ jobs:
           body: |
             自动同步官方最新版。门禁与冒烟已在 CI 通过。
 
-            **合并前必须人工走完 `deepbuddy-design-current/DESIGN_INTENT.md` 第 14 章
-            的视觉验收清单**——
+            **合并前必须人工走完 `design/ARCHITECTURE.md` §10「架构验收」**——
             契约测试和冒烟验的是端点，验不了界面。
 
             <details><summary>同步报告</summary>

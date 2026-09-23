@@ -25,7 +25,8 @@
 ## 2. 官方优先与最小侵入原则（Official-First & Minimal-Invasiveness）
 
 1. **不重复造轮子**：能用 DSH 官方组件与能力（官方侧边栏、会话交互流、设置弹窗、
-   dockkit 右栏及其 Files 页），绝不自造第二套平行实现。
+   dockkit 右栏及其 Files 页），绝不自造第二套平行实现。官方暂缺的能力（锁定版本右栏
+   没有终端和浏览器）靠升级官方版本补。
 2. **避免脆弱的 CSS 隐藏**：绝不通过 `div[class*="_hash"] > span` 暴力隐藏或改写官方
    组件；拖拽区域这类必须定位官方元素的规则，用官方暴露的 `data-*` 属性，不用 hash
    化的 CSS 类名。
@@ -42,8 +43,8 @@
 
 `dsh/adapter.ts` 是唯一理解 DSH slot 注册 ABI 的文件。新增或修改与官方 slot、Cordis
 Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inject` 声明 + 调用
-`mountOfficialServices`），`ui/` 下的模块（`styles.ts` / `fonts.ts`）是纯字符串常量，
-不感知 DSH ABI。
+`mountOfficialServices`），`ui/styles.ts` 只是一段 CSS 字符串和装卸它的函数，不感知
+DSH ABI。
 
 ---
 
@@ -63,16 +64,21 @@ Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inj
   注入、不散落在多个文件。
 - 选择器优先定位官方组件暴露的 `data-*` 属性或语义 HTML（`header:has(...)`），不写
   死官方组件的 hash 化 class 名。
-- 不覆盖官方组件自身的样式（拖拽区域规则只加 `-webkit-app-region`，不改动布局、颜色
-  或间距）。
+- 不覆盖官方组件的颜色、圆角和字体。尺寸和位置只动三处：官方左栏 `padding-top: 36px`
+  让出红绿灯；右栏全屏且左栏展开时，全屏面板的 `left` / `max-width` 锚到左栏右缘；
+  左栏收起时，全屏面板左上 Tab 栏 `padding-left: 80px`。Tab 栏高度保持官方值。细节见
+  `DESIGN_INTENT.md` §2。
+- 拖拽区域加在官方元素本身上，不盖覆盖层；被全屏面板盖住的拖拽区（会话标题栏、收起的
+  左栏 rail）要切回 `no-drag`，因为 Electron 不管上面画了什么都照收拖拽矩形。
 - 没有 Dude 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §4。
 
 ---
 
-## 6. Electron 与 IPC
+## 6. Electron 与 Host
 
-- Renderer 不直接 import Electron 主进程 API。
-- Preload 暴露窄、类型化、按能力划分的方法。
+- Renderer 不直接 import Node 或 Electron 主进程 API。
+- 壳没有 Preload、没有 IPC、没有原生菜单（`win.removeMenu()`），不开 `webviewTag`；
+  新增任何一样前先确认官方 web 客户端里做不到。
 - Host 半部（`src/host.js`）当前是空实现；若未来需要新增 host 侧能力，先确认官方
   Host 服务是否已提供等价端点，不重建会话围栏或文件端点这类官方已有能力。
 - DSH Approval 与 Sandbox 继续作为真正权限边界。
@@ -88,8 +94,10 @@ Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inj
 - `cordis.patch.yml` 不禁用官方 `ui-layout` / `ui-sidebar`，`ui-conversation` 保持启用；
 - bundle 不重新声明 `root` / `sidebar` / `main` / 第二份 `layout` / 第二套主题；
 - 拖拽区域规则和 Hero 品牌标记存在于 bundle 中；
-- 已删除的功能（Terminal、`deepbuddyFiles`、`/deepbuddy/terminal` 等）不出现在
-  bundle 或 host 半部里；
+- 右栏全屏的锚点规则、收起左栏时的 80px 让位、全屏时的 `no-drag` 切换存在于 bundle 中；
+- Hero 鱼标不是官方鲸鱼的路径；
+- 已删除的功能（Terminal、`deepbuddyFiles`、`/deepbuddy/terminal` 等）
+  不出现在 bundle 或 host 半部里；
 - `package.json` 没有运行时 `dependencies`（`node-pty` / `ws` 等已随 Inspector 一起
   移除）。
 
@@ -104,7 +112,8 @@ Context 相关的代码只应出现在这里；`app/App.tsx` 只做装配（`inj
 - [ ] `cordis.patch.yml` 是否仍然只 insert 一行，不 disable 任何官方行？
 - [ ] Effect 是否清理（卸载插件后官方界面完整可用）？
 - [ ] 是否为“未来也许需要”预先建立了 Catalog / Registry / Feature 目录？
-- [ ] 拖拽区域规则是否只加在官方元素的空白处，没有覆盖官方控件？
+- [ ] 拖拽区域规则是否只加在官方元素本身上，没有盖住官方控件？在左栏展开 / 收起、
+      右栏全屏几种状态下目测过？
 
 ---
 

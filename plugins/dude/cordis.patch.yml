@@ -8,13 +8,8 @@
 # owns the frame and ctx.layout. Official ui-sidebar owns the left column.
 # Dude does not disable either row: a second declarer of `root` is
 # rejected by ui-slots, and a second `layout` provider deadlocks boot.
-# Removing this plugin from the profile removes only the typeface, the window
-# drag surfaces and the hero mark.
-
-# ui-conversation stays enabled. It injects `layout`, which the official
-# ui-layout row provides.
-- id: ui-conversation
-  name: '@deepseek-ai/dsh-client-ui-conversation'
+# Removing this plugin from the profile removes only the window drag surfaces
+# and the hero mark.
 
 - insert:
     - id: dude

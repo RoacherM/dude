@@ -7,7 +7,8 @@ Dude 是 DeepSeek Harness 的精选 Electron 客户端。
 
 - DSH 负责 Agent、Session、Tool、模型、文件系统、审批和沙箱等能力，以及应用布局
   （官方 `ui-layout`）、左右两侧栏（官方 `ui-sidebar` / dockkit）与会话核心交互。
-- Dude 只贡献桌面窗口的拖拽区域和 Hero 品牌标记，其余界面一字不改地复用官方实现。
+- Dude 只贡献桌面窗口的拖拽区域（含红绿灯避让）和 Hero 品牌标记，其余界面一字不改地
+  复用官方实现。
 - 当前是模块化单体客户端，不建设公开的 UI 插件平台。
 
 ## 文档效力
@@ -20,10 +21,11 @@ Dude 是 DeepSeek Harness 的精选 Electron 客户端。
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | 系统边界、模块关系、DSH 集成方式 | 最高 |
 | [`DESIGN_INTENT.md`](./DESIGN_INTENT.md) | 拖拽区域与 Hero 品牌标记的交互与视觉约束 | 高 |
 | [`DEVELOPMENT_RULES.md`](./DEVELOPMENT_RULES.md) | 开发时必须遵守的工程约束与检查表 | 高 |
-| [`prototype/`](./prototype/README.md) | 高保真可交互原型；**UI/交互改动先在此迭代再落实现** | UI 基线 |
 | [`FEATURE_MAP.md`](./FEATURE_MAP.md) | 当前功能落点、状态 Owner | 当前状态 |
+| [`prototype/`](./prototype/README.md) | 早期自绘界面的可交互原型 | 历史视觉参考，不约束实现 |
 
-发生冲突时，以靠前文件为准。
+发生冲突时，以靠前文件为准。原型不参与排序：界面全部是官方的，没有自绘 UI 需要先在
+原型上验证。
 
 ## 当前一句话
 
@@ -47,12 +49,14 @@ Dude 是 DeepSeek Harness 的精选 Electron 客户端。
 `plugins/dude/` 只有两个客户端模块和一个空 host 半部：
 
 1. `src/client/app/App.tsx`：入口，装配 `dsh/adapter.ts`；
-2. `src/client/dsh/adapter.ts`：安装样式表（`ui/styles.ts` 拖拽区域 + `ui/fonts.ts`
-   字体）、把 Dude 鱼形标记注册进官方 Hero 的 `conversation.hero.brand.mark` 槽；
+2. `src/client/dsh/adapter.ts`：安装样式表（`ui/styles.ts`：拖拽区域、红绿灯避让、
+   右栏全屏让出左栏）、把 Dude 自己的胖蓝鱼标记注册进官方 Hero 的
+   `conversation.hero.brand.mark` 槽；
 3. `src/host.js`：空实现。
 
-之前的三列布局壳、Inspector（Terminal / Browser / Files 预览）、KIT、设计令牌、Preset
-Plane、Session 围栏与 host 侧文件/终端端点已整体删除，由官方 `ui-layout` 与官方
-dockkit 右栏（自带 Files 页）取代。客户端 bundle 从 643KB 降到 55KB。
+客户端 bundle 约 8KB。已删除的自研部分（三列布局壳、Inspector、KIT、设计令牌、Preset
+Plane、Session 围栏、host 侧文件 / 终端端点）列在 [`FEATURE_MAP.md`](./FEATURE_MAP.md)
+§3。锁定的 0.1.5-rc.2 官方右栏只有 Files 页，终端和浏览器是能力缺口，升级到 0.1.6
+由官方补上。
 
 细则见 [`ARCHITECTURE.md`](./ARCHITECTURE.md) 与 [`DESIGN_INTENT.md`](./DESIGN_INTENT.md)。

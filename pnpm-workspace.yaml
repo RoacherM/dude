@@ -225,6 +225,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-workflow@0.1.2-rc.1'
   - '@deepseek-ai/dsh-workspace@0.1.2-rc.1'
   - '@deepseek-ai/dsh@0.1.2-rc.1'
+  - '@deepseek-ai/dsh-client-ui-sidebar-documentpreview@0.1.5-rc.3'
 onlyBuiltDependencies:
   - '@deepseek-ai/dsh-subprocess-local'
   - '@google/genai'
