@@ -11,8 +11,9 @@ dsh 官方提供的是命令行和浏览器里的 web 界面。Dude 把这套官
 
 - **界面全是官方的。** 左栏、会话、右栏、设置都来自官方 `dsh-web-app`，Dude 一行不改。
   官方有的功能 Dude 都有；官方没有的，等官方升级补上，Dude 不自己另画一套。
-- **Dude 只补桌面窗口需要的东西。** 拖动窗口的区域和给 macOS 红绿灯留的位置，
-  靠一段样式表实现。这是 Dude 唯一的界面代码。
+- **窗口用 macOS 系统标题栏。** 标题栏显示「Dude」，官方界面原样铺在标题栏下面，
+  拖动窗口就是拖系统标题栏本身。Dude 插件因此没有界面代码：`apply` 是空的，插件行
+  留着只是为了让启动 manifest 认得出是 Dude 的。
 - **自带内核，一键升级。** app 里带着一份 dsh 运行时（内核），装好就能用。官方发了新版，
   点菜单 **Dude → 检查内核更新…** 就能在 app 里升级，不用重装。新内核起不来会自动退回原来的版本。
 - **数据和官方分开。** Dude 的设置、凭据和会话放在 `~/.dude`。第一次启动时从官方的
@@ -34,8 +35,8 @@ open apps/desktop/dist/Dude-0.1.0-arm64.dmg   # 把 Dude 拖进「应用程序�
 
 | 目录 | 内容 |
 |---|---|
-| `apps/desktop/` | Electron 壳：窗口、启停 dsh、内核热更新 |
-| `plugins/dude/` | Dude 插件：拖拽区域样式表 |
+| `apps/desktop/` | Electron 壳：窗口（系统标题栏）、启停 dsh、内核热更新 |
+| `plugins/dude/` | Dude 插件：只标记启动 manifest，没有界面代码 |
 | `scripts/` | `dude` 启动器、`sync-upstream.mjs` 官方版本同步 |
 | `design/` | 现行设计文档 |
 

@@ -1,11 +1,11 @@
 # dude-desktop
 
-Dude 桌面壳（Electron）。一个 `hiddenInset` macOS 窗口加载发行版 profile 的 web 界面
+Dude 桌面壳（Electron）。一个用 macOS 系统标题栏的窗口加载发行版 profile 的 web 界面
 （官方 dsh-base + dsh-web-app bundle 加 `dsh-plugin-dude`）；整个 UI 由官方 web 客户端
-渲染，窗口拖拽区域由插件样式表声明。壳只管窗口和 dsh 进程：
+渲染，完整铺在系统标题栏下面，拖动窗口就是拖这条系统标题栏。壳只管窗口和 dsh 进程：
 
-- 红绿灯在 `trafficLightPosition {x: 14, y: 17}`，中心约在窗口顶下 24px，与官方会话
-  标题栏按钮、右栏 Tab 同一行，落在插件给左栏留出的 36px 顶带里。
+- 标题栏是 Electron 默认窗口的系统标题栏，标题固定显示「Dude」——`main.js` 拦截
+  `page-title-updated`，不让页面的 `<title>` 顶掉它。
 - 窗口底色跟官方地色 `--dsw-alias-bg-base` 一致：浅色 `#ffffff`、深色 `#151517`，
   快速拖动或缩放时不闪错色。
 - 菜单是 macOS 标准菜单（⌘C / ⌘V 靠它），Dude 菜单里多一项「检查内核更新…」；没有

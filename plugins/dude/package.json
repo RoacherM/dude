@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-dude",
   "version": "0.1.0",
-  "description": "The Dude distribution: the official dsh web app with macOS window drag surfaces.",
+  "description": "The Dude distribution: marks the boot manifest as Dude's; the official dsh web app runs unchanged.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

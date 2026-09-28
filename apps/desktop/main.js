@@ -4,7 +4,8 @@
  * The packaged Dude.app is self-contained: this main process finds a free
  * port, spawns the staged dsh runtime (real files, not pnpm symlinks — see
  * stage-runtime.sh / electron-builder extraResources) with Electron's bundled
- * Node (ELECTRON_RUN_AS_NODE=1 + process.execPath, Node 22.x ≥ dsh's engine),
+ * Node (ELECTRON_RUN_AS_NODE=1 + process.execPath; Electron is pinned to a
+ * version dsh's node-addon-require-builtin accepts, see ARCHITECTURE.md §8),
  * polls until dsh prints its listen URL, and loads that URL in the window.
  * 0.1.2 gates the UI behind a one-shot `?token=` handshake; the shell reads
  * the token from dsh stdout so a double-click never asks the user for a URL.
@@ -216,7 +217,11 @@ function spawnDsh(port, runtime) {
   child.stdout?.on('data', onData)
   child.stderr?.on('data', onData)
   child.once('exit', (code) => {
-    if (!settled) settleUrl.reject(new Error(`[dude] dsh exited ${code} before printing its listen URL`))
+    if (!settled) {
+      // dsh prints nothing before its listen URL, so the head is the fatal error; the rest is its stack.
+      const head = buf.trim().split('\n').slice(0, 3).join('\n')
+      settleUrl.reject(new Error(`[dude] dsh exited ${code} before printing its listen URL:\n${head}`))
+    }
   })
   setTimeout(() => {
     if (!settled) settleUrl.reject(new Error(`[dude] dsh printed no listen URL within ${BOOT_TIMEOUT_MS}ms`))
@@ -258,11 +263,9 @@ function createWindow(url) {
     height: 900,
     minWidth: 860,
     minHeight: 600,
-    titleBarStyle: 'hiddenInset',
-    // Lights are about 14px tall; y 17 centres them 24px down, on the row
-    // the official conversation header and right sidebar tabs already use,
-    // and inside the sidebar's 36px safe band (the plugin's styles.ts).
-    trafficLightPosition: { x: 14, y: 17 },
+    // Default system title bar: the page never sits under the traffic lights,
+    // so it needs no drag regions of its own and upstream layout changes
+    // cannot break window dragging or cover controls.
     // The compositor shows this during fast drag/resize before the web
     // content repaints, so it must match the official ground
     // (--dsw-alias-bg-base: #fff light, #151517 dark; the theme presenter
@@ -270,6 +273,8 @@ function createWindow(url) {
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
     title: 'Dude',
   })
+  // The page sets its own <title>; the system title bar keeps the app's name.
+  win.on('page-title-updated', (e) => e.preventDefault())
   win.webContents.on('console-message', (_e, level, message) => {
     console.log(`[renderer:${level}] ${message}`)
   })
@@ -339,6 +344,7 @@ let updating = null
 
 /** Boot a runtime on a free port and wait until it answers. */
 async function startDsh(runtime) {
+  console.log('[dude] starting kernel dsh %s from %s', runtime.version, runtime.dir)
   const { child, readyUrl } = spawnDsh(await findFreePort(), runtime)
   try {
     const url = await readyUrl

@@ -7,8 +7,10 @@
 # owns the frame and ctx.layout. Official ui-sidebar owns the left column.
 # Dude does not disable either row: a second declarer of `root` is
 # rejected by ui-slots, and a second `layout` provider deadlocks boot.
-# Removing this plugin from the profile removes only the window drag surfaces
-# and the hero mark.
+# The row's `apply` is empty: the desktop shell uses the system title bar, so
+# there is nothing for the page to add. Removing this plugin from the profile
+# only removes the marker that tells sync-upstream's smoke check this is
+# Dude's boot manifest.
 
 - insert:
     - id: dude

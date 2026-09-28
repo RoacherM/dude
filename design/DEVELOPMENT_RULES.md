@@ -7,8 +7,8 @@
 
 ## 1. Rule of Three
 
-同一类问题出现第三个真实实例之前，不建立公共框架。当前插件只有两个客户端模块
-（`dsh/adapter.ts` 安装样式表，`ui/styles.ts` 是样式本身），远未触发任何抽象信号。
+同一类问题出现第三个真实实例之前，不建立公共框架。当前插件只有一个客户端模块
+（`app/App.tsx`，`apply` 为空），远未触发任何抽象信号。
 
 禁止为“未来也许会有”提前建立：
 
@@ -41,15 +41,16 @@
 
 ## 3. DSH ABI 约束
 
-`dsh/adapter.ts` 是唯一接触官方应用的文件。新增或修改与官方 slot、Cordis Context
-相关的代码只应出现在这里；`app/App.tsx` 只做装配（调用 `mountOfficialServices`），
-`ui/styles.ts` 只是一段 CSS 字符串和装卸它的函数，不感知 DSH ABI。
+`src/client/dsh/` 这层目前不存在——`apply` 是空函数，没有代码接触官方应用的内部
+状态。新增或修改任何接触官方 slot、Cordis Context 的代码，必须先在
+`plugins/dude/src/client/dsh/` 落地，不允许散落在 `App.tsx` 或 host 半部。
 
 ---
 
 ## 4. Cordis / DSH Effect
 
-- 所有注册（当前只有样式表安装）必须包在 `ctx.effect(...)` 里，插件卸载时自动撤销；
+- 当前没有任何注册，`apply(_ctx)` 是空函数；一旦新增注册，必须包在 `ctx.effect(...)`
+  里，插件卸载时自动撤销；
 - 不依赖偶然的加载顺序；
 - 依赖通过 `inject` 显式声明（当前不注入任何服务）；
 - 仅在官方已有真实扩展点时直接使用 Slot，不为了 Dude 的普通样式或品牌需求另建
@@ -59,16 +60,12 @@
 
 ## 5. UI 与 CSS
 
-- 样式表通过 `installStyles()` 一次性挂一个 `<style>` 元素，卸载时整体移除；不逐条
-  注入、不散落在多个文件。
-- 选择器优先定位官方组件暴露的 `data-*` 属性或语义 HTML（`header:has(...)`），不写
-  死官方组件的 hash 化 class 名。
-- 不覆盖官方组件的颜色、圆角和字体。尺寸和位置只动三处：官方左栏 `padding-top: 36px`
-  让出红绿灯；右栏全屏且左栏展开时，全屏面板的 `left` / `max-width` 锚到左栏右缘；
-  左栏收起时，全屏面板左上 Tab 栏 `padding-left: 80px`。Tab 栏高度保持官方值。细节见
-  `DESIGN_INTENT.md` §2。
-- 拖拽区域加在官方元素本身上，不盖覆盖层；被全屏面板盖住的拖拽区（会话标题栏、收起的
-  左栏 rail）要切回 `no-drag`，因为 Electron 不管上面画了什么都照收拖拽矩形。
+- 窗口用系统标题栏，页面侧不声明 `-webkit-app-region` 或任何拖拽相关样式；不往
+  `document` 里插入 `<style>` 元素。
+- 一旦将来确有必要给官方组件加样式，选择器必须优先定位官方组件暴露的 `data-*`
+  属性或语义 HTML，不写死官方组件的 hash 化 class 名；样式挂一次性 `<style>` 并在
+  `ctx.effect` 里卸载，不逐条注入、不散落在多个文件。
+- 不覆盖官方组件的颜色、圆角、字体、尺寸和位置。
 - 没有 Dude 专属的 KIT 组件库或 Token 体系——参见 `DESIGN_INTENT.md` §3。
 
 ---
@@ -92,8 +89,7 @@
 - bundle 自注册、依赖表只包含平台外部模块；
 - `cordis.patch.yml` 只 insert `dude` 一行，不禁用或重述任何官方行；
 - bundle 不重新声明 `root` / `sidebar` / `main` / 第二份 `layout` / 第二套主题；
-- 拖拽区域规则存在于 bundle 中，且每条 drag 规则都带「无模态对话框」守卫；
-- 右栏全屏的锚点规则、收起左栏时的 80px 让位、全屏时的 `no-drag` 切换存在于 bundle 中；
+- bundle 不出现 `app-region` 或 `<style>` 注入（窗口用系统标题栏，页面侧没有拖拽区域）；
 - bundle 不注册任何 slot，Hero 保持官方鲸鱼；
 - 已删除的功能（Terminal、`deepbuddyFiles`、`/deepbuddy/terminal` 等）
   不出现在 bundle 或 host 半部里；
@@ -111,8 +107,7 @@
 - [ ] `cordis.patch.yml` 是否仍然只 insert 一行，不 disable 任何官方行？
 - [ ] Effect 是否清理（卸载插件后官方界面完整可用）？
 - [ ] 是否为“未来也许需要”预先建立了 Catalog / Registry / Feature 目录？
-- [ ] 拖拽区域规则是否只加在官方元素本身上，没有盖住官方控件？在左栏展开 / 收起、
-      右栏全屏几种状态下目测过？
+- [ ] 官方 UI 是否完整铺在系统标题栏下方，没有引入页面侧的拖拽区域或样式注入？
 
 ---
 

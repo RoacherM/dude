@@ -8,76 +8,48 @@
 ## 1. 核心结构
 
 Dude 不拥有布局。窗口的列结构、列的开关、列内容、响应式收列，全部由官方
-`ui-layout` / `ui-sidebar` / `ui-conversation` / dockkit（官方右栏）决定。Dude 在这套
-官方结构上只叠加一层：窗口拖拽区域——让无边框窗口在 macOS 上可以用鼠标拖动、给红绿灯
-让位、不挡官方控件。Hero 的品牌标记是官方的鲸鱼，Dude 不替换。
+`ui-layout` / `ui-sidebar` / `ui-conversation` / dockkit（官方右栏）决定，完整铺在
+macOS 系统标题栏下面。Dude 在这套官方结构上不叠加任何东西：没有拖拽区域样式表，
+没有对官方组件的尺寸或位置覆写。Hero 的品牌标记是官方的鲸鱼，Dude 不替换。
 
 没有 Sidebar / Workbench / Inspector 三列职责划分，没有 Dude 自己的状态栏、
-Column、KIT 组件或设计令牌体系。官方组件的圆角、配色、字体由官方主题决定，Dude 不
-覆写；尺寸和位置只动红绿灯避让和右栏全屏需要的三处（见 §2）。
+Column、KIT 组件或设计令牌体系。官方组件的圆角、配色、字体、尺寸、位置全部由官方
+决定，Dude 不覆写。
 
 ---
 
-## 2. 窗口拖拽区域
+## 2. 窗口 chrome：系统标题栏
 
-无边框窗口（macOS `hiddenInset`）需要显式声明哪些区域可以拖动整个窗口。Dude 的
-样式表（`plugins/dude/src/client/ui/styles.ts`）在以下官方元素上加
-`-webkit-app-region: drag`，其余全部保持不可拖：
+窗口用 Electron 的默认 macOS 系统标题栏，标题固定显示「Dude」（`main.js` 拦截
+`page-title-updated`，不让页面的 `<title>` 顶掉它）。拖动窗口就是拖这条系统标题栏，
+不需要页面声明任何可拖拽区域；红绿灯是系统按钮，落在系统标题栏里，不需要 Dude 计算
+避让位置。
 
-| 区域 | 定位方式 | 说明 |
-|---|---|---|
-| 官方左栏整列 | `:has(> [data-rightbar-col]) > div:first-of-type` | 整列可拖，列内按钮自行退出；加 `padding-top: 36px` 让出红绿灯 |
-| 首页 Hero 页面 | `[data-phase="hero"]` | 空白 / 新任务页整页可拖，Composer（`[data-composer-seat]`）除外 |
-| 官方右栏 Tab 栏 | `[data-rightbar-col] [data-dockkit-strip]` | 栏内是按钮的 Tab 自行退出，空白处可拖 |
-| 会话标题栏 | `header:has([data-conversation-header-corner])` | 标题和按钮之外的空白可拖 |
-
-按钮、链接、输入框、`role="tab"` / `"button"` / `"menuitem"` / `"treeitem"` /
-`"dialog"` / `"menu"` / `"listbox"` / `"option"`、`contenteditable` 全部无条件退出拖拽
-（`no-drag`），且这条规则不限定作用域：Electron 按视口全局收集拖拽矩形，一个通过
-Portal 挂到拖拽区域之上的菜单或对话框如果不退出，点击会变成拖窗口而不是点中它。
-
-拖拽区域只能加在官方元素本身上，不能用覆盖层盖住含官方控件的区域——那样会让控件的
-点击变成拖窗口，因为覆盖层不是控件的祖先节点，控件无法退出。
-
-### 红绿灯
-
-壳把红绿灯放在 `trafficLightPosition {x: 14, y: 17}`：灯高约 14px，中心在窗口顶下约
-24px，与官方会话标题栏的按钮、右栏 Tab 同一行。左栏顶部的 36px 内边距让左栏内容从灯
-下方开始。
-
-### 右栏全屏
-
-官方右栏全屏时，面板 `position: fixed` 盖满整个窗口。Dude 按左栏状态改它：
-
-- **左栏展开**：面板左缘锚到左栏右缘（CSS anchor positioning，左栏列是锚点
-  `--db-sidebar`，`left: anchor(--db-sidebar right)`，
-  `max-width: calc(100vw - anchor-size(--db-sidebar width))`），只盖会话区，左栏拖宽
-  时跟着走。
-- **左栏收起**：面板保持官方的整窗覆盖。红绿灯约 66px 宽，放不进 56px 的收起 rail，
-  于是落在面板的 Tab 栏上；左上角 pane（各层祖先 split cell 都是第一格的那个）的 Tab
-  栏加 `padding-left: 80px` 让出它们。
-
-两种模式下 Tab 栏都保持官方高度，本来就和红绿灯同行，所以切换模式时图标不跳。两条规则
-都挂在面板自己的 `data-sidebar-right-panel="fullscreen"` 上，这个属性在滑入动画之前就
-设好，动画结束时不会跳一下。
-
-Electron 收集拖拽区域时不管上面画了什么，被面板盖住的拖拽区仍会吞掉点击。所以面板
-全屏时，会话标题栏切成 `no-drag`；左栏收起且面板打开时，收起的 rail 也切成 `no-drag`。
+**之前的做法与为什么改**：无边框窗口（macOS `hiddenInset` + 自定义红绿灯位置）需要
+页面显式声明哪些区域可以拖动整个窗口，并且要把官方控件从红绿灯底下让开。这套方案
+本质上是脆弱的：Electron 按整个视口全局收集拖拽矩形，后声明的拖拽区会覆盖先声明的
+不可拖区域，而 `-webkit-app-region` 会被子元素继承。上游 dsh 0.1.7 改了一次 DOM 布局，
+就造成了两个问题——(a) 侧栏列里新出现的一层覆盖元素继承了 Dude 的拖拽区，
+导致 Plugins / Terminal 页面的会话树完全点不动；(b) 右栏全屏面板的 80px 红绿灯避让
+不再对齐实际的 DOM 结构，红绿灯盖住了 Tab 栏。这类问题是选择器和上游 DOM 结构的
+隐式耦合，官方每次内部结构调整都可能无声地破坏它，且不会在测试里体现（bundle 契约
+测试只能断言选择器字符串存在，测不出它在真实 DOM 上还生效）。换成系统标题栏后，
+这一整类问题连同它背后的选择器耦合一起消失了：代价是窗口顶部多出一条约 28px、
+系统配色（跟随系统浅色 / 深色，不用官方主题色）的横条，页面可用高度相应减少，仅此而已。
 
 ---
 
 ## 3. 视觉语言
 
 Dude 不维护独立的颜色、圆角、间距、字体或组件体系。界面视觉由官方主题（`--dsw-*`
-变量）决定，正文和代码字体都是官方的。Dude 自己决定的视觉只有：
+变量）决定，正文和代码字体都是官方的。Dude 自己决定的视觉只剩一处：
 
-- **红绿灯避让与右栏全屏**：见第 2 节的三处尺寸和位置调整；
 - **窗口底色**：壳的 `backgroundColor` 跟官方地色 `--dsw-alias-bg-base` 一致（浅色
   `#ffffff`、深色 `#151517`），快速拖动或缩放、网页还没重绘时不闪错色。
 
-没有 Dude 专属的 Token 前缀（`--db-sidebar` 只是 CSS 锚点名，不是设计令牌）、KIT 组件
-库或暗色方案定义。这几处不构成体系化的理由；出现第三个需要独立视觉覆写的官方区域时
-再评估。
+系统标题栏本身是 macOS 系统配色，不跟随官方主题，Dude 不尝试给它上色——那需要回到
+无边框窗口，也就是回到 §2 描述的脆弱状态。没有 Dude 专属的 Token 体系、KIT 组件库或
+暗色方案定义。
 
 ---
 

@@ -24,8 +24,10 @@ Dude 是 DeepSeek Harness（dsh）的桌面发行版：官方 `dsh-web-app` 界�
 Electron 窗口里。
 
 - DSH 负责领域能力、数据、窗口布局（`ui-layout`）、左右两侧栏与会话交互。
-- Dude 插件只加一样官方没有的东西：窗口拖拽区域（含红绿灯避让）的样式表。Hero 用官方
-  鲸鱼标记。`src/host.js` 是空实现。
+- 窗口用 macOS 系统标题栏（不是无边框窗口），标题栏显示「Dude」。Dude 插件不需要再往
+  页面里加任何东西——`apply` 是空的；它留着只是为了让启动 manifest 认得出是 Dude 的
+  （`scripts/sync-upstream.mjs` 冒烟检查 boot manifest 里的 `dsh-plugin-dude`）。Hero 用
+  官方鲸鱼标记。`src/host.js` 是空实现。
 - Electron 壳只管窗口、dsh 进程启停和内核热更新（Dude 菜单「检查内核更新…」）；没有
   Preload 或 IPC。
 - 官方缺的能力（例如锁定版本的右栏没有终端和浏览器）是能力缺口，靠升级官方版本补，
@@ -55,5 +57,6 @@ Electron 窗口里。
 - [ ] 状态 Owner 是否唯一？
 - [ ] Effect 是否全部清理（卸载插件后回到纯官方界面）？
 - [ ] 是否能删除新抽象并让代码更简单？
-- [ ] 拖拽区域是否挡住官方控件？在左栏展开 / 收起、右栏全屏几种状态下各点一遍。
+- [ ] 官方 UI 是否完整落在系统标题栏下方？页面侧没有引入 `app-region` 或其他挪用
+      标题栏区域的样式。
 - [ ] `pnpm test` 是否通过？

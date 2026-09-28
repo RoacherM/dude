@@ -18,8 +18,9 @@ Dude 直接复用 DSH 的全部官方能力与交互：
 - 持久日志、恢复、Fork 与运行状态；
 - 底层文件系统、沙箱与环境能力。
 
-Dude 只贡献官方没有的一样东西：**桌面窗口集成**——一段全局样式表，声明窗口拖拽区域，
-让左栏顶部避开 macOS 红绿灯，右栏全屏时让出展开的左栏。Hero 的品牌标记也用官方的鲸鱼。
+窗口用 macOS 系统标题栏，官方界面原样铺在标题栏下面，拖动窗口就是拖系统标题栏。
+Dude 插件因此不需要贡献任何界面代码——它的 `apply` 是空函数。Hero 的品牌标记也用
+官方的鲸鱼。
 
 没有第二套侧栏、没有自绘布局、没有自己的检查器（Inspector）。官方缺的能力是能力缺口，
 靠升级官方版本补，不自绘平行实现：锁定的 0.1.5-rc.3 官方右栏只有 Files 页，终端和
@@ -32,38 +33,38 @@ Dude 只贡献官方没有的一样东西：**桌面窗口集成**——一段�
 
 ```text
 Electron Main（apps/desktop/main.js）
-├── 窗口：hiddenInset、红绿灯位置、底色
+├── 窗口：系统标题栏（标题「Dude」）、底色
 ├── 打包版起停 dsh 子进程（profile dude-app）
 ├── 内核热更新（kernel.js，Dude 菜单「检查内核更新…」）
 └── 页面开新窗口的链接交给系统浏览器
 
 Renderer（官方 web 客户端；没有 Preload，没有 IPC）
 └── DSH Upstream Core & UI（官方全量复用，未做二次包装）
-    ├── AppFrame（官方 ui-layout）
+    ├── AppFrame（官方 ui-layout，完整铺在系统标题栏下方）
     ├── Official Sidebar（工作区 / 会话列表 / 设置入口）
     ├── Official Conversation（会话流 / Agent Loop / Hero / 输入框）
     ├── Official Rightbar（dockkit：锁定版本只有 Files 页）
-    └── Dude Plugin（唯一自研代码，一个 Effect）
-        └── 样式表：窗口拖拽区域 + 红绿灯避让
+    └── Dude Plugin（`apply` 为空，只为让 boot manifest 认得出是 Dude 的）
 ```
 
 ---
 
 ## 3. 插件结构
 
-插件只有两个客户端模块，没有 Feature 目录、没有静态 Catalog、没有 Shell：
+插件只有一个客户端模块，没有 Feature 目录、没有静态 Catalog、没有 Shell：
 
 ```text
 src/client/
-├── app/App.tsx        # 入口：调用 mountOfficialServices
-├── dsh/adapter.ts      # 唯一接触官方应用的层：安装样式表
-└── ui/
-    └── styles.ts       # 拖拽区域与红绿灯避让 CSS
+└── app/App.tsx         # 入口：name + 空 apply(_ctx)
 src/host.js              # Host 半部，空实现（只声明 name + 空 apply）
 ```
 
+`apply` 是空函数：窗口用系统标题栏，官方界面完整铺在标题栏下面，页面侧没有任何东西
+需要 Dude 添加。插件行留着，是因为打包和 profile 生成引用它、且
+`scripts/sync-upstream.mjs` 的冒烟检查要在 boot manifest 里认出 `dsh-plugin-dude`。
+
 新增能力前先确认：官方是否已经原生提供。Dude 不为了“可能有用”预先搭 Feature
-目录、Catalog 或 Registry —— 当前没有第二个、第三个自研 UI 模块，抽象没有意义。
+目录、Catalog 或 Registry —— 当前没有任何自研 UI 模块，抽象没有意义。
 
 ---
 
@@ -83,17 +84,13 @@ DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugi
 
 ## 5. DSH ABI 边界
 
-`dsh/adapter.ts` 是唯一接触官方应用的文件，只做一件事：在一个 `ctx.effect` 里安装
-样式表（`ui/styles.ts`），卸载时移除。Dude 不注册任何 slot，不 `inject` 任何服务。
+`app/App.tsx` 是唯一的客户端模块，`apply` 是空函数：不注册任何 slot，不 `inject`
+任何服务，不接触官方应用的任何内部状态。DSH ABI 目前没有实际使用者，`src/client/dsh/`
+这层不存在——新增任何接触官方内部的代码都必须先在这里落地，而不是散落在 `App.tsx`
+或 host 半部。
 
-不覆写内部私有 ABI，不注入破坏性 CSS 隐藏官方组件。样式表通过官方组件暴露的 `data-*`
-属性（`data-rightbar-col` / `data-phase` / `data-composer-seat` / `data-dockkit-strip` /
-`data-dockkit-pane` / `data-dockkit-cell` / `data-sidebar-collapsed` /
-`data-sidebar-right-panel` / `data-sidebar-right-open` / `data-rightbar-fullscreen` /
-`data-conversation-header-corner`）和语义元素（`header`）定位，不依赖 hash 化的 CSS
-类名；左栏列没有自己的属性，按「含 `[data-rightbar-col]` 的 frame 的第一个 `div`」定位。
-它对官方布局只动三处：左栏 `padding-top: 36px`、右栏全屏面板的左缘和最大宽度、收起左栏
-时左上 Tab 栏的 `padding-left: 80px`，规则见 `DESIGN_INTENT.md` §2。
+不覆写内部私有 ABI，不用 CSS 隐藏官方组件，不写死 hash 化的 class 名——这条约束
+即使当前没有样式代码也继续保留，作为将来任何界面改动的边界。
 
 ---
 
@@ -104,7 +101,7 @@ Dude 不持有任何领域状态或布局状态：
 | 状态 | Owner |
 |---|---|
 | Session / Agent / Model / Preset / 文件 / 布局显隐宽度 | DSH 官方（Session Service / Agent Service / ui-layout / dockkit） |
-| 样式表是否安装 | `ctx.effect`（插件挂载期间恒为已安装） |
+| 窗口 chrome（标题栏、可拖拽区域） | macOS 系统标题栏（Electron 默认窗口，不是 Dude 的状态） |
 
 没有 Layout Store、Inspector Store 或 Terminal Resource Manager。
 
@@ -112,9 +109,9 @@ Dude 不持有任何领域状态或布局状态：
 
 ## 7. 何时抽象
 
-采用 Rule of Three：同一类问题出现第三个真实实例之前，不建立公共框架。当前插件只有
-两个客户端模块，远未触发任何抽象信号。若未来新增第二个官方没有的增强能力，先直接实现，
-不预先搭 Catalog / Registry / Definition 协议。
+采用 Rule of Three：同一类问题出现第三个真实实例之前，不建立公共框架。当前插件没有
+任何自研 UI 模块，远未触发任何抽象信号。若未来新增第一个官方没有的增强能力，先直接
+实现，不预先搭 Catalog / Registry / Definition 协议。
 
 ---
 
@@ -162,9 +159,14 @@ Dude 不持有任何领域状态或布局状态：
 ```
 
 热更新跳过了 `sync-upstream.mjs --apply` 的契约测试和冒烟，这是取舍：更新快，但壳与
-dsh 之间的接口（启动参数、`dsh web:` 输出行、插件加载位置、保留的 profile 名）如果变了，
-问题会直接出现在用户机器上。起不来的会自动回退；起来了但拖拽区失效（官方改了样式表选中
-的 `data-*` 属性）不会自动发现，要在 app 里点一遍。
+dsh 之间的接口（启动参数、`dsh web:` 输出行、插件加载位置、保留的 profile 名、支持的
+Electron 版本）如果变了，问题会直接出现在用户机器上。
+
+内核跑在 app 自带的 Electron 上（`ELECTRON_RUN_AS_NODE`）。dsh 从 0.1.7 起启动时用原生
+插件 `node-addon-require-builtin` 取 Node 内部的模块解析器，这个插件在 Electron 下只认
+它列出的几个具体版本（按 V8 版本精确比对，同一大版本的补丁版也不行，0.1.6 认 43.0.0、
+43.1.0、44.0.0）。所以 `apps/desktop/package.json` 把 Electron 钉死在其中一个版本，不写
+`^`；升级 Electron 前先确认新版本在插件的列表里，否则内核起不来。起不来的会自动回退。
 
 ---
 
@@ -187,11 +189,11 @@ dsh 之间的接口（启动参数、`dsh web:` 输出行、插件加载位置�
 
 - 官方 `ui-layout` / `ui-sidebar` / `ui-conversation` 全部保持启用，`cordis.patch.yml`
   不出现禁用它们的行；
-- `client.js` bundle 不重新声明 `root`、`sidebar`、`main` 或第二份 `layout`；
+- `client.js` bundle 不重新声明 `root`、`sidebar`、`main` 或第二份 `layout`，也不出现
+  `app-region` 或 `<style>` 注入；
 - 插件卸载后官方界面完整可用，不留下任何遗留状态；
-- 唯一的 Effect（样式表）卸载时清理干净；
 - 客户端 bundle 里不出现已删除功能的痕迹（xterm、`deepbuddyFiles`、
   `/deepbuddy/terminal` 等）；
 - `node scripts/sync-upstream.mjs --smoke` 三项全绿；
-- 在桌面壳里目测：左栏展开和收起、右栏全屏几种状态下，红绿灯不压官方控件，拖拽区域
-  能拖窗口、其中的按钮能点；打开设置弹窗时拖拽区全部让位；Hero 显示官方鲸鱼。
+- 在桌面壳里目测：窗口标题栏是系统标题栏、标题显示「Dude」，官方 UI 完整铺在标题栏
+  下方，没有被裁切或遮挡；拖动标题栏能拖窗口；Hero 显示官方鲸鱼。

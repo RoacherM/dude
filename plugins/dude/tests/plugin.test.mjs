@@ -1,8 +1,9 @@
 /**
  * Contract tests for the dude plugin. The client bundle is checked as
  * an artifact: self-registration, no stray `@deepseek-ai/` requires beyond
- * the platform table, the official frame and hero left alone, the drag
- * surfaces present, and the removed inspector features absent.
+ * the platform table, the official frame and hero left alone, no drag
+ * surfaces (the shell uses the system title bar), and the removed inspector
+ * features absent.
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -48,11 +49,13 @@ test('client bundle does not redeclare the official frame', async () => {
   assert.doesNotMatch(bundle, /DeepBuddySidebar/)
   assert.doesNotMatch(bundle, /deepbuddy:shell/)
   // Terminal and browser are not a second sidebar. The official columns
-  // are the only sidebars, and the title bar is what moves the window.
+  // are the only sidebars, and the system title bar is what moves the window.
   assert.doesNotMatch(bundle, /deepbuddy\.inspector/)
   assert.doesNotMatch(bundle, /deepbuddy-inspector/)
-  assert.match(bundle, /padding-top: 36px/)
-  assert.match(bundle, /-webkit-app-region: drag/)
+  // Drag rects in the page override official no-drag controls (Electron
+  // collects them viewport-wide), and upstream DOM changes silently broke them.
+  assert.doesNotMatch(bundle, /app-region/)
+  assert.doesNotMatch(bundle, /<style|createElement\("style"\)/)
 })
 
 test('client bundle lets the official columns own sidebar and conversation', async () => {
@@ -80,46 +83,6 @@ test('client bundle follows the official theme and does not present a second one
   // presenter.
   assert.doesNotMatch(bundle, /theme\.getTheme\(\)/)
   assert.doesNotMatch(bundle, /on\("theme\/change"/)
-})
-
-test('the window drag surface does not cover official controls', async () => {
-  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // Drag lives on the sidebar column and the conversation header. Buttons
-  // inside those elements opt out. There is no full-window drag overlay.
-  assert.match(bundle, /\$\{IDLE\} header:has\(\[data-conversation-header-corner\]\) \{\s*-webkit-app-region: drag;/)
-  assert.match(bundle, /-webkit-app-region: drag;/)
-  assert.doesNotMatch(bundle, /WebkitAppRegion: "drag"/)
-  assert.match(bundle, /\[role="treeitem"\]/)
-  // Right sidebar fullscreen covers the conversation, not an open sidebar.
-  // With the sidebar collapsed it covers the window and its tab strip clears
-  // the traffic lights. The strip keeps its official row either way.
-  assert.match(bundle, /anchor-name: --db-sidebar;/)
-  assert.match(bundle, /:not\(\[data-sidebar-collapsed\]\) > \[data-rightbar-col\] \[data-sidebar-right-panel\]\[data-sidebar-right-panel="fullscreen"\] \{\s*left: anchor\(--db-sidebar right\);\s*max-width: calc\(100vw - anchor-size\(--db-sidebar width\)\);/)
-  // The strip keeps its official height in both modes, so icons stay put.
-  assert.doesNotMatch(bundle, /\[data-dockkit-strip\] \{ padding-top/)
-  assert.match(bundle, /\[data-sidebar-collapsed\] \[data-sidebar-right-panel="fullscreen"\] \[data-dockkit-pane\]:not\(\[data-dockkit-cell\]:not\(:first-child\) \*\) \[data-dockkit-strip\] \{\s*padding-left: 80px;/)
-  assert.doesNotMatch(bundle, /\[data-rightbar-fullscreen\] \[data-sidebar-right-panel\]/)
-  assert.match(bundle, /\[data-sidebar-collapsed\]:has\(\[data-sidebar-right-panel="fullscreen"\]\[data-sidebar-right-open\]\) > div:first-of-type \{\s*-webkit-app-region: no-drag;/)
-  assert.match(bundle, /\[data-rightbar-fullscreen\] header:has\(\[data-conversation-header-corner\]\) \{\s*-webkit-app-region: no-drag;/)
-  assert.match(bundle, /-webkit-app-region: no-drag/)
-})
-
-test('every drag surface stands down while a modal dialog is open', async () => {
-  const bundle = await readFile(join(root, 'lib/client.js'), 'utf8')
-  // The official Settings overlay sits inside the sidebar column, and later
-  // drag rects win over its no-drag in Electron. A drag rule without the
-  // guard makes Settings unclickable.
-  assert.match(bundle, /var IDLE = ':where\(html:not\(:has\(\[aria-modal="true"\]\)\)\)'/)
-  const css = /var CSS = `([\s\S]*?)`/.exec(bundle)[1]
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replaceAll('${IDLE}', 'IDLE')
-  const dragSelectors = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-    .filter(([, , body]) => /-webkit-app-region:\s*drag\b/.test(body))
-    .map(([, selector]) => selector.trim())
-  assert.equal(dragSelectors.length, 4)
-  for (const selector of dragSelectors) {
-    assert.ok(selector.startsWith('IDLE ') && !selector.includes(','), `unguarded drag surface: ${selector}`)
-  }
 })
 
 test('slots: official sidebar and conversation own their seats', async () => {
