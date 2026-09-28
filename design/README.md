@@ -46,12 +46,13 @@ Dude 是 DeepSeek Harness 的精选 Electron 客户端。
 
 ## 现行状态
 
-`plugins/dude/` 只有一个客户端模块和一个空 host 半部：
+`plugins/dude/` 只有一个客户端模块和一个很小的 host 半部：
 
 1. `src/client/app/App.tsx`：入口，`apply` 是空函数——留着这一行只是为了让启动
    manifest 认得出是 Dude 的（`scripts/sync-upstream.mjs` 冒烟检查
    `dsh-plugin-dude` 在 boot manifest 里）；
-2. `src/host.js`：空实现。
+2. `src/host.js`：内核更新重启前，经 IPC 回答壳「有没有进行中的任务」
+   （`ARCHITECTURE.md` §8「内核热更新」）。
 
 窗口用 macOS 系统标题栏，标题显示「Dude」，拖动窗口靠系统标题栏本身，不需要页面声明
 任何拖拽区域。已删除的自研部分（三列布局壳、Inspector、KIT、设计令牌、Preset Plane、

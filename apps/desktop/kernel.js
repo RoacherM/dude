@@ -82,57 +82,82 @@ async function latestRelease() {
   return candidates.sort(compareVersions).at(-1)
 }
 
+/** How many packages a runtime holds: pnpm keeps one `.pnpm/<id>` directory per package. */
+function packageCount(runtimeDir) {
+  return fs.readdirSync(path.join(runtimeDir, 'node_modules', '.pnpm'))
+    .filter((name) => name !== 'node_modules' && name !== 'lock.yaml').length
+}
+
 /**
  * Install `@deepseek-ai/dsh@<version>` into ~/.dude/runtime/<version>, the
- * same hoisted, prod-only, script-free install stage-runtime.sh makes for the
+ * same prod-only, script-free install stage-runtime.sh makes for the
  * baseline. It installs into a dot-directory and renames on success, so a
  * half-finished install is never picked by activeRuntime.
+ *
+ * Progress comes from pnpm's ndjson reporter: every package is fetched, then
+ * imported into the tree. The total is only known late, so `expectedPackages`
+ * (the running kernel's count; releases differ by a few percent) stands in
+ * for it. Fetching is 80% of the bar, importing the rest; the bar never goes
+ * back and stays below 100 until pnpm exits.
+ * @param onProgress - called with an integer percent in [0, 99].
  * @returns the installed runtime directory.
  */
-async function installRuntime(version, pnpmBin) {
+async function installRuntime(version, pnpmBin, expectedPackages, onProgress = () => {}) {
   const target = path.join(RUNTIMES_DIR, version)
   const work = path.join(RUNTIMES_DIR, `.install-${version}`)
-  fs.rmSync(work, { recursive: true, force: true })
-  fs.mkdirSync(work, { recursive: true })
-  fs.writeFileSync(path.join(work, 'package.json'), '{ "name": "dude-runtime", "private": true }\n')
-  fs.writeFileSync(path.join(work, '.npmrc'), [
-    'node-linker=hoisted',
-    `store-dir=${path.join(DUDE_HOME, 'pnpm-store')}`,
-    'update-notifier=false',
-    '',
-  ].join('\n'))
+  await fs.promises.rm(work, { recursive: true, force: true })
+  await fs.promises.mkdir(work, { recursive: true })
+  await fs.promises.writeFile(path.join(work, 'package.json'), '{ "name": "dude-runtime", "private": true }\n')
 
   const output = await new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [pnpmBin, 'install', `${PACKAGE}@${version}`, '--prod', '--ignore-scripts'], {
+    const child = spawn(process.execPath, [pnpmBin, 'install', `${PACKAGE}@${version}`, '--prod', '--ignore-scripts', '--reporter=ndjson'], {
       cwd: work,
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
-    let out = ''
-    const collect = (b) => {
-      out += b.toString()
-      process.stdout.write(`[pnpm] ${b}`)
-    }
-    child.stdout.on('data', collect)
-    child.stderr.on('data', collect)
+    let fetched = 0
+    let imported = 0
+    let percent = 0
+    const errors = []
+    let pending = ''
+    child.stdout.on('data', (b) => {
+      const lines = (pending + b.toString()).split('\n')
+      pending = lines.pop()
+      for (const line of lines) {
+        let event
+        try { event = JSON.parse(line) } catch { continue }
+        if (event.level === 'error') errors.push(event.err?.message ?? event.message ?? line)
+        if (event.name !== 'pnpm:progress') continue
+        if (event.status === 'fetched') fetched++
+        else if (event.status === 'imported') imported++
+        else continue
+        const total = Math.max(expectedPackages, fetched)
+        const next = Math.min(99, Math.floor((80 * fetched + 20 * imported) / total))
+        if (next > percent) onProgress(percent = next)
+      }
+    })
+    child.stderr.on('data', (b) => {
+      errors.push(b.toString())
+      process.stderr.write(`[pnpm] ${b}`)
+    })
     child.once('error', reject)
-    child.once('exit', (code) => resolve({ code, out }))
+    child.once('exit', (code) => resolve({ code, errors }))
   })
   if (output.code !== 0) {
-    fs.rmSync(work, { recursive: true, force: true })
-    throw new Error(`pnpm install ${PACKAGE}@${version} exited ${output.code}:\n${output.out.trim().split('\n').slice(-15).join('\n')}`)
+    await fs.promises.rm(work, { recursive: true, force: true })
+    throw new Error(`pnpm install ${PACKAGE}@${version} exited ${output.code}:\n${output.errors.join('\n').trim().split('\n').slice(-15).join('\n')}`)
   }
-  fs.rmSync(target, { recursive: true, force: true })
-  fs.renameSync(work, target)
+  await fs.promises.rm(target, { recursive: true, force: true })
+  await fs.promises.rename(work, target)
   return target
 }
 
-/** Delete every hot-update runtime except `keepDir` (each one is ~280MB). */
-function removeOtherRuntimes(keepDir) {
-  for (const name of fs.readdirSync(RUNTIMES_DIR)) {
+/** Delete every hot-update runtime except `keepDir` (each one is ~500MB, 25k files). */
+async function removeOtherRuntimes(keepDir) {
+  for (const name of await fs.promises.readdir(RUNTIMES_DIR)) {
     const dir = path.join(RUNTIMES_DIR, name)
-    if (dir !== keepDir) fs.rmSync(dir, { recursive: true, force: true })
+    if (dir !== keepDir) await fs.promises.rm(dir, { recursive: true, force: true })
   }
 }
 
-module.exports = { compareVersions, activeRuntime, latestRelease, installRuntime, removeOtherRuntimes }
+module.exports = { compareVersions, activeRuntime, latestRelease, packageCount, installRuntime, removeOtherRuntimes }

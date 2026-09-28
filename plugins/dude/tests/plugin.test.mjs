@@ -132,3 +132,42 @@ test('the removed inspector features and their host half are gone', async () => 
   const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   assert.equal(pkg.dependencies, undefined)
 })
+
+test('the host half tells the desktop shell whether tasks are running', async () => {
+  const { apply } = await import(join(root, 'lib/index.js'))
+  const idle = { status: 'idle', id: 'a1', inbox: { nextTurn: [], nextStep: [] } }
+  const scenarios = [
+    { name: 'nothing running', agents: [idle], jobs: {}, active: false },
+    { name: 'an agent generating', agents: [{ ...idle, status: 'running' }], jobs: {}, active: true },
+    { name: 'a queued message', agents: [{ ...idle, inbox: { nextTurn: ['hi'], nextStep: [] } }], jobs: {}, active: true },
+    { name: "an agent's job stopping", agents: [idle], jobs: { a1: [{ status: 'stopping' }] }, active: true },
+    { name: 'a global job running', agents: [], jobs: { global: [{ status: 'running' }] }, active: true },
+  ]
+  const originalSend = process.send
+  const replies = []
+  process.send = (message) => replies.push(message)
+  try {
+    for (const scenario of scenarios) {
+      const disposers = []
+      apply({
+        effect: (install) => disposers.push(install()),
+        get: (name) => (name === 'agents'
+          ? { list: () => scenario.agents }
+          : { list: (owner) => scenario.jobs[owner ?? 'global'] ?? [] }),
+      })
+      process.emit('message', { type: 'update-tasks', requestId: 1 })
+      for (const dispose of disposers) dispose()
+      assert.deepEqual(replies.pop(), { type: 'update-tasks', requestId: 1, active: scenario.active }, scenario.name)
+    }
+
+    const disposers = []
+    apply({ effect: (install) => disposers.push(install()), get: () => undefined })
+    process.emit('message', { type: 'update-tasks', requestId: 2 })
+    assert.equal(replies.pop().error, 'agents or jobs service is unavailable')
+    for (const dispose of disposers) dispose()
+    process.emit('message', { type: 'update-tasks', requestId: 3 })
+    assert.equal(replies.length, 0, 'unloading the plugin removes the listener')
+  } finally {
+    process.send = originalSend
+  }
+})

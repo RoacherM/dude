@@ -41,9 +41,12 @@
 
 ## 3. DSH ABI 约束
 
-`src/client/dsh/` 这层目前不存在——`apply` 是空函数，没有代码接触官方应用的内部
-状态。新增或修改任何接触官方 slot、Cordis Context 的代码，必须先在
-`plugins/dude/src/client/dsh/` 落地，不允许散落在 `App.tsx` 或 host 半部。
+`src/client/dsh/` 这层目前不存在——`apply` 是空函数，没有客户端代码接触官方应用的
+内部状态。新增或修改任何接触官方 slot、客户端 Cordis Context 的代码，必须先在
+`plugins/dude/src/client/dsh/` 落地，不允许散落在 `App.tsx`。
+
+host 半部只有 `src/host.js` 一个文件，只用官方的 `agents` 和 `jobs` 服务回答任务查询
+（`ARCHITECTURE.md` §5）；它的判断规则照抄官方桌面版，不自己定义「任务」。
 
 ---
 
@@ -73,9 +76,14 @@
 ## 6. Electron 与 Host
 
 - Renderer 不直接 import Node 或 Electron 主进程 API。
-- 壳没有 Preload、没有 IPC，不开 `webviewTag`；原生菜单是 macOS 标准菜单加「检查内核
-  更新…」一项。新增任何一样前先确认官方 web 客户端里做不到。
-- Host 半部（`src/host.js`）当前是空实现；若未来需要新增 host 侧能力，先确认官方
+- Preload 只暴露官方桌面版的 `window.dshDesktop` 更新接口（协议 1，只有 `updates`），
+  IPC 只有更新状态、更新操作、任务查询三条（`ARCHITECTURE.md` §8）。不开 `webviewTag`；
+  原生菜单是 macOS 标准菜单加内核更新一项。往 `dshDesktop` 加任何成员、加任何 IPC 前，
+  先确认官方 web 客户端里做不到，并查清哪些官方插件会因此改变行为。
+- 弹窗一律挂在窗口上（`dialog.showMessageBox(win, …)`）。不挂窗口的系统弹窗在 macOS
+  上锁住整个 app，弹在窗口后面时页面点不动。
+- 主进程不对内核目录这种上万文件的目录做同步文件操作，删除和改名用 `fs.promises`。
+- Host 半部（`src/host.js`）只回答任务查询；若未来需要新增 host 侧能力，先确认官方
   Host 服务是否已提供等价端点，不重建会话围栏或文件端点这类官方已有能力。
 - DSH Approval 与 Sandbox 继续作为真正权限边界。
 
@@ -94,7 +102,13 @@
 - 已删除的功能（Terminal、`deepbuddyFiles`、`/deepbuddy/terminal` 等）
   不出现在 bundle 或 host 半部里；
 - `package.json` 没有运行时 `dependencies`（`node-pty` / `ws` 等已随 Inspector 一起
-  移除）。
+  移除）；
+- host 半部按官方规则回答任务查询（agent 在跑、收件箱有消息、job 在跑或在停），服务
+  不可用时报错，插件卸载后不再应答。
+
+`apps/desktop/updates.test.js` 检查内核更新的流程：后台检查不弹窗、菜单检查先确认、
+下载进度、有任务时的确认、任务状态未知不重启、新内核起不来后的重试、网络错误的文案、
+重复点击合并成一次操作。根目录 `pnpm test` 两边都跑。
 
 新增代码修改这份契约前，先确认是在扩大官方优先的边界，还是在悄悄重建一套平行实现。
 

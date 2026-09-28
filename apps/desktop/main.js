@@ -19,21 +19,25 @@
  * ~/.dude/profiles/dude-app and points its node_modules/dsh-plugin-dude
  * at the packaged plugin in resources.
  *
- * The kernel can also be hot-updated from the app menu without reinstalling
- * the app: kernel.js installs a newer dsh into ~/.dude/runtime/<version> and
- * the highest installed version wins at launch.
+ * The kernel is hot-updated without reinstalling the app, in the official
+ * desktop app's manner (updates.js): a background check every ten minutes,
+ * status and actions in the official sidebar through preload.cjs, a download
+ * with progress, a check for running tasks, then a restart on the same port.
+ * kernel.js installs the new dsh into ~/.dude/runtime/<version>; the highest
+ * installed version wins at launch.
  *
  * Dev mode (`electron .` from the repo, no packaged resources) keeps the old
  * behavior: it loads DSH_WEB_URL (default http://127.0.0.1:3080) without
  * spawning or migrating anything.
  */
-const { app, BrowserWindow, Menu, dialog, nativeTheme, shell } = require('electron')
+const { app, BrowserWindow, Menu, dialog, ipcMain, nativeTheme, shell } = require('electron')
 const { spawn } = require('node:child_process')
 const fs = require('node:fs')
 const net = require('node:net')
 const os = require('node:os')
 const path = require('node:path')
 const kernel = require('./kernel.js')
+const { KernelUpdates } = require('./updates.js')
 
 /** Where the dev profile's web server listens; `--port` moves it. */
 const DSH_WEB_URL = process.env.DSH_WEB_URL ?? 'http://127.0.0.1:3080'
@@ -41,6 +45,10 @@ const DSH_WEB_URL = process.env.DSH_WEB_URL ?? 'http://127.0.0.1:3080'
 const RETRY_MS = 1200
 /** How long dsh may take to print its listen URL, and then to answer it. */
 const BOOT_TIMEOUT_MS = 60000
+/** Background kernel update check, the official desktop app's interval. */
+const UPDATE_CHECK_MS = 10 * 60 * 1000
+/** How long the Dude host half may take to say whether tasks are running (official: 2s). */
+const TASKS_TIMEOUT_MS = 2000
 /** Dude's isolated harness home (config isolation, wave 9). */
 const DUDE_HOME = path.join(os.homedir(), '.dude')
 const OFFICIAL_HOME = path.join(os.homedir(), '.dsh')
@@ -192,6 +200,8 @@ function spawnDsh(port, runtime) {
     // it — without this the child shares Electron's group and the negative-pid
     // kill is ESRCH (dsh-spawned PTY shells would outlive the app).
     detached: true,
+    // The IPC channel carries one question to the Dude host half before an
+    // update restarts dsh: are tasks running? (inspectTasks)
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
@@ -201,7 +211,7 @@ function spawnDsh(port, runtime) {
       // module systems, so every package loads exactly once.
       NODE_PATH: modulesDir,
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   })
   const onData = (b) => {
     const text = b.toString()
@@ -272,6 +282,7 @@ function createWindow(url) {
     // follows the system by default), or the window flashes the wrong shade.
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#151517' : '#ffffff',
     title: 'Dude',
+    webPreferences: { preload: path.join(__dirname, 'preload.cjs') },
   })
   // The page sets its own <title>; the system title bar keeps the app's name.
   win.on('page-title-updated', (e) => e.preventDefault())
@@ -337,20 +348,24 @@ function stopChild(child) {
 
 // ── kernel lifecycle and hot update ─────────────────────────────────────────
 
-/** The running kernel: `{ child, runtime, url }`. Only this module replaces it. */
+/** The running kernel: `{ child, runtime, port, url }`. Only this module replaces it. */
 let dsh = null
-/** Set while a hot update downloads or restarts the kernel. */
-let updating = null
+/** Kernel update state and flow (packaged app only). */
+let updates = null
 
-/** Boot a runtime on a free port and wait until it answers. */
-async function startDsh(runtime) {
-  console.log('[dude] starting kernel dsh %s from %s', runtime.version, runtime.dir)
-  const { child, readyUrl } = spawnDsh(await findFreePort(), runtime)
+/**
+ * Boot a runtime and wait until it answers. A restart passes the old port, so
+ * the page keeps its origin (and with it its local storage).
+ */
+async function startDsh(runtime, port) {
+  port ??= await findFreePort()
+  console.log('[dude] starting kernel dsh %s from %s on port %d', runtime.version, runtime.dir, port)
+  const { child, readyUrl } = spawnDsh(port, runtime)
   try {
     const url = await readyUrl
     const origin = new URL(url)
     await waitForOrigin(`${origin.protocol}//${origin.host}/`)
-    return { child, runtime, url }
+    return { child, runtime, port, url }
   } catch (e) {
     await stopChild(child)
     throw e
@@ -364,62 +379,96 @@ function showUrl(url) {
 }
 
 /**
- * Install the newest upstream release and restart the kernel on it. The old
- * kernel stops first so two servers never share ~/.dude. If the new one does
- * not boot, its runtime is deleted and the old one starts again.
+ * Restart dsh on an installed kernel, on the same port. The old kernel stops
+ * first so two servers never share ~/.dude. If the new one does not boot, its
+ * runtime is deleted and the old one starts again.
  */
-async function updateKernel() {
-  const current = dsh.runtime.version
-  const latest = await kernel.latestRelease()
-  if (kernel.compareVersions(latest, current) <= 0) {
-    await dialog.showMessageBox({
-      message: `内核已是最新：dsh ${current}`,
-      detail: 'npm 的 latest / next 通道没有更新的版本。',
-    })
-    return
-  }
-  const { response } = await dialog.showMessageBox({
-    type: 'question',
-    buttons: ['下载并更新', '取消'],
-    defaultId: 0,
-    cancelId: 1,
-    message: `发现 dsh ${latest}（当前 ${current}）`,
-    detail: '新内核从 npm 下载，约 280MB，在后台进行。装好后内核会重启，正在运行的任务会中断。\n\n'
-      + '这个版本没有经过 Dude 的测试和冒烟。新内核起不来时会删掉它，回到当前版本。',
-  })
-  if (response !== 0) return
-
-  updating = `正在下载 dsh ${latest}…`
-  setMenu()
-  const dir = await kernel.installRuntime(latest, path.join(process.resourcesPath, 'pnpm', 'bin', 'pnpm.mjs'))
-  updating = `正在重启内核 dsh ${latest}…`
-  setMenu()
+async function restartKernel(version, dir) {
   const previous = dsh
   await stopChild(previous.child)
   try {
-    dsh = await startDsh({ dir, version: latest, installed: true })
+    dsh = await startDsh({ dir, version, installed: true }, previous.port)
   } catch (e) {
-    fs.rmSync(dir, { recursive: true, force: true })
-    dsh = await startDsh(previous.runtime)
+    await fs.promises.rm(dir, { recursive: true, force: true })
+    dsh = await startDsh(previous.runtime, previous.port)
     showUrl(dsh.url)
-    throw new Error(`dsh ${latest} 没能启动，已回到 ${previous.runtime.version}。\n\n${e?.message ?? e}`)
+    throw new Error(`dsh ${version} 没能启动，已回到 ${previous.runtime.version}。\n\n${e?.message ?? e}`)
   }
   showUrl(dsh.url)
-  kernel.removeOtherRuntimes(dir)
-  await dialog.showMessageBox({ message: `内核已更新到 dsh ${latest}` })
+  setMenu()
+  kernel.removeOtherRuntimes(dir).catch((e) => {
+    console.error('[dude] removing old kernels failed:', e)
+  })
 }
 
-function checkForKernelUpdate() {
-  updateKernel()
-    .catch((e) => {
-      console.error('[dude] kernel update failed:', e)
-      dialog.showErrorBox('内核更新失败', String(e?.message ?? e))
-    })
-    .finally(() => {
-      updating = null
-      setMenu()
-    })
+/** Ask the Dude host half inside dsh whether stopping it now would interrupt work. */
+function inspectTasks() {
+  const child = dsh.child
+  const requestId = Date.now()
+  return new Promise((resolve, reject) => {
+    const done = (settle) => {
+      clearTimeout(timer)
+      child.off('message', onMessage)
+      settle()
+    }
+    const onMessage = (message) => {
+      if (message?.type !== 'update-tasks' || message.requestId !== requestId) return
+      done(() => (message.error === undefined ? resolve(message.active) : reject(new Error(message.error))))
+    }
+    const timer = setTimeout(() => done(() => reject(new Error(`dsh did not report its tasks within ${TASKS_TIMEOUT_MS}ms`))), TASKS_TIMEOUT_MS)
+    child.on('message', onMessage)
+    if (!child.connected) return done(() => reject(new Error('dsh has no IPC channel')))
+    child.send({ type: 'update-tasks', requestId })
+  })
 }
+
+/**
+ * Show an update dialog as a sheet on the Dude window. A dialog without a
+ * parent is app-modal on macOS: when it opened behind the window, the page
+ * could not be clicked and only quitting helped.
+ */
+async function ask({ type, message, detail, buttons }) {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? createWindow(currentUrl)
+  const { response } = await dialog.showMessageBox(win, {
+    type, message, detail, buttons, defaultId: 0, cancelId: buttons.length - 1,
+  })
+  return response
+}
+
+/**
+ * Send the update presentation to every page's `dshDesktop.updates.subscribe`,
+ * and to the menu item: kernels before 0.1.7 have no sidebar status, so the
+ * menu is where their users see the update.
+ */
+function publishUpdate(presentation) {
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send('dude-updates:presentation', presentation)
+  setMenu()
+}
+
+/** The kernel menu item follows the update state, like the sidebar status. */
+function kernelMenuLabel() {
+  const { phase, version, percent } = updates.state
+  if (phase === 'available') return `下载内核 dsh ${version}…`
+  if (phase === 'downloading') return `正在下载 dsh ${version}… ${percent}%`
+  if (phase === 'ready') return `安装内核 dsh ${version} 并重启…`
+  if (phase === 'installing') return `正在切换到 dsh ${version}…`
+  return `检查内核更新…（当前 dsh ${dsh.runtime.version}）`
+}
+
+/** The carrier is for the kernel's own page only, never for a page it navigated to. */
+function fromKernelPage(event) {
+  const url = event.senderFrame?.url
+  return url !== undefined && new URL(url).origin === new URL(currentUrl).origin
+}
+
+ipcMain.handle('dude-updates:status', (event) => {
+  if (!fromKernelPage(event)) throw new Error('dude: rejected update status from another page')
+  return updates?.presentation ?? { phase: 'idle' }
+})
+ipcMain.handle('dude-updates:open', async (event) => {
+  if (!fromKernelPage(event)) throw new Error('dude: rejected update action from another page')
+  await updates?.open()
+})
 
 /**
  * The standard macOS menus plus, in the packaged app, the kernel update item.
@@ -427,7 +476,7 @@ function checkForKernelUpdate() {
  */
 function setMenu() {
   const kernelItems = dsh === null ? [] : [
-    { label: updating ?? `检查内核更新…（当前 dsh ${dsh.runtime.version}）`, enabled: updating === null, click: checkForKernelUpdate },
+    { label: kernelMenuLabel(), click: () => void updates.open(true) },
     { type: 'separator' },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate([
@@ -466,8 +515,25 @@ const started = app.whenReady().then(async () => {
       if (!runtime.installed) throw e
       throw new Error(`内核 dsh ${runtime.version} 没能启动。删掉 ${runtime.dir} 可回到 app 自带的版本。\n\n${e?.message ?? e}`)
     }
+    updates = new KernelUpdates({
+      currentVersion: () => dsh.runtime.version,
+      latestRelease: kernel.latestRelease,
+      compareVersions: kernel.compareVersions,
+      download: (version, onProgress) => kernel.installRuntime(
+        version,
+        path.join(process.resourcesPath, 'pnpm', 'bin', 'pnpm.mjs'),
+        kernel.packageCount(dsh.runtime.dir),
+        onProgress,
+      ),
+      inspectTasks,
+      restart: restartKernel,
+      ask,
+      publish: publishUpdate,
+    })
     setMenu()
     createWindow(dsh.url)
+    void updates.checkQuietly()
+    setInterval(() => void updates.checkQuietly(), UPDATE_CHECK_MS)
   } else {
     // Dev mode: no packaged runtime — fall back to the old behavior (external
     // DSH_WEB_URL / default 3080).

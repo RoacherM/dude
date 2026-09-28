@@ -9,7 +9,8 @@
 
 | 模块 | 区域 | 职责归属 | 数据 / 能力来源 | 状态 Owner |
 |---|---|---|---|---|
-| Desktop Shell | 全窗 | Dude | Electron Window（系统标题栏）；打包版起停 dsh 子进程 | Electron Main |
+| Desktop Shell | 全窗 | Dude | Electron Window（系统标题栏）；打包版起停 dsh 子进程；内核热更新 | Electron Main |
+| 内核更新状态 | 侧栏左下角 | DSH 官方界面，Dude 提供数据 | `window.dshDesktop.updates`（preload）；Dude 菜单同步显示 | Electron Main（`updates.js`） |
 | Sidebar | 左列 | DSH 官方 | DSH Workspaces / Sessions | DSH 官方 |
 | Conversation | 主列 | DSH 官方 | DSH Session Log / Agent | DSH 官方 |
 | Rightbar（锁定版本只有 Files 页） | 右列 | DSH 官方（dockkit） | DSH Files / Workspaces | DSH 官方 |
@@ -28,7 +29,7 @@ Dude 客户端只有一个模块（见 `ARCHITECTURE.md` §3）：
 - `app/App.tsx`：入口，`apply(_ctx)` 是空函数——留着只是为了让启动 manifest 认得出
   是 Dude 的。
 
-`src/host.js` 是空实现（只有 `name` 和一个空 `apply`）——没有 host 侧业务逻辑。
+`src/host.js` 只回答壳的任务查询：内核更新重启前，经 IPC 告诉壳有没有进行中的任务。
 
 没有 Feature 目录、没有静态 Catalog、没有 Layout Store、没有 Resource Manager。
 

@@ -9,7 +9,7 @@ Hero 用官方鲸鱼标记。
 src/
 ├── client/
 │   └── app/App.tsx      # 入口：name + 空 apply(_ctx)
-└── host.js               # Host 半部，空实现（name + 空 apply）
+└── host.js               # Host 半部：内核更新重启前回答「有没有进行中的任务」
 ```
 
 插件行留着，是因为打包（`stage-runtime.sh`）和 profile 生成引用它、且
@@ -37,7 +37,9 @@ Files 由官方右栏提供；终端和浏览器在锁定的 0.1.5-rc.3 里官�
 
 - 没有 Dude 自己的 Terminal / Browser / Files 预览。锁定版本的官方右栏只有 Files 页，
   终端和浏览器要等升级到 0.1.6。
-- 没有 host 侧业务逻辑；`src/host.js` 只声明 `name` 和一个空 `apply`。
+- host 侧只有一件事：桌面壳经 Node IPC 发来 `update-tasks`，`src/host.js` 用官方
+  `agents` / `jobs` 服务按官方桌面版的规则回答有没有进行中的任务。不在桌面壳里跑（开发
+  profile、直接跑 `dsh`）时没有 IPC 通道，它什么也不做。
 
 ## 安装
 

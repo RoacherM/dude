@@ -8,8 +8,9 @@ Dude 桌面壳（Electron）。一个用 macOS 系统标题栏的窗口加载发
   `page-title-updated`，不让页面的 `<title>` 顶掉它。
 - 窗口底色跟官方地色 `--dsw-alias-bg-base` 一致：浅色 `#ffffff`、深色 `#151517`，
   快速拖动或缩放时不闪错色。
-- 菜单是 macOS 标准菜单（⌘C / ⌘V 靠它），Dude 菜单里多一项「检查内核更新…」；没有
-  Preload、IPC 或 webview。
+- 菜单是 macOS 标准菜单（⌘C / ⌘V 靠它），Dude 菜单里多一项内核更新，文字跟着更新
+  状态变。Preload 只提供官方的 `window.dshDesktop.updates`，官方侧栏左下角据此显示
+  更新状态；没有 webview。
 - 页面里打开新窗口的链接一律交给系统浏览器。
 - 应用图标 `build/icon.png`（胖蓝鱼），源图 `build/icon-source.png`。
 
@@ -24,8 +25,11 @@ Dude 桌面壳（Electron）。一个用 macOS 系统标题栏的窗口加载发
 4. 从 dsh 输出里读带一次性 `?token=` 的地址，等服务应答后加载。
 
 第 3 步用的内核是 app 自带的基线和 `~/.dude/runtime/` 里热更新装的版本中最高的那个。
-「检查内核更新…」从 npm 装更新的 dsh 进去并重启内核，起不来就删掉它、回到原来的版本
-（设计见 `design/ARCHITECTURE.md` §8「内核热更新」，代码在 `kernel.js`）。
+热更新照官方桌面版的流程：后台每 10 分钟查一次 npm，有新版时侧栏左下角显示「新版本」；
+点它在后台下载（显示百分比），下好后点「安装并重启」，确认没有进行中的任务（有就先问），
+在同一个端口重启内核。起不来就删掉它、回到原来的版本。设计见
+`design/ARCHITECTURE.md` §8「内核热更新」；代码：`updates.js`（状态和流程）、
+`kernel.js`（安装）、`preload.cjs`（给页面的接口）。`pnpm test` 跑 `updates.test.js`。
 
 退出 app 时连同 dsh 进程组一起结束；关窗不退出，重新激活时连回同一个服务。
 

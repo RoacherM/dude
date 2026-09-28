@@ -34,11 +34,14 @@ Dude 插件因此不需要贡献任何界面代码——它的 `apply` 是空函
 ```text
 Electron Main（apps/desktop/main.js）
 ├── 窗口：系统标题栏（标题「Dude」）、底色
-├── 打包版起停 dsh 子进程（profile dude-app）
-├── 内核热更新（kernel.js，Dude 菜单「检查内核更新…」）
+├── 打包版起停 dsh 子进程（profile dude-app，带 IPC 通道）
+├── 内核热更新（updates.js 管状态和流程，kernel.js 装内核；§8「内核热更新」）
 └── 页面开新窗口的链接交给系统浏览器
 
-Renderer（官方 web 客户端；没有 Preload，没有 IPC）
+Preload（preload.cjs）
+└── window.dshDesktop = { protocolVersion: 1, updates }：官方桌面版的更新接口
+
+Renderer（官方 web 客户端）
 └── DSH Upstream Core & UI（官方全量复用，未做二次包装）
     ├── AppFrame（官方 ui-layout，完整铺在系统标题栏下方）
     ├── Official Sidebar（工作区 / 会话列表 / 设置入口）
@@ -56,7 +59,7 @@ Renderer（官方 web 客户端；没有 Preload，没有 IPC）
 ```text
 src/client/
 └── app/App.tsx         # 入口：name + 空 apply(_ctx)
-src/host.js              # Host 半部，空实现（只声明 name + 空 apply）
+src/host.js              # Host 半部：更新重启前经 IPC 回答壳「有没有进行中的任务」
 ```
 
 `apply` 是空函数：窗口用系统标题栏，官方界面完整铺在标题栏下面，页面侧没有任何东西
@@ -85,9 +88,13 @@ DSH 的“一切皆插件”继续成立于能力层和运行时层。`dsh-plugi
 ## 5. DSH ABI 边界
 
 `app/App.tsx` 是唯一的客户端模块，`apply` 是空函数：不注册任何 slot，不 `inject`
-任何服务，不接触官方应用的任何内部状态。DSH ABI 目前没有实际使用者，`src/client/dsh/`
-这层不存在——新增任何接触官方内部的代码都必须先在这里落地，而不是散落在 `App.tsx`
-或 host 半部。
+任何服务，不接触官方应用的任何内部状态。客户端的 DSH ABI 目前没有实际使用者，
+`src/client/dsh/` 这层不存在——新增任何接触官方内部的客户端代码都必须先在这里落地，
+而不是散落在 `App.tsx`。
+
+host 半部只在 `src/host.js` 用两个官方服务：`agents`（`list()`，每个 agent 的
+`status` 和 `inbox`）与 `jobs`（`list(owner)`）。判断规则照抄官方桌面版
+`dsh-desktop-host` 的 `hasDesktopActiveTasks`。
 
 不覆写内部私有 ABI，不用 CSS 隐藏官方组件，不写死 hash 化的 class 名——这条约束
 即使当前没有样式代码也继续保留，作为将来任何界面改动的边界。
@@ -118,12 +125,25 @@ Dude 不持有任何领域状态或布局状态：
 ## 8. Electron 边界
 
 - Main 只管窗口、打包版的 dsh 子进程和内核热更新。原生菜单是 macOS 标准菜单，只多一项
-  「检查内核更新…」，见下面「内核热更新」。
-- 没有 Preload，没有 IPC，不开 `webviewTag`。Renderer 就是官方 web 客户端，只经 dsh
-  的 HTTP 接口工作，拿不到 `fs`、`child_process` 或 `ipcRenderer`。
+  内核更新，见下面「内核热更新」。
+- Preload（`preload.cjs`）只暴露官方桌面版的更新接口 `window.dshDesktop`：
+  `{ protocolVersion: 1, updates: { status, open, subscribe } }`。Renderer 仍是官方 web
+  客户端，经 dsh 的 HTTP 接口工作，拿不到 `fs`、`child_process` 或 `ipcRenderer`。
+  不开 `webviewTag`。
+- `dshDesktop` 存在，会让几个官方插件切到桌面版行为，这是选定的取舍：
+  - `ui-settings-general` 在侧栏左下角显示更新状态（这是要的）；
+  - `ui-settings-account` 把左下角换成「More」菜单（设置 / 联系我们 / DeepSeek 账户
+    登录，登录在系统浏览器里完成）；
+  - `ui-settings-models` 不再弹网页版的「Add an API key to get started」，没有 key 的
+    新用户要自己去设置里填（官方桌面版靠它自己的欢迎窗口引导，Dude 没有）。
+  - 0.1.5-rc.3 的官方客户端还不读 `dshDesktop`，上面三条从 0.1.7 的内核开始生效。
+- IPC 只有三条：页面取更新状态（`dude-updates:status`）、页面点更新
+  （`dude-updates:open`）、壳推送更新状态（`dude-updates:presentation`）；加上 dsh
+  子进程的 Node IPC 通道，壳用它问 host 半部有没有进行中的任务。壳只接受当前内核页面
+  发来的请求。
 - 插件没有 host 侧业务端点（`deepbuddyFiles/*`、`/deepbuddy/media`、
-  `/deepbuddy/terminal` 均已删除）；`src/host.js` 是空实现。文件能力由官方 dockkit 的
-  Files 页提供；终端和浏览器在锁定版本里官方没有，升级到 0.1.6 后由官方提供。
+  `/deepbuddy/terminal` 均已删除）；`src/host.js` 只回答任务查询。文件能力由官方
+  dockkit 的 Files 页提供；终端和浏览器在锁定版本里官方没有，升级到 0.1.6 后由官方提供。
 - **配置隔离**：发行版一律以 `DSH_HOME=~/.dude` 运行，用户数据（settings /
   credentials / sessions / storages / profiles）全部落在 `~/.dude`，与官方 `~/.dsh`
   自首次迁移时刻起分叉、互不可见。首次运行（`~/.dude` 不存在）从 `~/.dsh` **复制**
@@ -137,26 +157,40 @@ Dude 不持有任何领域状态或布局状态：
 
 内核就是 dsh 运行时（`@deepseek-ai/dsh` 及其依赖）。app 自带一份（基线，版本等于根
 `package.json` 锁定的版本）。热更新不重装 app，用 app 自带的 pnpm 把 npm 上更新的版本
-装进 `~/.dude/runtime/<版本>`。
+装进 `~/.dude/runtime/<版本>`。流程和界面照官方桌面版的更新做（官方换整个 app，Dude
+只换内核）。
 
-| 状态 | 在哪 | 谁写 |
-|---|---|---|
-| 基线内核 | `Dude.app/Contents/Resources/dsh-runtime` | 打包（`stage-runtime.sh`） |
-| 热更新内核 | `~/.dude/runtime/<版本>`，装到 `.install-<版本>` 成功后才改名 | `kernel.js` |
-| 正在跑的内核 | `main.js` 的 `dsh`（子进程、运行时、地址） | `main.js` |
+状态和它们的 Owner：
 
-启动时跑版本最高的那份，所以装了更新的 app 之后，它自带的新基线会盖过旧的热更新。
-目录列表就是全部状态，没有另存的指针文件。
+- 基线内核：`Dude.app/Contents/Resources/dsh-runtime`，打包时由 `stage-runtime.sh` 写。
+- 热更新内核：`~/.dude/runtime/<版本>`，`kernel.js` 先装到 `.install-<版本>`，成功后才
+  改名。启动时跑基线和这些目录里版本最高的那份，所以装了更新的 app 之后，它自带的新基线
+  会盖过旧的热更新。目录列表就是全部状态，没有另存的指针文件。下好但没点「安装并重启」
+  的内核，下次启动 app 时就会用上。
+- 正在跑的内核：`main.js` 的 `dsh`（子进程、运行时、端口、地址）。
+- 更新进行到哪一步：`updates.js` 的 `KernelUpdates`，只在内存里。它推给页面的形状和
+  官方一样：`{ phase, version?, percent?, failure? }`。
 
 ```text
-点「检查内核更新…」
-  → 查 npm dist-tags，取 latest / next 中较新者（alpha 不算，与 sync-upstream 同规则）
-  → 不比当前新：提示「已是最新」
-  → 更新：确认 → pnpm 装到 ~/.dude/runtime/<新版本>
-          → 停掉旧内核（两个 dsh 不同时写 ~/.dude）→ 起新内核
-          → 起来了：窗口切到新地址，删掉其它热更新目录
-          → 起不来：删掉新目录，重起旧内核，报错
+后台每 10 分钟（开机先查一次）查 npm dist-tags，取 latest / next 中较新者
+（alpha 不算，与 sync-upstream 同规则）；不弹窗，失败不打扰
+  → 有更新：侧栏左下角「新版本」，Dude 菜单「下载内核 dsh X…」
+点侧栏「新版本」（菜单项会先确认）
+  → pnpm 装到 ~/.dude/runtime/<新版本>，旧内核照常工作
+    侧栏显示百分比，菜单显示「正在下载 dsh X… N%」
+  → 侧栏「安装并重启」，菜单「安装内核 dsh X 并重启…」
+点「安装并重启」
+  → 经 IPC 问 host 半部有没有进行中的任务（2 秒内没答复就算「无法确认」，不重启）
+  → 确认框（挂在窗口上的 sheet）：有任务时是「仍有进行中的任务 / 停止任务并更新」
+  → 停掉旧内核（两个 dsh 不同时写 ~/.dude）→ 在同一个端口起新内核 → 窗口重新加载
+    （同一个端口就是同一个页面来源，页面存的本地状态还在）
+  → 起来了：后台异步删掉其它热更新目录
+  → 起不来：删掉新目录，在原端口重起旧内核，报错；再点就从检查重新开始
 ```
+
+所有弹窗都挂在 Dude 窗口上。不挂窗口的系统弹窗在 macOS 上会锁住整个 app，弹在窗口
+后面时页面点不动、只能退出——这是改成现在这样的起因。进度的百分比来自 pnpm 的
+ndjson 输出：下载占 80%，装进目录占 20%，总数先按正在跑的内核的包数估算。
 
 热更新跳过了 `sync-upstream.mjs --apply` 的契约测试和冒烟，这是取舍：更新快，但壳与
 dsh 之间的接口（启动参数、`dsh web:` 输出行、插件加载位置、保留的 profile 名、支持的

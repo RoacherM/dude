@@ -9,7 +9,8 @@
     "start": "electron .",
     "stage": "bash stage-runtime.sh",
     "build": "bash stage-runtime.sh && electron-builder --mac --arm64",
-    "pack": "bash stage-runtime.sh && electron-builder --mac --arm64 --dir"
+    "pack": "bash stage-runtime.sh && electron-builder --mac --arm64 --dir",
+    "test": "node --test updates.test.js"
   },
   "devDependencies": {
     "electron": "44.0.0",
@@ -32,6 +33,8 @@
     "files": [
       "main.js",
       "kernel.js",
+      "updates.js",
+      "preload.cjs",
       "package.json"
     ],
     "extraResources": [

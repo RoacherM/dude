@@ -27,9 +27,11 @@ Electron 窗口里。
 - 窗口用 macOS 系统标题栏（不是无边框窗口），标题栏显示「Dude」。Dude 插件不需要再往
   页面里加任何东西——`apply` 是空的；它留着只是为了让启动 manifest 认得出是 Dude 的
   （`scripts/sync-upstream.mjs` 冒烟检查 boot manifest 里的 `dsh-plugin-dude`）。Hero 用
-  官方鲸鱼标记。`src/host.js` 是空实现。
-- Electron 壳只管窗口、dsh 进程启停和内核热更新（Dude 菜单「检查内核更新…」）；没有
-  Preload 或 IPC。
+  官方鲸鱼标记。`src/host.js` 只回答壳的一个问题：内核更新重启前，有没有进行中的任务。
+- Electron 壳只管窗口、dsh 进程启停和内核热更新。热更新照官方桌面版的流程做：状态和
+  操作显示在官方侧栏左下角（preload 提供官方的 `window.dshDesktop.updates`，协议 1），
+  Dude 菜单里也有一项跟着状态走。Preload 只暴露这一个接口；IPC 只有更新状态、更新操作
+  和壳问 dsh「有没有任务」三条。
 - 官方缺的能力（例如锁定版本的右栏没有终端和浏览器）是能力缺口，靠升级官方版本补，
   不自绘平行实现。
 - 不做公共 UI 插件平台：不实现动态 UI 插件、Placement DSL、`when` DSL 或 Manifest。
@@ -41,7 +43,8 @@ Electron 窗口里。
    `data-*` 属性或语义元素，不用 hash 化的 class 名。
 3. `cordis.patch.yml` 只 insert `dude` 一行，不禁用任何官方行；不注册 `root`，
    不提供第二份 `layout`。
-4. DSH ABI 只在 `plugins/dude/src/client/dsh/` 出现。
+4. 客户端的 DSH ABI 只在 `plugins/dude/src/client/dsh/` 出现；host 半部只在
+   `src/host.js` 用官方的 `agents` / `jobs` 服务。
 5. 每份可变状态只有一个 Owner；不要用 Effect 同步两份状态。
 6. 所有 Listener、Timer、Watcher、Subscription 必须清理；插件的每项注册都包在
    `ctx.effect` 里。
