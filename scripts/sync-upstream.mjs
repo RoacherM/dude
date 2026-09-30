@@ -27,7 +27,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { homedir, tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as sleep } from 'node:timers/promises'
 
@@ -116,13 +116,14 @@ function compareVersions(a, b) {
  * @param cmd - executable name or path.
  * @param args - argument vector.
  * @param opts - `cwd` override.
- * @returns exit status and the merged output.
+ * @returns exit status, stdout for structured data, and merged diagnostic output.
  */
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { cwd: opts.cwd ?? REPO, encoding: 'utf8', env: process.env })
-  const out = `${r.stdout ?? ''}${r.stderr ?? ''}`
-  if (r.error !== undefined) return { code: -1, out: `${out}${r.error.message}` }
-  return { code: r.status ?? -1, out }
+  const stdout = r.stdout ?? ''
+  const out = `${stdout}${r.stderr ?? ''}`
+  if (r.error !== undefined) return { code: -1, stdout, out: `${out}${r.error.message}` }
+  return { code: r.status ?? -1, stdout, out }
 }
 
 /**
@@ -235,17 +236,17 @@ function readLocked() {
  * Ask the registry what upstream has published.
  * @returns the newest anchor version, the full list, and its dist-tags.
  */
-function readUpstream() {
+export function readUpstream() {
   const versions = run('npm', ['view', ANCHOR, 'versions', '--json'])
   if (versions.code !== 0) throw new Error(`npm view ${ANCHOR} failed:\n${tail(versions.out)}`)
-  const list = JSON.parse(versions.out)
+  const list = JSON.parse(versions.stdout)
   const all = Array.isArray(list) ? list : [list]
   // The release line is what `latest` / `next` point at. `alpha` builds are
   // published to the same registry but are not something a distribution
   // tracks, so the newest *tagged* release wins over the highest semver.
   const anchorTags = run('npm', ['view', ANCHOR, 'dist-tags', '--json'])
   if (anchorTags.code !== 0) throw new Error(`npm view ${ANCHOR} dist-tags failed:\n${tail(anchorTags.out)}`)
-  const tagged = JSON.parse(anchorTags.out)
+  const tagged = JSON.parse(anchorTags.stdout)
   const latest = [tagged.latest, tagged.next].filter(v => typeof v === 'string').sort(compareVersions).at(-1)
   if (latest === undefined) throw new Error(`${ANCHOR} has neither a latest nor a next dist-tag`)
   return { latest, all, distTags: tagged }
@@ -421,7 +422,7 @@ async function stopServer(child) {
  * @param base - the smoke server's origin.
  * @returns one `{name, verdict, detail}` per check, in order.
  */
-async function smokeChecks(base, cookie) {
+export async function smokeChecks(base, cookie) {
   const checks = []
   const headers = cookie === undefined ? {} : { cookie }
 
@@ -448,7 +449,8 @@ async function smokeChecks(base, cookie) {
       ? undefined
       : JSON.parse(bootMatch[1]).entries.find(e => e.id === 'dsh-plugin-dude')
     const bundleUrl = entry?.url ?? '/plugins/??dsh-plugin-dude/client.js'
-    const bundle = await fetch(`${base}${bundleUrl}`, { headers })
+    // Boot entries may be document-relative, root-relative, or absolute URLs.
+    const bundle = await fetch(new URL(bundleUrl, `${base}/`), { headers })
     const head = (await bundle.text()).slice(0, 120)
     const banner = head.startsWith('window.__ModuleLoader__.load({ id: "dsh-plugin-dude"')
     const ok = index.status === 200 && bundle.status === 200 && banner
@@ -686,19 +688,22 @@ const USAGE = `用法：node scripts/sync-upstream.mjs (--check | --apply | --sm
 环境变量：DSH（dsh 可执行文件）、SMOKE_PORT、DSH_PROFILE`
 
 const MODES = { '--check': cmdCheck, '--apply': cmdApply, '--smoke': cmdSmoke }
-const flags = process.argv.slice(2).filter(a => a in MODES)
-if (flags.length !== 1) {
-  console.error(USAGE)
-  process.exit(2)
-}
+// Importing the smoke checks for regression tests must not run the CLI.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const flags = process.argv.slice(2).filter(a => a in MODES)
+  if (flags.length !== 1) {
+    console.error(USAGE)
+    process.exit(2)
+  }
 
-const mode = flags[0]
-const report = new Report(mode.slice(2))
-try {
-  process.exitCode = await MODES[mode](report)
-} catch (error) {
-  report.say(`✗ 未捕获错误：${error?.stack ?? error}`)
-  process.exitCode = 1
-} finally {
-  report.flush()
+  const mode = flags[0]
+  const report = new Report(mode.slice(2))
+  try {
+    process.exitCode = await MODES[mode](report)
+  } catch (error) {
+    report.say(`✗ 未捕获错误：${error?.stack ?? error}`)
+    process.exitCode = 1
+  } finally {
+    report.flush()
+  }
 }

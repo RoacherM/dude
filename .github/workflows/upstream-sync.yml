@@ -56,6 +56,10 @@ jobs:
         working-directory: dude
         run: pnpm install --frozen-lockfile
 
+      - name: 同步脚本回归测试
+        working-directory: dude
+        run: node --test scripts/*.test.mjs
+
       # 冒烟要一个装好的 dude profile。dsh 由根 package.json 锁定、随上一步装进
       # node_modules/.bin，--apply 的 bump 会一起升级它。profile 装在 Dude 自己的
       # ~/.dude 里，和冒烟脚本读的是同一个 home。
@@ -100,6 +104,24 @@ jobs:
             echo 'REPORT_EOF'
           } >> "$GITHUB_OUTPUT"
 
+      # 标签是可选元数据；首次运行时补建，失败也不能挡住 PR 或失败通知。
+      - name: 准备 upstream-sync 标签
+        id: sync-label
+        if: steps.check.outputs.behind == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GH_REPO/labels/upstream-sync" > /dev/null 2>&1 ||
+             gh label create upstream-sync --repo "$GH_REPO" \
+               --color '0E8A16' --description 'Automated upstream sync'; then
+            echo 'name=upstream-sync' >> "$GITHUB_OUTPUT"
+          else
+            echo '::warning::Could not prepare upstream-sync label; continuing without it.'
+            echo 'name=' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 绿了 → 开 bump PR
         if: steps.check.outputs.behind == 'true' && steps.apply.outcome == 'success'
         uses: peter-evans/create-pull-request@v6
@@ -120,18 +142,25 @@ jobs:
             ${{ steps.report.outputs.body }}
 
             </details>
-          labels: upstream-sync
+          labels: ${{ steps.sync-label.outputs.name }}
 
       - name: 红了 → 开 issue
         if: steps.check.outputs.behind == 'true' && steps.apply.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           REPORT: ${{ steps.report.outputs.body }}
+          SYNC_LABEL: ${{ steps.sync-label.outputs.name }}
         run: |
           set -euo pipefail
-          printf '官方发了新版，但 `--apply` 没过；bump 已自动回滚，仓库仍在旧版本。\n\n处理规矩：先把漂移固化成契约测试，再在自有插件层修，最后记 handoff。\n\n<details><summary>同步报告</summary>\n\n%s\n\n</details>\n' "$REPORT" > /tmp/issue.md
-          gh issue create \
-            --repo '${{ github.repository }}' \
+          printf '官方发了新版，但 `--apply` 没过；bump 已自动回滚，仓库仍在旧版本。\n\n处理规矩：先把漂移固化成契约测试，再在自有插件层修，最后记 handoff。\n\n<details><summary>同步报告</summary>\n\n%s\n\n</details>\n' "$REPORT" > "$RUNNER_TEMP/upstream-sync-issue.md"
+          issue_url=$(gh issue create \
+            --repo "$GH_REPO" \
             --title "同步官方失败：$(date -u +%F)" \
-            --label upstream-sync \
-            --body-file /tmp/issue.md
+            --body-file "$RUNNER_TEMP/upstream-sync-issue.md")
+          echo "$issue_url"
+          # 先发出通知，再尽力打标签；即使标签在上一步后被删除，也不重试创建 issue。
+          if [ -n "$SYNC_LABEL" ]; then
+            gh issue edit "$issue_url" --repo "$GH_REPO" --add-label "$SYNC_LABEL" ||
+              echo '::warning::Failure issue created, but upstream-sync label could not be added.'
+          fi
